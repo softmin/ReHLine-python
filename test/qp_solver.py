@@ -13,8 +13,8 @@ def qp_admm(P, q, lb, ub,
             max_iter=1000,
             rho=1.0, 
             alpha=1.2,              
-            atol=1e-4, 
-            rtol=1e-2):
+            atol=1e-8, 
+            rtol=1e-8):
 
     n = P.shape[0]
     
@@ -64,12 +64,12 @@ def qp_admm(P, q, lb, ub,
 
 def qp_cvxpy(P, q, lb, ub,
             max_iter=1000,
-            atol=1e-4, 
-            rtol=1e-2):
+            atol=1e-8, 
+            rtol=1e-8):
     n = P.shape[0]
     
     x = cp.Variable(n)
-    prob = cp.Problem(cp.Minimize((1/2)*cp.quad_form(x, P) - q.T @ x), [x >= lb, x <= ub]) 
+    prob = cp.Problem(cp.Minimize((1/2)*cp.quad_form(x, P) + q.T @ x), [x >= lb, x <= ub]) 
     prob.solve()
     x_opt = np.array(x.value).squeeze()
     return x_opt, prob

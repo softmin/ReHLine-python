@@ -6,7 +6,6 @@ import numpy as np
 K, n, d = 5, 1000, 10
 U1 = np.random.randn(K,n,d)
 v1 = np.random.randn(K,n)
-
 np.savez('exp1', U=U1, v=v1)
 
 ## Example 1: constrained QP
