@@ -11,7 +11,7 @@ n, d = X.shape
 C = .001
 ## generate dataset for `L3-solver`
 U = C*np.array([-y[:,np.newaxis]*X])
-v = C*np.array([np.ones(d)])
+v = C*np.array([np.ones(n)])
 ## note that in this case: A = 0; b = 0
 
 ## results from `linearSVC`
@@ -21,6 +21,4 @@ clf.fit(X, y)
 sol = clf.coef_
 
 import numpy as np
-U.tofile('U.csv',sep=',',format='%.5f')
-v.tofile('v.csv',sep=',',format='%.5f')
-sol.tofile('sol.csv',sep=',',format='%.5f')
+np.savez('svm', U=U, v=v, sol=sol)
