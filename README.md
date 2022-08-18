@@ -11,6 +11,8 @@ Some existing problems of recent interest in statistics and machine learning can
 
 - [**Variate SVMs**]()
 
+    - [ ] make a routine from (X, y) to (U, v)
+
 - [**Quantile Regression**]()
 
 ## Reference Papers

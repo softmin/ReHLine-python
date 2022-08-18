@@ -10,11 +10,11 @@ def objective(P, q, x):
     return 0.5 * np.dot(x, np.dot(P, x)) + np.dot(q, x)
 
 def qp_admm(P, q, lb, ub,
-            max_iter=1000,
+            max_iter=100000,
             rho=1.0, 
             alpha=1.2,              
-            atol=1e-8, 
-            rtol=1e-8):
+            atol=1e-5, 
+            rtol=1e-5):
 
     n = P.shape[0]
     
@@ -62,10 +62,7 @@ def qp_admm(P, q, lb, ub,
 
 ## Solve QP by cvxopt
 
-def qp_cvxpy(P, q, lb, ub,
-            max_iter=1000,
-            atol=1e-8, 
-            rtol=1e-8):
+def qp_cvxpy(P, q, lb, ub):
     n = P.shape[0]
     
     x = cp.Variable(n)
