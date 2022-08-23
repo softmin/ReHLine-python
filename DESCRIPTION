@@ -7,7 +7,7 @@ Author: Yixuan Qiu, Ben Dai
 Maintainer: Yixuan Qiu <yixuanq@gmail.com>
 Description: Minimizing ReLU-decomposable losses for linear models
     with linear computational complexity.
-License: GPL
+License: MIT
 Encoding: UTF-8
 LazyData: true
 Imports: Rcpp (>= 1.0.9)
