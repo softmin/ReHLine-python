@@ -11,6 +11,8 @@ using Vector = Eigen::VectorXd;
 using MapVec = Eigen::Map<Vector>;
 
 // Compute the Q matrix from U array
+// U: [n x d] x K
+// Q: [n x K]
 inline Matrix compute_Q(const std::vector<MapMat>& U)
 {
     const int K = U.size();
@@ -25,6 +27,8 @@ inline Matrix compute_Q(const std::vector<MapMat>& U)
 }
 
 // Compute the p vector from A
+// A: [L x d]
+// p: [L]
 inline Vector compute_p(const MapMat& A)
 {
     return A.rowwise().squaredNorm();
@@ -103,7 +107,7 @@ inline void update_alpha_beta(
 
 // [[Rcpp::export]]
 List l3solver(List Umat, NumericMatrix Vmat, NumericMatrix Amat, NumericVector bvec,
-              int max_iter, double tol)
+              int max_iter, double tol, bool verbose = false)
 {
     // Get dimensions
     // U: [n x d] x K
@@ -136,8 +140,18 @@ List l3solver(List Umat, NumericMatrix Vmat, NumericMatrix Amat, NumericVector b
     // Main iterations
     for(int i = 0; i < max_iter; i++)
     {
+        Vector old_alpha = alpha;
+        Vector old_beta = beta;
         update_Lambda_beta(U, V, Q, Lambda, beta);
         update_alpha_beta(A, b, p, alpha, beta);
+
+        if(verbose && (i % 100 == 0))
+        {
+            const double alpha_diff = (alpha - old_alpha).norm();
+            const double beta_diff = (beta - old_beta).norm();
+            Rcpp::Rcout << "Iter " << i << ", alpha_diff = " << alpha_diff <<
+                ", beta_diff = " << beta_diff << std::endl;
+        }
     }
 
     return List::create(
