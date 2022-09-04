@@ -77,13 +77,13 @@ inline void update_Lambda_beta(
         for(int i = 0; i < n; i++)
         {
             // Compute epsilon
-            double eps = (V(i, k) - U[k].row(i).dot(beta)) / Q(i, k);
+            double eps = (V(i, k) + U[k].row(i).dot(beta)) / Q(i, k);
             const double lambda_ik = Lambda(i, k);
             eps = std::min(eps, 1.0 - lambda_ik);
             eps = std::max(eps, -lambda_ik);
             // Update Lambda and beta
             Lambda(i, k) += eps;
-            beta.noalias() += eps * U[k].row(i).transpose();
+            beta.noalias() -= eps * U[k].row(i).transpose();
         }
     }
 }
