@@ -5,6 +5,8 @@ from qp_solver import qp_admm, qp_cvxpy
 import cvxpy as cp
 from numpy.linalg import norm
 from sklearn.datasets import make_classification
+from obj import P_obj
+
 X, y = make_classification(n_samples=100, n_features=20, random_state=0)
 y = 2*y - 1
 
@@ -19,6 +21,8 @@ U = C*np.array([-y[:,np.newaxis]*X])
 K, n, d = U.shape
 v = C*np.array([np.ones(n)])
 Xy = y[:,np.newaxis]*X
+
+np.savez('exp_svm', U=U, v=v)
 
 assert len(sol) == d
 assert v.shape[0] == K
@@ -63,3 +67,21 @@ print('diff: cvxopt-admm: %.4f' %norm(Psol_cvxopt - Psol_admm))
 #         0.0532164 , -0.03329769,  0.03606962,  0.04388544, -0.17519926,
 #         0.71490634,  0.16579061, -0.17195275, -0.1856495 ,  0.41504564,
 #         0.09991359,  0.20471551,  0.23528196,  0.14956124, -0.40864464])
+
+## check objective function
+obj_true = C * np.mean(np.maximum(1 - y[:,np.newaxis] * X @ sol, 0)) + .5*np.sum(sol**2)
+
+assert obj_true == P_obj(U, v, sol)
+
+print('obj: linlinear: %.4f' %P_obj(U, v, sol))
+
+# obj: linlinear: 1.5350
+
+print('obj: admm: %.4f' %P_obj(U, v, Psol_admm))
+
+# obj: admm: 1.5354
+
+print('obj: cvxopt: %.4f' %P_obj(U, v, Psol_cvxopt))
+
+# obj: cvxopt: 1.5350
+
