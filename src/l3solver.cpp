@@ -31,6 +31,9 @@ inline Matrix compute_Q(const std::vector<MapMat>& U)
 // p: [L]
 inline Vector compute_p(const MapMat& A)
 {
+    const int L = A.rows();
+    if(L < 1)
+        return Vector::Zero(0);
     return A.rowwise().squaredNorm();
 }
 
@@ -54,10 +57,15 @@ inline void init_params(
     */
 
     // alpha >= 0, initialized to be 1
-    alpha.fill(1.0);
+    const int L = A.rows();
+    if(L > 0)
+        alpha.fill(1.0);
 
     // beta = A' * alpha + U(3) * vec(Lambda)
-    beta.noalias() = A.transpose() * alpha;
+    if(L > 0)
+        beta.noalias() = A.transpose() * alpha;
+    else
+        beta.setZero();
     const int K = U.size();
     for(int k = 0; k < K; k++)
     {
@@ -105,7 +113,7 @@ inline void update_alpha_beta(
     }
 }
 
-// [[Rcpp::export]]
+// [[Rcpp::export(l3solver_)]]
 List l3solver(List Umat, NumericMatrix Vmat, NumericMatrix Amat, NumericVector bvec,
               int max_iter, double tol, bool verbose = false)
 {
@@ -147,7 +155,9 @@ List l3solver(List Umat, NumericMatrix Vmat, NumericMatrix Amat, NumericVector b
 
         if(verbose && (i % 100 == 0))
         {
-            const double alpha_diff = (alpha - old_alpha).norm();
+            const double alpha_diff = (L > 0) ?
+                                      (alpha - old_alpha).norm() :
+                                      (0.0);
             const double beta_diff = (beta - old_beta).norm();
             Rcpp::Rcout << "Iter " << i << ", alpha_diff = " << alpha_diff <<
                 ", beta_diff = " << beta_diff << std::endl;
