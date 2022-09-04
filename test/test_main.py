@@ -5,7 +5,7 @@ import pandas as pd
 from qp_solver import qp_admm, qp_cvxpy
 from numpy.linalg import norm
 import cvxpy as cp
-
+from obj import P_obj
 
 data = np.load('./dataset/sim/exp2.npz')
 U, v, A, b = data['U'], data['v'], data['A'], data['b']
@@ -78,3 +78,11 @@ print('diff: cvxopt-admm: %.4f' %norm(Psol_cvxopt - Psol_admm))
 # Psol_cvxopt
 # array([ 0.06136998, -0.21952933, -0.07635897,  0.78027488, -0.44306767,
 #        -0.11653435,  0.11158851,  0.82619721,  0.04363481,  0.13233961])
+
+print('obj: linlinear: %.5f' %P_obj(U, v, sol))
+print('obj: admm: %.5f' %P_obj(U, v, Psol_admm))
+print('obj: cvxopt: %.5f' %P_obj(U, v, Psol_cvxopt))
+
+# obj: linlinear: 3.99687
+# obj: admm: 3.99306
+# obj: cvxopt: 3.99520
