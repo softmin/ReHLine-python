@@ -12,8 +12,8 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // l3solver
-List l3solver(List Umat, NumericMatrix Vmat, NumericMatrix Amat, NumericVector bvec);
-RcppExport SEXP _L3solver_l3solver(SEXP UmatSEXP, SEXP VmatSEXP, SEXP AmatSEXP, SEXP bvecSEXP) {
+List l3solver(List Umat, NumericMatrix Vmat, NumericMatrix Amat, NumericVector bvec, int max_iter, double tol, bool verbose);
+RcppExport SEXP _L3solver_l3solver(SEXP UmatSEXP, SEXP VmatSEXP, SEXP AmatSEXP, SEXP bvecSEXP, SEXP max_iterSEXP, SEXP tolSEXP, SEXP verboseSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -21,13 +21,16 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< NumericMatrix >::type Vmat(VmatSEXP);
     Rcpp::traits::input_parameter< NumericMatrix >::type Amat(AmatSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type bvec(bvecSEXP);
-    rcpp_result_gen = Rcpp::wrap(l3solver(Umat, Vmat, Amat, bvec));
+    Rcpp::traits::input_parameter< int >::type max_iter(max_iterSEXP);
+    Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
+    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
+    rcpp_result_gen = Rcpp::wrap(l3solver(Umat, Vmat, Amat, bvec, max_iter, tol, verbose));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_L3solver_l3solver", (DL_FUNC) &_L3solver_l3solver, 4},
+    {"_L3solver_l3solver", (DL_FUNC) &_L3solver_l3solver, 7},
     {NULL, NULL, 0}
 };
 
