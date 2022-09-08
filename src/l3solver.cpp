@@ -61,7 +61,7 @@ inline void init_params(
     if(L > 0)
         alpha.fill(1.0);
 
-    // beta = A' * alpha + U(3) * vec(Lambda)
+    // beta = A' * alpha - U(3) * vec(Lambda)
     if(L > 0)
         beta.noalias() = A.transpose() * alpha;
     else
@@ -69,7 +69,7 @@ inline void init_params(
     const int K = U.size();
     for(int k = 0; k < K; k++)
     {
-        beta.noalias() += U[k].transpose() * Lambda.col(k);
+        beta.noalias() -= U[k].transpose() * Lambda.col(k);
     }
 }
 
