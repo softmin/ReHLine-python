@@ -1,3 +1,4 @@
+library(L3solver)
 library(reticulate)
 
 py_config()
@@ -20,7 +21,7 @@ read_npz = function(npz_file)
     res
 }
 
-dat = read_npz("exp_svm.npz")
+dat = read_npz("./dataset/sim/exp_svm.npz")
 U = dat[["U"]]
 v = dat[["v"]]
 

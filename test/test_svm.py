@@ -22,7 +22,7 @@ K, n, d = U.shape
 v = C*np.array([np.ones(n)])
 Xy = y[:,np.newaxis]*X
 
-np.savez('exp_svm', U=U, v=v)
+np.savez('./dataset/sim/exp_svm', U=U, v=v)
 
 assert len(sol) == d
 assert v.shape[0] == K
