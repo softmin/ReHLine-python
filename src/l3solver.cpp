@@ -146,27 +146,36 @@ List l3solver(List Umat, NumericMatrix Vmat, NumericMatrix Amat, NumericVector b
     init_params(U, A, Lambda, alpha, beta);
 
     // Main iterations
-    for(int i = 0; i < max_iter; i++)
+    int i = 0;
+    for(; i < max_iter; i++)
     {
         Vector old_alpha = alpha;
         Vector old_beta = beta;
         update_Lambda_beta(U, V, Q, Lambda, beta);
         update_alpha_beta(A, b, p, alpha, beta);
 
+        // Compute difference of alpha and beta
+        const double alpha_diff = (L > 0) ?
+                                  (alpha - old_alpha).norm() :
+                                  (0.0);
+        const double beta_diff = (beta - old_beta).norm();
+
+        // Print progress
         if(verbose && (i % 100 == 0))
         {
-            const double alpha_diff = (L > 0) ?
-                                      (alpha - old_alpha).norm() :
-                                      (0.0);
-            const double beta_diff = (beta - old_beta).norm();
             Rcpp::Rcout << "Iter " << i << ", alpha_diff = " << alpha_diff <<
                 ", beta_diff = " << beta_diff << std::endl;
         }
+
+        // Convergence test
+        if(alpha_diff < tol && beta_diff < tol)
+            break;
     }
 
     return List::create(
         Rcpp::Named("Lambda") = Lambda,
         Rcpp::Named("alpha") = alpha,
-        Rcpp::Named("beta") = beta
+        Rcpp::Named("beta") = beta,
+        Rcpp::Named("niter") = i
     );
 }
