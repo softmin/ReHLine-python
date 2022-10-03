@@ -9,58 +9,46 @@ from obj import P_obj
 
 X, y = make_classification(n_samples=100, n_features=20, random_state=0)
 y = 2*y - 1
+
 C = .5
-
-### Test for SVM
-
-## generate dataset for `L3-solver`
-n, d = X.shape
-U = -(C*y).reshape(1,-1)
-L = U.shape[0]
-V = (C*np.array(np.ones(n))).reshape(1,-1)
-
-np.savez('./dataset/sim/exp_svm', X=X, y=y, U=U, V=V)
-
-svm_data = np.load('/home/ben/github/L3-solver/test/dataset/sim/exp_svm.npz')
-X, y, U, V = svm_data['X'], svm_data['y'], svm_data['U'], svm_data['V']
-
-# test
-assert U.shape[1] == n
-assert V.shape[0] == L
-assert V.shape[1] == n
-
-## solution by liblinear
 from sklearn.svm import LinearSVC
 clf = LinearSVC(C=C, loss='hinge', fit_intercept=False, random_state=0, tol=1e-6, max_iter=1000000)
 clf.fit(X, y)
 sol = clf.coef_.flatten()
 
+## generate dataset for `L3-solver`
+U = C*np.array([-y[:,np.newaxis]*X])
+K, n, d = U.shape
+v = C*np.array([np.ones(n)])
+Xy = y[:,np.newaxis]*X
+
+np.savez('./dataset/sim/exp_svm', U=U, v=v)
+
+assert len(sol) == d
+assert v.shape[0] == K
+assert v.shape[1] == n
+
+mat_U = np.reshape(U, (-1, d)).T
+# mat_U = -Xy.T
+
 ## parameters for a general QP
-Ux = np.array([U.T*X])
-mat_Ux = np.reshape(Ux, (-1, d)).T
-P = np.dot(mat_Ux.T, mat_Ux) + 1e-8*np.eye(L*n)
-q = -V.flatten()
-lb = np.zeros(L*n)
-ub = np.ones(L*n)
+P = np.dot(mat_U.T, mat_U) + 1e-8*np.eye(K*n)
+q = v.flatten()
+lb = np.zeros(K*n)
+ub = np.ones(K*n)
 
 ## solution by ADMM
-Dsol_admm, __ = qp_admm(P, q, lb, ub, atol=1e-5, rtol=1e-5)
-Psol_admm = - mat_Ux.dot(Dsol_admm)
+Dsol_admm, __ = qp_admm(P, -q, lb, ub, atol=1e-5, rtol=1e-5)
+Psol_admm = -mat_U.dot(Dsol_admm)
 
 ## solution by CVXOPT
-Dsol_cvxopt, __ = qp_cvxpy(P, q, lb, ub)
-Psol_cvxopt = - mat_Ux.dot(Dsol_cvxopt)
-
-## Check solution
+Dsol_cvxopt, __ = qp_cvxpy(P, -q, lb, ub)
+Psol_cvxopt = -mat_U.dot(Dsol_cvxopt)
 
 ## Compare the results for different methods
 print('diff: admm-liblinear: %.4f' %norm(Psol_admm - sol))
 print('diff: cvxopt-liblinear: %.4f' %norm(Psol_cvxopt - sol))
 print('diff: cvxopt-admm: %.4f' %norm(Psol_cvxopt - Psol_admm))
-
-# diff: admm-liblinear: 0.0004
-# diff: cvxopt-liblinear: 0.0000
-# diff: cvxopt-admm: 0.0004
 
 ## liblinear
 # array([ 0.40693637,  0.26570757,  0.04150625,  0.95287774,  0.78164026,
@@ -81,15 +69,19 @@ print('diff: cvxopt-admm: %.4f' %norm(Psol_cvxopt - Psol_admm))
 #         0.09991359,  0.20471551,  0.23528196,  0.14956124, -0.40864464])
 
 ## check objective function
-obj_true = C * np.sum(np.maximum(1 - y[:,np.newaxis] * X @ sol, 0)) + .5*np.sum(sol**2)
+obj_true = C * np.mean(np.maximum(1 - y[:,np.newaxis] * X @ sol, 0)) + .5*np.sum(sol**2)
 
-assert obj_true == P_obj(X=X, beta=sol, U=U, V=V, S=0, T=0, tau=0)
+assert obj_true == P_obj(U, v, sol)
 
-print('obj: linlinear: %.4f' %P_obj(X=X, beta=sol, U=U, V=V, S=0, T=0, tau=0))
-# obj: linlinear: 11.6221
+print('obj: linlinear: %.4f' %P_obj(U, v, sol))
 
-print('obj: admm: %.4f' %P_obj(X=X, beta=Psol_admm, U=U, V=V, S=0, T=0, tau=0))
-# obj: admm: 11.6225
+# obj: linlinear: 1.5350
 
-print('obj: cvxopt: %.4f' %P_obj(X=X, beta=Psol_cvxopt, U=U, V=V, S=0, T=0, tau=0))
-# obj: cvxopt: 11.6221
+print('obj: admm: %.4f' %P_obj(U, v, Psol_admm))
+
+# obj: admm: 1.5354
+
+print('obj: cvxopt: %.4f' %P_obj(U, v, Psol_cvxopt))
+
+# obj: cvxopt: 1.5350
+
