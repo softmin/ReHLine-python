@@ -77,7 +77,7 @@ inline Vector get_primal(
 inline void init_params(
     const MapMat& X, const MapMat& A,
     const MapMat& U, const MapMat& S, double tau,
-    Vector& xi, Matrix& Lambda, Matrix& Gamma, Vector& beta
+    Vector& xi, Matrix& Lambda, Matrix& Gamma, Matrix& Omega, Vector& beta
 )
 {
     // Get dimensions
@@ -96,8 +96,12 @@ inline void init_params(
 
     // Each element of Gamma satisfies 0 <= gamma_hi <= tau,
     // and we use min(0.5 * tau, 1) to initialize (tau can be Inf)
+    // Each element of Omega satisfies omega_hi >= 0, initialized to be 1
     if (H > 0)
+    {
         Gamma.fill(std::min(1.0, 0.5 * tau));
+        Omega.fill(1.0);
+    }
 
     beta = get_primal(X, A, U, S, xi, Lambda, Gamma);
 }
@@ -145,7 +149,7 @@ inline void update_Gamma_Omega_beta(
             const double gamma_hi = Gamma(h, i);
             double eps = T(h, i) + Omega(h, i) +
                 s_hi * X.row(i).dot(beta) - gamma_hi;
-            eps = eps / (s_hi * s_hi + 1.0);
+            eps = eps / (s_hi * s_hi * r[i] + 1.0);
             eps = std::min(eps, tau - gamma_hi);
             eps = std::max(eps, -gamma_hi);
             // Update Gamma, Omega, and beta
@@ -223,7 +227,7 @@ void l3solver_internal(
     // Create and initialize primal-dual variables
     Vector beta(d), xi(d);
     Matrix Lambda(L, n), Gamma(H, n), Omega(H, n);
-    init_params(X, A, U, S, tau, xi, Lambda, Gamma, beta);
+    init_params(X, A, U, S, tau, xi, Lambda, Gamma, Omega, beta);
 
     // Main iterations
     std::vector<double> dual_objfns;
