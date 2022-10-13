@@ -12,216 +12,301 @@ using MapVec = Eigen::Map<Vector>;
 
 // Dimensions of the matrices involved
 // - Input
-//   * U: [n x d] x K
-//   * V: [n x K]
-//   * A: [L x d]
-//   * b: [L]
-// - Precomputed
-//   * Q: [n x K]
-//   * p: [L]
+//   * X   : [n x d]
+//   * U, V: [L x n]
+//   * S, T: [H x n]
+//   * A   : [K x d]
+//   * b   : [K]
+// - Pre-computed
+//   * r: [n]
+//   * p: [K]
 // - Primal
 //   * beta: [d]
 // - Dual
-//   * alpha: [L]
-//   * Lambda: [n x K]
+//   * xi    : [K]
+//   * Lambda: [L x n]
+//   * Gamma : [H x n]
+//   * Omega : [H x n]
 
-// Compute the Q matrix from U array
-// U: [n x d] x K
-// Q: [n x K]
-inline Matrix compute_Q(const std::vector<MapMat>& U)
+// Pre-compute the r vector from X
+inline Vector precompute_r(const MapMat& X)
 {
-    const int K = U.size();
-    const int n = U[0].rows();
-    Matrix Q(n, K);
-    for(int k = 0; k < K; k++)
-    {
-        Q.col(k).noalias() = U[k].rowwise().squaredNorm();
-    }
-
-    return Q;
+    return X.rowwise().squaredNorm();
 }
 
-// Compute the p vector from A
-// A: [L x d]
-// p: [L]
-inline Vector compute_p(const MapMat& A)
+// Pre-compute the p vector from A
+// A [K x d], K can be zero
+inline Vector precompute_p(const MapMat& A)
 {
-    const int L = A.rows();
-    if(L < 1)
+    const int K = A.rows();
+    if(K < 1)
         return Vector::Zero(0);
     return A.rowwise().squaredNorm();
 }
 
-inline Vector U_Lambda_prod(
-    const std::vector<MapMat>& U, const Matrix& Lambda)
+// Compute the primal variable beta from dual variables
+inline Vector get_primal(
+    const MapMat& X, const MapMat& A, const MapMat& U, const MapMat& S,
+    const Vector& xi, const Matrix& Lambda, const Matrix& Gamma
+)
 {
-    const int K = U.size();
-    const int d = U[0].cols();
-    Vector res = Vector::Zero(d);
-    for(int k = 0; k < K; k++)
-    {
-        res.noalias() += U[k].transpose() * Lambda.col(k);
-    }
-    return res;
+    // Get dimensions
+    const int n = X.rows();
+    const int d = X.cols();
+    const int L = U.rows();
+    const int H = S.rows();
+    const int K = A.rows();
+
+    Vector beta = Vector::Zero(d);
+    if (K > 0)
+        beta.noalias() = A.transpose() * xi;
+
+    // [n x 1]
+    Vector LHterm = Vector::Zero(n);
+    if (L > 0)
+        LHterm.noalias() = U.cwiseProduct(Lambda).colwise().sum().transpose();
+    // [n x 1]
+    if (H > 0)
+        LHterm.noalias() += S.cwiseProduct(Gamma).colwise().sum().transpose();
+
+    beta.noalias() -= X.transpose() * LHterm;
+    return beta;
 }
 
 // Initialize result matrices
 inline void init_params(
-    const std::vector<MapMat>& U, const MapMat& A,
-    Matrix& Lambda, Vector& alpha, Vector& beta
+    const MapMat& X, const MapMat& A,
+    const MapMat& U, const MapMat& S, double tau,
+    Vector& xi, Matrix& Lambda, Matrix& Gamma, Vector& beta
 )
 {
-    // Each element of Lambda satisfies 0 <= lambda_ik <= 1,
+    // Get dimensions
+    const int L = U.rows();
+    const int H = S.rows();
+    const int K = A.rows();
+
+    // xi >= 0, initialized to be 1
+    if (K > 0)
+        xi.fill(1.0);
+
+    // Each element of Lambda satisfies 0 <= lambda_li <= 1,
     // and we use 0.5 to initialize Lambda
-    Lambda.fill(0.5);
+    if (L > 0)
+        Lambda.fill(0.5);
 
-    /*
-    // so we use Unif(0, 1) to initialize Lambda
-    const std::size_t nK = Lambda.size();
-    double* Lptr = Lambda.data();
-    const double* Lptr_end = Lptr + nK;
-    for(; Lptr < Lptr_end; Lptr++)
-        *Lptr = R::unif_rand();
-    */
+    // Each element of Gamma satisfies 0 <= gamma_hi <= tau,
+    // and we use min(0.5 * tau, 1) to initialize (tau can be Inf)
+    if (H > 0)
+        Gamma.fill(std::min(1.0, 0.5 * tau));
 
-    // alpha >= 0, initialized to be 1
-    const int L = A.rows();
-    if(L > 0)
-        alpha.fill(1.0);
-
-    // beta = A' * alpha - U(3) * vec(Lambda)
-    beta.noalias() = -U_Lambda_prod(U, Lambda);
-    if(L > 0)
-        beta.noalias() += A.transpose() * alpha;
+    beta = get_primal(X, A, U, S, xi, Lambda, Gamma);
 }
 
+// Update Lambda and beta
 inline void update_Lambda_beta(
-    const std::vector<MapMat>& U, const MapMat& V, const Matrix& Q,
+    const MapMat& X, const MapMat& U, const MapMat& V, const Vector& r,
     Matrix& Lambda, Vector& beta
 )
 {
-    const int K = U.size();
-    const int n = U[0].rows();
-    for(int k = 0; k < K; k++)
+    const int n = X.rows();
+    const int L = U.rows();
+    for(int l = 0; l < L; l++)
     {
         for(int i = 0; i < n; i++)
         {
             // Compute epsilon
-            double eps = (V(i, k) + U[k].row(i).dot(beta)) / Q(i, k);
-            const double lambda_ik = Lambda(i, k);
-            eps = std::min(eps, 1.0 - lambda_ik);
-            eps = std::max(eps, -lambda_ik);
+            const double u_li = U(l, i);
+            double eps = (V(l, i) + u_li * X.row(i).dot(beta)) / r[i] / u_li / u_li;
+            const double lambda_li = Lambda(l, i);
+            eps = std::min(eps, 1.0 - lambda_li);
+            eps = std::max(eps, -lambda_li);
             // Update Lambda and beta
-            Lambda(i, k) += eps;
-            beta.noalias() -= eps * U[k].row(i).transpose();
+            Lambda(l, i) += eps;
+            beta.noalias() -= eps * u_li * X.row(i).transpose();
         }
     }
 }
 
-inline void update_alpha_beta(
-    const MapMat& A, const MapVec& b, const Vector& p,
-    Vector& alpha, Vector & beta
+// Update Gamma, Omega, and beta
+inline void update_Gamma_Omega_beta(
+    const MapMat& X, const MapMat& S, const MapMat& T,
+    double tau, const Vector& r,
+    Matrix& Gamma, Matrix& Omega, Vector& beta
 )
 {
-    const int L = A.rows();
-    for(int l = 0; l < L; l++)
+    const int n = X.rows();
+    const int H = S.rows();
+    for(int h = 0; h < H; h++)
     {
-        // Compute epsilon
-        double eps = -(A.row(l).dot(beta) + b[l]) / p[l];
-        eps = std::max(eps, -alpha[l]);
-        // Update alpha and beta
-        alpha[l] += eps;
-        beta.noalias() += eps * A.row(l).transpose();
+        for(int i = 0; i < n; i++)
+        {
+            // Compute epsilon
+            const double s_hi = S(h, i);
+            const double gamma_hi = Gamma(h, i);
+            double eps = T(h, i) + Omega(h, i) +
+                s_hi * X.row(i).dot(beta) - gamma_hi;
+            eps = eps / (s_hi * s_hi + 1.0);
+            eps = std::min(eps, tau - gamma_hi);
+            eps = std::max(eps, -gamma_hi);
+            // Update Gamma, Omega, and beta
+            Gamma(h, i) += eps;
+            beta.noalias() -= eps * s_hi * X.row(i).transpose();
+            Omega(h, i) = std::max(0.0, gamma_hi + eps - tau);
+        }
     }
 }
 
-inline double objfn(
-    const std::vector<MapMat>& U, const MapMat& V,
-    const MapMat& A, const MapVec& b,
-    const Matrix& Lambda, const Vector& alpha, const Vector& beta
+// Update xi and beta
+inline void update_xi_beta(
+    const MapMat& A, const MapVec& b, const Vector& p,
+    Vector& xi, Vector & beta
 )
 {
-    Vector Aa = A.transpose() * alpha;
-    Vector ULambda = U_Lambda_prod(U, Lambda);
-    double obj = 0.5 * (Aa.squaredNorm() + ULambda.squaredNorm()) -
-        Aa.dot(ULambda) + alpha.dot(b) - Lambda.cwiseProduct(V).sum();
-    return obj;
+    const int K = A.rows();
+    for(int k = 0; k < K; k++)
+    {
+        // Compute epsilon
+        double eps = -(A.row(k).dot(beta) + b[k]) / p[k];
+        eps = std::max(eps, -xi[k]);
+        // Update xi and beta
+        xi[k] += eps;
+        beta.noalias() += eps * A.row(k).transpose();
+    }
 }
 
-// [[Rcpp::export(l3solver_)]]
-List l3solver(List Umat, NumericMatrix Vmat, NumericMatrix Amat, NumericVector bvec,
-              int max_iter, double tol, bool verbose = false)
+// Compute the dual objective function value
+inline double dual_objfn(
+    const MapMat& X, const MapMat& A, const MapVec& b,
+    const MapMat& U, const MapMat& V,
+    const MapMat& S, const MapMat& T,
+    const Vector& xi, const Matrix& Lambda,
+    const Matrix& Gamma, const Matrix& Omega
+)
+{
+    // TODO
+    return 0.0;
+}
+
+
+
+struct L3Result
+{
+    Vector              beta;
+    Vector              xi;
+    Matrix              Lambda;
+    Matrix              Gamma;
+    Matrix              Omega;
+    int                 niter;
+    std::vector<double> dual_objfns;
+};
+
+void l3solver_internal(
+    L3Result& result,
+    const MapMat& X, const MapMat& A, const MapVec& b,
+    const MapMat& U, const MapMat& V,
+    const MapMat& S, const MapMat& T, double tau,
+    int max_iter, double tol, bool verbose = false,
+    std::ostream& cout = std::cout
+)
 {
     // Get dimensions
-    // U: [n x d] x K
-    // V: [n x K]
-    // A: [L x d]
-    // b: [L]
-    const int K = Umat.length();
-    const int n = Vmat.nrow();
-    const int d = Amat.ncol();
-    const int L = Amat.nrow();
+    const int n = X.rows();
+    const int d = X.cols();
+    const int L = U.rows();
+    const int H = S.rows();
+    const int K = A.rows();
 
-    // Convert to Eigen matrix objects
-    std::vector<MapMat> U;
-    for(int k = 0; k < K; k++)
-        U.emplace_back(Rcpp::as<MapMat>(Umat[k]));
-    MapMat V = Rcpp::as<MapMat>(Vmat);
-    MapMat A = Rcpp::as<MapMat>(Amat);
-    MapVec b = Rcpp::as<MapVec>(bvec);
+    // Pre-compute r and p vectors
+    Vector r = precompute_r(X);
+    Vector p = precompute_p(A);
 
-    // Store Q matrix and p vector
-    Matrix Q = compute_Q(U);
-    Vector p = compute_p(A);
-
-    // Create and initialize result matrices
-    Matrix Lambda(n, K);
-    Vector alpha(L);
-    Vector beta(d);
-    init_params(U, A, Lambda, alpha, beta);
+    // Create and initialize primal-dual variables
+    Vector beta(d), xi(d);
+    Matrix Lambda(L, n), Gamma(H, n), Omega(H, n);
+    init_params(X, A, U, S, tau, xi, Lambda, Gamma, beta);
 
     // Main iterations
-    std::vector<double> objfns;
+    std::vector<double> dual_objfns;
     int i = 0;
     for(; i < max_iter; i++)
     {
-        Vector old_alpha = alpha;
+        Vector old_xi = xi;
         Vector old_beta = beta;
-        update_Lambda_beta(U, V, Q, Lambda, beta);
-        update_alpha_beta(A, b, p, alpha, beta);
+
+        update_xi_beta(A, b, p, xi, beta);
+        update_Lambda_beta(X, U, V, r, Lambda, beta);
+        update_Gamma_Omega_beta(X, S, T, tau, r, Gamma, Omega, beta);
 
         // Compute difference of alpha and beta
-        const double alpha_diff = (L > 0) ?
-                                  (alpha - old_alpha).norm() :
-                                  (0.0);
+        const double xi_diff = (K > 0) ?
+                               (xi - old_xi).norm() :
+                               (0.0);
         const double beta_diff = (beta - old_beta).norm();
 
         // Print progress
         if(verbose && (i % 10 == 0))
         {
-            double obj = objfn(U, V, A, b, Lambda, alpha, beta);
-            objfns.push_back(obj);
-            Rcpp::Rcout << "Iter " << i << ", objfn = " << obj <<
-                ", alpha_diff = " << alpha_diff <<
+            double obj = dual_objfn(
+                X, A, b, U, V, S, T, xi, Lambda, Gamma, Omega);
+            dual_objfns.push_back(obj);
+            cout << "Iter " << i << ", dual_objfn = " << obj <<
+                ", xi_diff = " << xi_diff <<
                 ", beta_diff = " << beta_diff << std::endl;
         }
 
         // Convergence test
-        if(alpha_diff < tol && beta_diff < tol)
+        if(xi_diff < tol && beta_diff < tol)
             break;
     }
 
+    // Save result
+    result.beta.swap(beta);
+    result.xi.swap(xi);
+    result.Lambda.swap(Lambda);
+    result.Gamma.swap(Gamma);
+    result.Omega.swap(Omega);
+    result.niter = i;
+    result.dual_objfns.swap(dual_objfns);
+}
+
+
+// [[Rcpp::export(l3solver_)]]
+List l3solver(
+    NumericMatrix Xmat, NumericMatrix Amat, NumericVector bvec,
+    NumericMatrix Umat, NumericMatrix Vmat,
+    NumericMatrix Smat, NumericMatrix Tmat, double tau,
+    int max_iter, double tol, bool verbose = false
+)
+{
+    MapMat X = Rcpp::as<MapMat>(Xmat);
+    MapMat A = Rcpp::as<MapMat>(Amat);
+    MapVec b = Rcpp::as<MapVec>(bvec);
+    MapMat U = Rcpp::as<MapMat>(Umat);
+    MapMat V = Rcpp::as<MapMat>(Vmat);
+    MapMat S = Rcpp::as<MapMat>(Smat);
+    MapMat T = Rcpp::as<MapMat>(Tmat);
+    L3Result result;
+
+    l3solver_internal(
+        result,
+        X, A, b, U, V, S, T,
+        tau, max_iter, tol, verbose, Rcpp::Rcout
+    );
+
     return List::create(
-        Rcpp::Named("Lambda") = Lambda,
-        Rcpp::Named("alpha") = alpha,
-        Rcpp::Named("beta") = beta,
-        Rcpp::Named("niter") = i,
-        Rcpp::Named("objfn") = objfns
+        Rcpp::Named("beta")        = result.beta,
+        Rcpp::Named("xi")          = result.xi,
+        Rcpp::Named("Lambda")      = result.Lambda,
+        Rcpp::Named("Gamma")       = result.Gamma,
+        Rcpp::Named("Omega")       = result.Omega,
+        Rcpp::Named("niter")       = result.niter,
+        Rcpp::Named("dual_objfns") = result.dual_objfns
     );
 }
 
 
 
+/*
 inline void update_alpha_cd(
     const std::vector<MapMat>& U,
     const MapMat& A, const MapVec& b, const Vector& p,
@@ -339,3 +424,4 @@ List l3cd(List Umat, NumericMatrix Vmat, NumericMatrix Amat, NumericVector bvec,
         Rcpp::Named("objfn") = objfns
     );
 }
+*/
