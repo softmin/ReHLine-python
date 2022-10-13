@@ -37,6 +37,19 @@ inline Vector compute_p(const MapMat& A)
     return A.rowwise().squaredNorm();
 }
 
+inline Vector U_Lambda_prod(
+    const std::vector<MapMat>& U, const Matrix& Lambda)
+{
+    const int K = U.size();
+    const int d = U[0].cols();
+    Vector res = Vector::Zero(d);
+    for(int k = 0; k < K; k++)
+    {
+        res.noalias() += U[k].transpose() * Lambda.col(k);
+    }
+    return res;
+}
+
 // Initialize result matrices
 inline void init_params(
     const std::vector<MapMat>& U, const MapMat& A,
@@ -62,15 +75,9 @@ inline void init_params(
         alpha.fill(1.0);
 
     // beta = A' * alpha - U(3) * vec(Lambda)
+    beta.noalias() = -U_Lambda_prod(U, Lambda);
     if(L > 0)
-        beta.noalias() = A.transpose() * alpha;
-    else
-        beta.setZero();
-    const int K = U.size();
-    for(int k = 0; k < K; k++)
-    {
-        beta.noalias() -= U[k].transpose() * Lambda.col(k);
-    }
+        beta.noalias() += A.transpose() * alpha;
 }
 
 inline void update_Lambda_beta(
@@ -113,6 +120,19 @@ inline void update_alpha_beta(
     }
 }
 
+inline double objfn(
+    const std::vector<MapMat>& U, const MapMat& V,
+    const MapMat& A, const MapVec& b,
+    const Matrix& Lambda, const Vector& alpha, const Vector& beta
+)
+{
+    Vector Aa = A.transpose() * alpha;
+    Vector ULambda = U_Lambda_prod(U, Lambda);
+    double obj = 0.5 * (Aa.squaredNorm() + ULambda.squaredNorm()) -
+        Aa.dot(ULambda) + alpha.dot(b) - Lambda.cwiseProduct(V).sum();
+    return obj;
+}
+
 // [[Rcpp::export(l3solver_)]]
 List l3solver(List Umat, NumericMatrix Vmat, NumericMatrix Amat, NumericVector bvec,
               int max_iter, double tol, bool verbose = false)
@@ -146,6 +166,7 @@ List l3solver(List Umat, NumericMatrix Vmat, NumericMatrix Amat, NumericVector b
     init_params(U, A, Lambda, alpha, beta);
 
     // Main iterations
+    std::vector<double> objfns;
     int i = 0;
     for(; i < max_iter; i++)
     {
@@ -161,9 +182,12 @@ List l3solver(List Umat, NumericMatrix Vmat, NumericMatrix Amat, NumericVector b
         const double beta_diff = (beta - old_beta).norm();
 
         // Print progress
-        if(verbose && (i % 100 == 0))
+        if(verbose && (i % 10 == 0))
         {
-            Rcpp::Rcout << "Iter " << i << ", alpha_diff = " << alpha_diff <<
+            double obj = objfn(U, V, A, b, Lambda, alpha, beta);
+            objfns.push_back(obj);
+            Rcpp::Rcout << "Iter " << i << ", objfn = " << obj <<
+                ", alpha_diff = " << alpha_diff <<
                 ", beta_diff = " << beta_diff << std::endl;
         }
 
@@ -176,6 +200,7 @@ List l3solver(List Umat, NumericMatrix Vmat, NumericMatrix Amat, NumericVector b
         Rcpp::Named("Lambda") = Lambda,
         Rcpp::Named("alpha") = alpha,
         Rcpp::Named("beta") = beta,
-        Rcpp::Named("niter") = i
+        Rcpp::Named("niter") = i,
+        Rcpp::Named("objfn") = objfns
     );
 }
