@@ -10,6 +10,21 @@ using MapMat = Eigen::Map<Matrix>;
 using Vector = Eigen::VectorXd;
 using MapVec = Eigen::Map<Vector>;
 
+// Dimensions of the matrices involved
+// - Input
+//   * U: [n x d] x K
+//   * V: [n x K]
+//   * A: [L x d]
+//   * b: [L]
+// - Precomputed
+//   * Q: [n x K]
+//   * p: [L]
+// - Primal
+//   * beta: [d]
+// - Dual
+//   * alpha: [L]
+//   * Lambda: [n x K]
+
 // Compute the Q matrix from U array
 // U: [n x d] x K
 // Q: [n x K]
@@ -195,6 +210,126 @@ List l3solver(List Umat, NumericMatrix Vmat, NumericMatrix Amat, NumericVector b
         if(alpha_diff < tol && beta_diff < tol)
             break;
     }
+
+    return List::create(
+        Rcpp::Named("Lambda") = Lambda,
+        Rcpp::Named("alpha") = alpha,
+        Rcpp::Named("beta") = beta,
+        Rcpp::Named("niter") = i,
+        Rcpp::Named("objfn") = objfns
+    );
+}
+
+
+
+inline void update_alpha_cd(
+    const std::vector<MapMat>& U,
+    const MapMat& A, const MapVec& b, const Vector& p,
+    const Matrix& Lambda, Vector& alpha
+)
+{
+    Vector ULambda = U_Lambda_prod(U, Lambda);
+    const int L = A.rows();
+    for(int l = 0; l < L; l++)
+    {
+        Vector alpha_a = A.transpose() * alpha -
+            alpha[l] * A.row(l).transpose();
+        double new_alphal = A.row(l).dot(alpha_a - ULambda) + b[l];
+        new_alphal = std::max(0.0, -new_alphal / p[l]);
+        alpha[l] = new_alphal;
+    }
+}
+
+inline void update_Lambda_cd(
+    const std::vector<MapMat>& U, const Matrix& Q,
+    const MapMat& V, const MapMat& A, const Vector& alpha,
+    Matrix& Lambda
+)
+{
+    Vector Aa = A.transpose() * alpha;
+    const int K = U.size();
+    const int n = U[0].rows();
+    for(int k = 0; k < K; k++)
+    {
+        for(int i = 0; i < n; i++)
+        {
+            Vector ULambda = U_Lambda_prod(U, Lambda) -
+                Lambda(i, k) * U[k].row(i).transpose();
+            double new_lambdaki = U[k].row(i).dot(Aa - ULambda) + V(i, k);
+            new_lambdaki = std::min(1.0, new_lambdaki / Q(i, k));
+            new_lambdaki = std::max(0.0, new_lambdaki);
+            Lambda(i, k) = new_lambdaki;
+        }
+    }
+}
+
+// [[Rcpp::export(l3cd_)]]
+List l3cd(List Umat, NumericMatrix Vmat, NumericMatrix Amat, NumericVector bvec,
+          int max_iter, double tol, bool verbose = false)
+{
+    // Get dimensions
+    // U: [n x d] x K
+    // V: [n x K]
+    // A: [L x d]
+    // b: [L]
+    const int K = Umat.length();
+    const int n = Vmat.nrow();
+    const int d = Amat.ncol();
+    const int L = Amat.nrow();
+
+    // Convert to Eigen matrix objects
+    std::vector<MapMat> U;
+    for(int k = 0; k < K; k++)
+        U.emplace_back(Rcpp::as<MapMat>(Umat[k]));
+    MapMat V = Rcpp::as<MapMat>(Vmat);
+    MapMat A = Rcpp::as<MapMat>(Amat);
+    MapVec b = Rcpp::as<MapVec>(bvec);
+
+    // Store Q matrix and p vector
+    Matrix Q = compute_Q(U);
+    Vector p = compute_p(A);
+
+    // Create and initialize result matrices
+    Matrix Lambda(n, K);
+    Vector alpha(L);
+    Vector beta(d);
+    init_params(U, A, Lambda, alpha, beta);
+
+    // Main iterations
+    std::vector<double> objfns;
+    int i = 0;
+    for(; i < max_iter; i++)
+    {
+        Vector old_alpha = alpha;
+        Vector old_beta = beta;
+        update_alpha_cd(U, A, b, p, Lambda, alpha);
+        update_Lambda_cd(U, Q, V, A, alpha, Lambda);
+
+        // Compute difference of alpha and beta
+        const double alpha_diff = (L > 0) ?
+                                  (alpha - old_alpha).norm() :
+                                  (0.0);
+        const double beta_diff = (beta - old_beta).norm();
+
+        // Print progress
+        if(verbose && (i % 10 == 0))
+        {
+            double obj = objfn(U, V, A, b, Lambda, alpha, beta);
+            objfns.push_back(obj);
+            Rcpp::Rcout << "Iter " << i << ", objfn = " << obj <<
+                ", alpha_diff = " << alpha_diff <<
+                ", beta_diff = " << beta_diff << std::endl;
+        }
+
+        // Convergence test
+        if(alpha_diff < tol && beta_diff < tol)
+            break;
+    }
+
+    // beta = A' * alpha - U(3) * vec(Lambda)
+    beta.noalias() = -U_Lambda_prod(U, Lambda);
+    if(L > 0)
+        beta.noalias() += A.transpose() * alpha;
 
     return List::create(
         Rcpp::Named("Lambda") = Lambda,
