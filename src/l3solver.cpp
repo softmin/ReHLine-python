@@ -273,6 +273,90 @@ void l3solver_internal(
     result.dual_objfns.swap(dual_objfns);
 }
 
+void l3solver_external(
+    const MapMat& X, const MapMat& A, const MapVec& b,
+    const MapMat& U, const MapMat& V,
+    const MapMat& S, const MapMat& T, 
+    double tau,
+    int max_iter, 
+    double tol, 
+    MapVec& sol_beta, 
+    MapVec& sol_xi, 
+    MapMat& sol_Lambda, 
+    MapMat& sol_Gamma, 
+    MapMat& sol_Omega,
+    int niter, 
+    double sol_dual_obj,
+    bool verbose = false
+    // std::ostream& cout = std::cout
+)
+{
+    // Get dimensions
+    const int n = X.rows();
+    const int d = X.cols();
+    const int L = U.rows();
+    const int H = S.rows();
+    const int K = A.rows();
+
+    // Pre-compute r and p vectors
+    Vector r = precompute_r(X);
+    Vector p = precompute_p(A);
+
+    // Create and initialize primal-dual variables
+    // Vector beta(d), xi(d); Ben: the shape of xi seems to be K
+    Vector beta(d), xi(K);
+    Matrix Lambda(L, n), Gamma(H, n), Omega(H, n);
+    init_params(X, A, U, S, tau, xi, Lambda, Gamma, Omega, beta);
+    // Main iterations
+    std::vector<double> dual_objfns;
+    int i = 0;
+    for(; i < max_iter; i++)
+    {
+        Vector old_xi = xi;
+        Vector old_beta = beta;
+
+        update_xi_beta(A, b, p, xi, beta);
+        update_Lambda_beta(X, U, V, r, Lambda, beta);
+        update_Gamma_Omega_beta(X, S, T, tau, r, Gamma, Omega, beta);
+
+        // Compute difference of alpha and beta
+        const double xi_diff = (K > 0) ?
+                               (xi - old_xi).norm() :
+                               (0.0);
+        const double beta_diff = (beta - old_beta).norm();
+
+        // Print progress
+        if(verbose && (i % 10 == 0))
+        {
+            double obj = dual_objfn(
+                X, A, b, U, V, S, T, xi, Lambda, Gamma, Omega);
+            dual_objfns.push_back(obj);
+            std::cout << "Iter " << i << ", dual_objfn = " << obj <<
+                ", xi_diff = " << xi_diff <<
+                ", beta_diff = " << beta_diff << std::endl;
+        }
+
+        // Convergence test
+        if(xi_diff < tol && beta_diff < tol)
+            break;
+    }
+
+    // Save result
+    sol_dual_obj = dual_objfn(X, A, b, U, V, S, T, xi, Lambda, Gamma, Omega);
+    sol_beta.swap(beta);
+    sol_xi.swap(xi);
+    sol_Lambda.swap(Lambda);
+    sol_Gamma.swap(Gamma);
+    sol_Omega.swap(Omega);
+    niter = i;
+    // result.xi.swap(xi);
+    // result.Lambda.swap(Lambda);
+    // result.Gamma.swap(Gamma);
+    // result.Omega.swap(Omega);
+    // result.niter = i;
+    // result.dual_objfns.swap(dual_objfns);
+}
+
 
 // [[Rcpp::export(l3solver_)]]
 List l3solver(
