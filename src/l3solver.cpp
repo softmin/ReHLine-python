@@ -225,7 +225,7 @@ void l3solver_internal(
     Vector p = precompute_p(A);
 
     // Create and initialize primal-dual variables
-    Vector beta(d), xi(d);
+    Vector beta(d), xi(K);
     Matrix Lambda(L, n), Gamma(H, n), Omega(H, n);
     init_params(X, A, U, S, tau, xi, Lambda, Gamma, Omega, beta);
 
