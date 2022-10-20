@@ -1,15 +1,18 @@
-#include <RcppEigen.h>
 #include <vector>
 #include <iostream>
+#include<pybind11/pybind11.h>
+#include<pybind11/numpy.h>
+#include<pybind11/eigen.h>
+#include <pybind11/stl.h>
 
-using Rcpp::List;
-using Rcpp::NumericVector;
-using Rcpp::NumericMatrix;
+namespace py = pybind11;
 
 using Matrix = Eigen::MatrixXd;
-using MapMat = Eigen::Map<Matrix>;
+// using MapMat = Eigen::Map<Matrix>;
+using MapMat = py::EigenDRef<Matrix>;
 using Vector = Eigen::VectorXd;
-using MapVec = Eigen::Map<Vector>;
+// using MapVec = Eigen::Map<Vector>;
+using MapVec = Eigen::Ref<Vector>;
 
 // Dimensions of the matrices involved
 // - Input
@@ -192,8 +195,6 @@ inline double dual_objfn(
     return 0.0;
 }
 
-
-
 struct L3Result
 {
     Vector              beta;
@@ -210,85 +211,7 @@ void l3solver_internal(
     const MapMat& X, const MapMat& A, const MapVec& b,
     const MapMat& U, const MapMat& V,
     const MapMat& S, const MapMat& T, double tau,
-    int max_iter, double tol, bool verbose = false,
-    std::ostream& cout = std::cout
-)
-{
-    // Get dimensions
-    const int n = X.rows();
-    const int d = X.cols();
-    const int L = U.rows();
-    const int H = S.rows();
-    const int K = A.rows();
-
-    // Pre-compute r and p vectors
-    Vector r = precompute_r(X);
-    Vector p = precompute_p(A);
-
-    // Create and initialize primal-dual variables
-    Vector beta(d), xi(K);
-    Matrix Lambda(L, n), Gamma(H, n), Omega(H, n);
-    init_params(X, A, U, S, tau, xi, Lambda, Gamma, Omega, beta);
-
-    // Main iterations
-    std::vector<double> dual_objfns;
-    int i = 0;
-    for(; i < max_iter; i++)
-    {
-        Vector old_xi = xi;
-        Vector old_beta = beta;
-
-        update_xi_beta(A, b, p, xi, beta);
-        update_Lambda_beta(X, U, V, r, Lambda, beta);
-        update_Gamma_Omega_beta(X, S, T, tau, r, Gamma, Omega, beta);
-
-        // Compute difference of alpha and beta
-        const double xi_diff = (K > 0) ?
-                               (xi - old_xi).norm() :
-                               (0.0);
-        const double beta_diff = (beta - old_beta).norm();
-
-        // Print progress
-        if(verbose && (i % 10 == 0))
-        {
-            double obj = dual_objfn(
-                X, A, b, U, V, S, T, xi, Lambda, Gamma, Omega);
-            dual_objfns.push_back(obj);
-            cout << "Iter " << i << ", dual_objfn = " << obj <<
-                ", xi_diff = " << xi_diff <<
-                ", beta_diff = " << beta_diff << std::endl;
-        }
-
-        // Convergence test
-        if(xi_diff < tol && beta_diff < tol)
-            break;
-    }
-
-    // Save result
-    result.beta.swap(beta);
-    result.xi.swap(xi);
-    result.Lambda.swap(Lambda);
-    result.Gamma.swap(Gamma);
-    result.Omega.swap(Omega);
-    result.niter = i;
-    result.dual_objfns.swap(dual_objfns);
-}
-
-void l3solver_external(
-    const MapMat& X, const MapMat& A, const MapVec& b,
-    const MapMat& U, const MapMat& V,
-    const MapMat& S, const MapMat& T, 
-    double tau,
-    int max_iter, 
-    double tol, 
-    MapVec& sol_beta, 
-    MapVec& sol_xi, 
-    MapMat& sol_Lambda, 
-    MapMat& sol_Gamma, 
-    MapMat& sol_Omega,
-    int niter, 
-    double sol_dual_obj,
-    bool verbose = false
+    int max_iter, double tol, bool verbose = false
     // std::ostream& cout = std::cout
 )
 {
@@ -304,10 +227,10 @@ void l3solver_external(
     Vector p = precompute_p(A);
 
     // Create and initialize primal-dual variables
-    // Vector beta(d), xi(d); Ben: the shape of xi seems to be K
     Vector beta(d), xi(K);
     Matrix Lambda(L, n), Gamma(H, n), Omega(H, n);
     init_params(X, A, U, S, tau, xi, Lambda, Gamma, Omega, beta);
+
     // Main iterations
     std::vector<double> dual_objfns;
     int i = 0;
@@ -343,57 +266,31 @@ void l3solver_external(
     }
 
     // Save result
-    sol_dual_obj = dual_objfn(X, A, b, U, V, S, T, xi, Lambda, Gamma, Omega);
-    sol_beta.swap(beta);
-    sol_xi.swap(xi);
-    sol_Lambda.swap(Lambda);
-    sol_Gamma.swap(Gamma);
-    sol_Omega.swap(Omega);
-    niter = i;
-    // result.xi.swap(xi);
-    // result.Lambda.swap(Lambda);
-    // result.Gamma.swap(Gamma);
-    // result.Omega.swap(Omega);
-    // result.niter = i;
-    // result.dual_objfns.swap(dual_objfns);
+    result.beta.swap(beta);
+    result.xi.swap(xi);
+    result.Lambda.swap(Lambda);
+    result.Gamma.swap(Gamma);
+    result.Omega.swap(Omega);
+    result.niter = i;
+    result.dual_objfns.swap(dual_objfns);
 }
 
 
-// [[Rcpp::export(l3solver_)]]
-List l3solver(
-    NumericMatrix Xmat, NumericMatrix Amat, NumericVector bvec,
-    NumericMatrix Umat, NumericMatrix Vmat,
-    NumericMatrix Smat, NumericMatrix Tmat, double tau,
-    int max_iter, double tol, bool verbose = false
-)
-{
-    MapMat X = Rcpp::as<MapMat>(Xmat);
-    MapMat A = Rcpp::as<MapMat>(Amat);
-    MapVec b = Rcpp::as<MapVec>(bvec);
-    MapMat U = Rcpp::as<MapMat>(Umat);
-    MapMat V = Rcpp::as<MapMat>(Vmat);
-    MapMat S = Rcpp::as<MapMat>(Smat);
-    MapMat T = Rcpp::as<MapMat>(Tmat);
-    L3Result result;
 
-    l3solver_internal(
-        result,
-        X, A, b, U, V, S, T,
-        tau, max_iter, tol, verbose, Rcpp::Rcout
-    );
-
-    return List::create(
-        Rcpp::Named("beta")        = result.beta,
-        Rcpp::Named("xi")          = result.xi,
-        Rcpp::Named("Lambda")      = result.Lambda,
-        Rcpp::Named("Gamma")       = result.Gamma,
-        Rcpp::Named("Omega")       = result.Omega,
-        Rcpp::Named("niter")       = result.niter,
-        Rcpp::Named("dual_objfns") = result.dual_objfns
-    );
+PYBIND11_MODULE(L3_solver, m) {
+    py::class_<L3Result>(m, "L3Result")
+        .def(py::init<>())
+        .def_readwrite("beta", &L3Result::beta)
+        .def_readwrite("xi", &L3Result::xi)
+        .def_readwrite("Lambda", &L3Result::Lambda)
+        .def_readwrite("Gamma", &L3Result::Gamma)
+        .def_readwrite("Omega", &L3Result::Omega)
+        .def_readwrite("niter", &L3Result::niter)
+        .def_readwrite("dual_objfns", &L3Result::dual_objfns);
+        
+    m.doc() = "L3_solver";
+    m.def("l3solver_internal", &l3solver_internal);
 }
-
-
 
 /*
 inline void update_alpha_cd(
