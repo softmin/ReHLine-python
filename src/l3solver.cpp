@@ -185,11 +185,69 @@ inline double dual_objfn(
     const MapMat& U, const MapMat& V,
     const MapMat& S, const MapMat& T,
     const Vector& xi, const Matrix& Lambda,
-    const Matrix& Gamma, const Matrix& Omega
+    const Matrix& Gamma, const Matrix& Omega, double tau
 )
 {
-    // TODO
-    return 0.0;
+    // Get dimensions
+    const int n = X.rows();
+    const int d = X.cols();
+    const int L = U.rows();
+    const int H = S.rows();
+    const int K = A.rows();
+
+    // A' * xi, [d x 1], A[K x d] may be empty
+    Vector Atxi = Vector::Zero(d);
+    if (K > 0)
+        Atxi.noalias() = A.transpose() * xi;
+    // U3 * vec(Lambda), [n x 1], U[L x n] may be empty
+    Vector UL(n), U3L = Vector::Zero(d);
+    if (L > 0)
+    {
+        UL.noalias() = U.cwiseProduct(Lambda).colwise().sum().transpose();
+        U3L.noalias() = X.transpose() * UL;
+    }
+    // S3 * vec(Gamma), [n x 1], S[H x n] may be empty
+    Vector SG(n), S3G = Vector::Zero(d);
+    if (H > 0)
+    {
+        SG.noalias() = S.cwiseProduct(Gamma).colwise().sum().transpose();
+        S3G.noalias() = X.transpose() * SG;
+    }
+
+    // Compute dual objective function value
+    double obj = 0.0;
+    // If K = 0, all terms that depend on A, xi, or b will be zero
+    if (K > 0)
+    {
+        // 0.5 * ||Atxi||^2 - Atxi' * U3L - Atxi' * S3G + xi' * b
+        const double Atxi_U3L = (L > 0) ? (Atxi.dot(U3L)) : 0.0;
+        const double Atxi_S3G = (H > 0) ? (Atxi.dot(S3G)) : 0.0;
+        obj += 0.5 * Atxi.squaredNorm() - Atxi_U3L - Atxi_S3G + xi.dot(b);
+    }
+    // If L = 0, all terms that depend on U, V, or Lambda will be zero
+    if (L > 0)
+    {
+        // 0.5 * ||U3L||^2 + U3L' * S3G - tr(Lambda * V')
+        const double U3L_S3G = (H > 0) ? (U3L.dot(S3G)) : 0.0;
+        obj += 0.5 * U3L.squaredNorm() + U3L_S3G -
+            Lambda.cwiseProduct(V).sum();
+    }
+    // If H = 0, all terms that depend on S, T, Gamma, or Omega will be zero
+    // Also note that if tau = Inf, then Omega = 0
+    if (H > 0)
+    {
+        // 0.5 * ||Omega||^2 + 0.5 * ||S3G||^2 + 0.5 * ||Gamma||^2
+        // - tr(Gamma * Omega') - tr(Gamma * T') + tau * sum(Omega)
+        if (std::isinf(tau))
+            obj += 0.5 * S3G.squaredNorm() + 0.5 * Gamma.squaredNorm() -
+                Gamma.cwiseProduct(T).sum();
+        else
+            obj += 0.5 * Omega.squaredNorm() + 0.5 * S3G.squaredNorm() +
+                0.5 * Gamma.squaredNorm() - Gamma.cwiseProduct(Omega + T).sum() +
+                tau * Omega.sum();
+    }
+
+    return obj;
 }
 
 
@@ -252,7 +310,7 @@ void l3solver_internal(
         if(verbose && (i % 10 == 0))
         {
             double obj = dual_objfn(
-                X, A, b, U, V, S, T, xi, Lambda, Gamma, Omega);
+                X, A, b, U, V, S, T, xi, Lambda, Gamma, Omega, tau);
             dual_objfns.push_back(obj);
             cout << "Iter " << i << ", dual_objfn = " << obj <<
                 ", xi_diff = " << xi_diff <<
@@ -277,16 +335,16 @@ void l3solver_internal(
 void l3solver_external(
     const MapMat& X, const MapMat& A, const MapVec& b,
     const MapMat& U, const MapMat& V,
-    const MapMat& S, const MapMat& T, 
+    const MapMat& S, const MapMat& T,
     double tau,
-    int max_iter, 
-    double tol, 
-    MapVec& sol_beta, 
-    MapVec& sol_xi, 
-    MapMat& sol_Lambda, 
-    MapMat& sol_Gamma, 
+    int max_iter,
+    double tol,
+    MapVec& sol_beta,
+    MapVec& sol_xi,
+    MapMat& sol_Lambda,
+    MapMat& sol_Gamma,
     MapMat& sol_Omega,
-    int niter, 
+    int niter,
     double sol_dual_obj,
     bool verbose = false
     // std::ostream& cout = std::cout
@@ -330,7 +388,7 @@ void l3solver_external(
         if(verbose && (i % 10 == 0))
         {
             double obj = dual_objfn(
-                X, A, b, U, V, S, T, xi, Lambda, Gamma, Omega);
+                X, A, b, U, V, S, T, xi, Lambda, Gamma, Omega, tau);
             dual_objfns.push_back(obj);
             std::cout << "Iter " << i << ", dual_objfn = " << obj <<
                 ", xi_diff = " << xi_diff <<
@@ -343,7 +401,7 @@ void l3solver_external(
     }
 
     // Save result
-    sol_dual_obj = dual_objfn(X, A, b, U, V, S, T, xi, Lambda, Gamma, Omega);
+    sol_dual_obj = dual_objfn(X, A, b, U, V, S, T, xi, Lambda, Gamma, Omega, tau);
     sol_beta.swap(beta);
     sol_xi.swap(xi);
     sol_Lambda.swap(Lambda);
