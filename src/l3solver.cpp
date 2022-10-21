@@ -77,7 +77,7 @@ inline Vector get_primal(
 // Initialize result matrices
 inline void init_params(
     const MapMat& X, const MapMat& A,
-    const MapMat& U, const MapMat& S, double tau,
+    const MapMat& U, const MapMat& S, const MapMat& Tau,
     Vector& xi, Matrix& Lambda, Matrix& Gamma, Matrix& Omega, Vector& beta
 )
 {
@@ -100,8 +100,9 @@ inline void init_params(
     // Each element of Omega satisfies omega_hi >= 0, initialized to be 1
     if (H > 0)
     {
-        Gamma.fill(std::min(1.0, 0.5 * tau));
-        Omega.fill(1.0);
+        Gamma = (0.5 * Tau).cwiseMin(1.0);
+        // Gamma.fill(std::min(1.0, 0.5 * Tau));
+        Omega.fill(0.0);
     }
 
     beta = get_primal(X, A, U, S, xi, Lambda, Gamma);
@@ -179,13 +180,14 @@ inline void update_xi_beta(
     }
 }
 
+
 // Compute the dual objective function value
 inline double dual_objfn(
     const MapMat& X, const MapMat& A, const MapVec& b,
     const MapMat& U, const MapMat& V,
     const MapMat& S, const MapMat& T,
     const Vector& xi, const Matrix& Lambda,
-    const Matrix& Gamma, const Matrix& Omega, double tau
+    const Matrix& Gamma, const Matrix& Omega, const MapMat& Tau
 )
 {
     // Get dimensions
@@ -194,6 +196,9 @@ inline double dual_objfn(
     const int L = U.rows();
     const int H = S.rows();
     const int K = A.rows();
+
+    // Get Max
+    double max_lim = std::numeric_limits<float>::max();
 
     // A' * xi, [d x 1], A[K x d] may be empty
     Vector Atxi = Vector::Zero(d);
@@ -238,13 +243,17 @@ inline double dual_objfn(
     {
         // 0.5 * ||Omega||^2 + 0.5 * ||S3G||^2 + 0.5 * ||Gamma||^2
         // - tr(Gamma * Omega') - tr(Gamma * T') + tau * sum(Omega)
-        if (std::isinf(tau))
-            obj += 0.5 * S3G.squaredNorm() + 0.5 * Gamma.squaredNorm() -
-                Gamma.cwiseProduct(T).sum();
-        else
-            obj += 0.5 * Omega.squaredNorm() + 0.5 * S3G.squaredNorm() +
-                0.5 * Gamma.squaredNorm() - Gamma.cwiseProduct(Omega + T).sum() +
-                tau * Omega.sum();
+        obj += 0.5 * Omega.squaredNorm() + 0.5 * S3G.squaredNorm() + 
+               0.5 * Gamma.squaredNorm() - Gamma.cwiseProduct(Omega + T).sum() +
+               Omega.cwiseProduct(Tau.cwiseMin(max_lim)).sum();
+
+        // if (std::isinf(tau))
+        //     obj += 0.5 * S3G.squaredNorm() + 0.5 * Gamma.squaredNorm() -
+        //         Gamma.cwiseProduct(T).sum();
+        // else
+        //     obj += 0.5 * Omega.squaredNorm() + 0.5 * S3G.squaredNorm() +
+        //         0.5 * Gamma.squaredNorm() - Gamma.cwiseProduct(Omega + T).sum() +
+        //         tau * Omega.sum();
     }
 
     return obj;
@@ -263,13 +272,14 @@ struct L3Result
     std::vector<double> dual_objfns;
 };
 
+
 void l3solver_internal(
     L3Result& result,
     const MapMat& X, const MapMat& A, const MapVec& b,
     const MapMat& U, const MapMat& V,
-    const MapMat& S, const MapMat& T, double tau,
-    int max_iter, double tol, bool verbose = false,
-    std::ostream& cout = std::cout
+    const MapMat& S, const MapMat& T, const MapMat& Tau,
+    int max_iter, double tol, bool verbose = false
+    // std::ostream& cout = std::cout
 )
 {
     // Get dimensions
@@ -286,7 +296,7 @@ void l3solver_internal(
     // Create and initialize primal-dual variables
     Vector beta(d), xi(K);
     Matrix Lambda(L, n), Gamma(H, n), Omega(H, n);
-    init_params(X, A, U, S, tau, xi, Lambda, Gamma, Omega, beta);
+    init_params(X, A, U, S, Tau, xi, Lambda, Gamma, Omega, beta);
 
     // Main iterations
     std::vector<double> dual_objfns;
@@ -298,7 +308,7 @@ void l3solver_internal(
 
         update_xi_beta(A, b, p, xi, beta);
         update_Lambda_beta(X, U, V, r, Lambda, beta);
-        update_Gamma_Omega_beta(X, S, T, tau, r, Gamma, Omega, beta);
+        update_Gamma_Omega_beta(X, S, T, Tau, r, Gamma, Omega, beta);
 
         // Compute difference of alpha and beta
         const double xi_diff = (K > 0) ?
@@ -310,9 +320,9 @@ void l3solver_internal(
         if(verbose && (i % 10 == 0))
         {
             double obj = dual_objfn(
-                X, A, b, U, V, S, T, xi, Lambda, Gamma, Omega, tau);
+                X, A, b, U, V, S, T, xi, Lambda, Gamma, Omega, Tau);
             dual_objfns.push_back(obj);
-            cout << "Iter " << i << ", dual_objfn = " << obj <<
+            std::cout << "Iter " << i << ", dual_objfn = " << obj <<
                 ", xi_diff = " << xi_diff <<
                 ", beta_diff = " << beta_diff << std::endl;
         }
@@ -332,96 +342,12 @@ void l3solver_internal(
     result.dual_objfns.swap(dual_objfns);
 }
 
-void l3solver_external(
-    const MapMat& X, const MapMat& A, const MapVec& b,
-    const MapMat& U, const MapMat& V,
-    const MapMat& S, const MapMat& T,
-    double tau,
-    int max_iter,
-    double tol,
-    MapVec& sol_beta,
-    MapVec& sol_xi,
-    MapMat& sol_Lambda,
-    MapMat& sol_Gamma,
-    MapMat& sol_Omega,
-    int niter,
-    double sol_dual_obj,
-    bool verbose = false
-    // std::ostream& cout = std::cout
-)
-{
-    // Get dimensions
-    const int n = X.rows();
-    const int d = X.cols();
-    const int L = U.rows();
-    const int H = S.rows();
-    const int K = A.rows();
-
-    // Pre-compute r and p vectors
-    Vector r = precompute_r(X);
-    Vector p = precompute_p(A);
-
-    // Create and initialize primal-dual variables
-    // Vector beta(d), xi(d); Ben: the shape of xi seems to be K
-    Vector beta(d), xi(K);
-    Matrix Lambda(L, n), Gamma(H, n), Omega(H, n);
-    init_params(X, A, U, S, tau, xi, Lambda, Gamma, Omega, beta);
-    // Main iterations
-    std::vector<double> dual_objfns;
-    int i = 0;
-    for(; i < max_iter; i++)
-    {
-        Vector old_xi = xi;
-        Vector old_beta = beta;
-
-        update_xi_beta(A, b, p, xi, beta);
-        update_Lambda_beta(X, U, V, r, Lambda, beta);
-        update_Gamma_Omega_beta(X, S, T, tau, r, Gamma, Omega, beta);
-
-        // Compute difference of alpha and beta
-        const double xi_diff = (K > 0) ?
-                               (xi - old_xi).norm() :
-                               (0.0);
-        const double beta_diff = (beta - old_beta).norm();
-
-        // Print progress
-        if(verbose && (i % 10 == 0))
-        {
-            double obj = dual_objfn(
-                X, A, b, U, V, S, T, xi, Lambda, Gamma, Omega, tau);
-            dual_objfns.push_back(obj);
-            std::cout << "Iter " << i << ", dual_objfn = " << obj <<
-                ", xi_diff = " << xi_diff <<
-                ", beta_diff = " << beta_diff << std::endl;
-        }
-
-        // Convergence test
-        if(xi_diff < tol && beta_diff < tol)
-            break;
-    }
-
-    // Save result
-    sol_dual_obj = dual_objfn(X, A, b, U, V, S, T, xi, Lambda, Gamma, Omega, tau);
-    sol_beta.swap(beta);
-    sol_xi.swap(xi);
-    sol_Lambda.swap(Lambda);
-    sol_Gamma.swap(Gamma);
-    sol_Omega.swap(Omega);
-    niter = i;
-    // result.xi.swap(xi);
-    // result.Lambda.swap(Lambda);
-    // result.Gamma.swap(Gamma);
-    // result.Omega.swap(Omega);
-    // result.niter = i;
-    // result.dual_objfns.swap(dual_objfns);
-}
-
 
 // [[Rcpp::export(l3solver_)]]
 List l3solver(
     NumericMatrix Xmat, NumericMatrix Amat, NumericVector bvec,
     NumericMatrix Umat, NumericMatrix Vmat,
-    NumericMatrix Smat, NumericMatrix Tmat, double tau,
+    NumericMatrix Smat, NumericMatrix Tmat, NumericMatrix TauMat,
     int max_iter, double tol, bool verbose = false
 )
 {
@@ -432,12 +358,13 @@ List l3solver(
     MapMat V = Rcpp::as<MapMat>(Vmat);
     MapMat S = Rcpp::as<MapMat>(Smat);
     MapMat T = Rcpp::as<MapMat>(Tmat);
+    MapMat Tau = Rcpp::as<MapMat>(TauMat);
     L3Result result;
 
     l3solver_internal(
         result,
         X, A, b, U, V, S, T,
-        tau, max_iter, tol, verbose, Rcpp::Rcout
+        Tau, max_iter, tol, verbose, Rcpp::Rcout
     );
 
     return List::create(
@@ -450,8 +377,6 @@ List l3solver(
         Rcpp::Named("dual_objfns") = result.dual_objfns
     );
 }
-
-
 
 /*
 inline void update_alpha_cd(

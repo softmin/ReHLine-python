@@ -18,8 +18,8 @@ __version__ = "0.0.1"
 #   reproducible builds (https://github.com/pybind/python_example/pull/53)
 
 ext_modules = [
-    Pybind11Extension("L3_solver",
-        ["l3solver.cpp"],
+    Pybind11Extension("l3solver",
+        ["src/l3solver.cpp"],
         # Example: passing in the version to the compiled code
         define_macros = [('VERSION_INFO', __version__)],
         ),
@@ -28,7 +28,7 @@ ext_modules = [
 setup(
     name="python_example",
     version=__version__,
-    author={"Ben Dai", "Yixuan Qiu"},
+    author=["Ben Dai", "Yixuan Qiu"],
     author_email="bendai@cuhk.edu.hk",
     url="https://github.com/softmin/L3-solver",
     description=" Minimizing ReLU/ReHU Losses with Linear Computational Complexity ",
