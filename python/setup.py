@@ -26,7 +26,7 @@ ext_modules = [
 ]
 
 setup(
-    name="python_example",
+    name="RedLine",
     version=__version__,
     author=["Ben Dai", "Yixuan Qiu"],
     author_email="bendai@cuhk.edu.hk",

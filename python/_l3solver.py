@@ -21,6 +21,33 @@ def ReMin_solver(X, U, V,
     return result
 
 class ReMin(BaseEstimator):
+    """Regularized ReLU/ReHU Minimization. (draft version v1.0)
+    
+    Parameters
+    ----------
+
+    C : float, default=1.0
+        Regularization parameter. The strength of the regularization is
+        inversely proportional to C. Must be strictly positive.
+    
+    verbose : int, default=0
+        Enable verbose output. Note that this setting takes advantage of a
+        per-process runtime setting in liblinear that, if enabled, may not work
+        properly in a multithreaded context.
+
+    max_iter : int, default=1000
+        The maximum number of iterations to be run.
+
+    Attributes
+    ----------
+
+    coef_ : array of shape (n_features,) 
+        Weights assigned to the features (coefficients in the primal
+        problem).
+    
+    n_iter_: int
+        Maximum number of iterations run across all classes.
+    """
 
     def __init__(self, U, V, C = 1., 
                     Tau=np.empty(shape=(0,0)),
@@ -44,6 +71,25 @@ class ReMin(BaseEstimator):
         self.C = C
 
     def fit(self, X, sample_weight=None):
+        """Fit the model based on the given training data.
+        
+        Parameters
+        ----------
+
+        X: {array-like} of shape (n_samples, n_features)
+            Training vector, where `n_samples` is the number of samples and
+            `n_features` is the number of features.
+
+        sample_weight : array-like of shape (n_samples,), default=None
+            Array of weights that are assigned to individual
+            samples. If not provided, then each sample is given unit weight.
+
+        Returns
+        -------
+        self : object
+            An instance of the estimator.
+        
+        """
         X = check_array(X)
         if sample_weight is None:
             sample_weight = self.C
@@ -73,8 +119,23 @@ class ReMin(BaseEstimator):
         self.dual_obj_ = result.dual_objfns
 
     def decision_function(self, X):
+        """The decision function evaluated on the given dataset
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            The data matrix.
+
+        Returns
+        -------
+        dec : ndarray of shape (n_samples,)
+            Returns the decision function of the samples.
+        """
+
+
         # Check if fit has been called
         check_is_fitted(self)
+        
         X = check_array(X)
         return np.dot(X, self.coef_)
 
