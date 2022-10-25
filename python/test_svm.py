@@ -4,16 +4,10 @@ def warn(*args, **kwargs):
     pass
 import warnings
 warnings.warn = warn
-
 import unittest
-import math
-import l3solver
 import numpy as np
 from numpy.testing import assert_array_equal
 import io 
-import numpy as np
-import pandas as pd
-from numpy.linalg import norm
 from sklearn.datasets import make_classification
 from _l3solver import ReMin_solver, ReMin
 from sklearn.svm import LinearSVC
@@ -22,7 +16,7 @@ import time
 from qp_solver import qp_admm, qp_cvxpy
 
 
-df = {'err': [], 'method': [], 'time': [], '-log_err': [], 'n': [], 'dim': [], 'C': []}
+df = {'err': [], 'method': [], 'time': [], 'neg_log_err': [], 'n': [], 'dim': [], 'C': []}
 
 ## Primal objective
 def obj(C, coef_, X, y):

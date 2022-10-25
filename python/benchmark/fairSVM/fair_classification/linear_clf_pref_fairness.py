@@ -16,7 +16,7 @@ from dccp.problem import is_dccp
 class LinearClf():
 
 
-    def __init__(self, loss_function, lam=None, train_multiple=False, max_iters=100, random_state=1234):
+    def __init__(self, loss_function, cov_thresh=.1, lam=None, train_multiple=False, max_iters=100, random_state=1234):
 
         """
             Model can be logistic regression or linear SVM in primal form
@@ -43,6 +43,8 @@ class LinearClf():
         self.lam = lam
         self.train_multiple = train_multiple
         self.max_iters = max_iters
+        self.cov_thresh = cov_thresh
+        self.fit_flag = False
 
 
         np.random.seed(random_state)
@@ -76,7 +78,7 @@ class LinearClf():
         max_iters = self.max_iters # for CVXPY convex solver
         max_iter_dccp = 50  # for the dccp. notice that DCCP hauristic runs the convex program iteratively until arriving at the solution
         
-
+        self.w = np.ones(X.shape[1])
 
 
         """ 
@@ -124,7 +126,8 @@ class LinearClf():
         else:
 
             obj = 0
-            obj += cvx.sum_squares(w[1:]) * self.lam # regularizer -- first term in w is the intercept, so no need to regularize that
+            # obj += cvx.sum_squares(w[1:]) * self.lam # regularizer -- first term in w is the intercept, so no need to regularize that
+            obj += cvx.sum_squares(w) * self.lam
             if self.loss_function == "logreg":
                 obj += cvx.sum(  logistic( cvx.multiply(-y, X*w) )  ) / num_all
             elif self.loss_function == "svm_linear":
@@ -143,7 +146,7 @@ class LinearClf():
                 pass
             elif cons_type == 0: # disp imp with single boundary
                 # cov_thresh = np.abs(0.) # perfect fairness -- see our AISTATS paper for details
-                cov_thresh = np.abs(10.) # perfect fairness -- see our AISTATS paper for details
+                cov_thresh = self.cov_thresh # perfect fairness -- see our AISTATS paper for details
                 constraints += self.get_di_cons_single_boundary(X, y, x_sensitive, w, cov_thresh)
             elif cons_type in [1,3]: # preferred imp, pref imp + pref treat
                 constraints += self.get_preferred_cons(X, x_sensitive, w, cons_type, cons_params["s_val_to_cons_sum"])
@@ -172,12 +175,12 @@ class LinearClf():
                 if cons_params.get("mu") is not None: mu = cons_params["mu"]
                 if cons_params.get("EPS") is not None: EPS = cons_params["EPS"]
 
-            prob.solve(method='dccp', tau=tau, mu=mu, tau_max=1e10,
+            result = prob.solve(method='dccp', tau=tau, mu=mu, tau_max=1e10,
                 verbose=False, 
                 # feastol=EPS, abstol=EPS, reltol=EPS,feastol_inacc=EPS, abstol_inacc=EPS, reltol_inacc=EPS,
                 ep=EPS,
                 max_iter=max_iters)
-
+            self.result = result
             
             # print "Optimization done, problem status:", prob.status
             assert(prob.status == "Converged" or prob.status == "optimal")
@@ -200,6 +203,7 @@ class LinearClf():
             # sys.exit(1)
             return
 
+        self.fit_flag = True
 
         """ 
             Storing the results 

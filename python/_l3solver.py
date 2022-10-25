@@ -79,7 +79,8 @@ class ReMin(BaseEstimator):
         self.loss.update(loss)
 
         n, d = X.shape
-        if (self.loss['name'] == 'hinge') or (self.loss['name'] == 'svm'):
+        if (self.loss['name'] == 'hinge') or (self.loss['name'] == 'svm')\
+            or (self.loss['name'] == 'SVM'):
             self.U = -(self.C*y).reshape(1,-1)
             self.L = self.U.shape[0]
             self.V = (self.C*np.array(np.ones(n))).reshape(1,-1)
@@ -108,7 +109,12 @@ class ReMin(BaseEstimator):
             self.S[1] =   np.sqrt(self.C)
             self.T[0] = y
             self.T[1] = -y
-            
+        elif (self.loss['name'] == 'custom'):
+            pass
+        else:
+            raise Exception("Sorry, ReMin currently do not support this loss function, \
+                            but you can manually set ReLoss params to solve the problem") 
+                    
 
     def fit(self, X, sample_weight=None):
         """Fit the model based on the given training data.
@@ -132,7 +138,7 @@ class ReMin(BaseEstimator):
         """
         X = check_array(X)
         if sample_weight is None:
-            sample_weight = self.C
+            sample_weight = np.ones(len(X))
 
         U_weight = self.U * sample_weight
         V_weight = self.V * sample_weight
