@@ -158,11 +158,13 @@ inline void update_Gamma_Omega_beta(
             double eps = T(h, i) + Omega(h, i) +
                 s_hi * X.row(i).dot(beta) - gamma_hi;
             eps = eps / (s_hi * s_hi * r[i] + 1.0);
+            // Safe to compute std::min(eps, Inf)
             eps = std::min(eps, tau_hi - gamma_hi);
             eps = std::max(eps, -gamma_hi);
             // Update Gamma, Omega, and beta
             Gamma(h, i) += eps;
             beta.noalias() -= eps * s_hi * X.row(i).transpose();
+            // Safe to compute std::max(0, -Inf)
             Omega(h, i) = std::max(0.0, gamma_hi + eps - tau_hi);
         }
     }
