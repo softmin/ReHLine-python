@@ -17,11 +17,11 @@ using MapVec = Eigen::Ref<Vector>;
 
 // Dimensions of the matrices involved
 // - Input
-//   * X   : [n x d]
-//   * U, V: [L x n]
-//   * S, T: [H x n]
-//   * A   : [K x d]
-//   * b   : [K]
+//   * X        : [n x d]
+//   * U, V     : [L x n]
+//   * S, T, Tau: [H x n]
+//   * A        : [K x d]
+//   * b        : [K]
 // - Pre-computed
 //   * r: [n]
 //   * p: [K]
@@ -99,12 +99,12 @@ inline void init_params(
     if (L > 0)
         Lambda.fill(0.5);
 
-    // Each element of Gamma satisfies 0 <= gamma_hi <= tau,
-    // and we use min(0.5 * tau, 1) to initialize (tau can be Inf)
+    // Each element of Gamma satisfies 0 <= gamma_hi <= tau_hi,
+    // and we use min(0.5 * tau_hi, 1) to initialize (tau_hi can be Inf)
     // Each element of Omega satisfies omega_hi >= 0, initialized to be 1
     if (H > 0)
     {
-        Gamma = (0.5 * Tau).cwiseMin(1.0);
+        Gamma.noalias() = (0.5 * Tau).cwiseMin(1.0);
         // Gamma.fill(std::min(1.0, 0.5 * Tau));
         Omega.fill(0.0);
     }
@@ -150,21 +150,20 @@ inline void update_Gamma_Omega_beta(
     {
         for(int i = 0; i < n; i++)
         {
+            // tau_hi can be Inf
+            const double tau_hi = Tau(h, i);
             // Compute epsilon
             const double s_hi = S(h, i);
             const double gamma_hi = Gamma(h, i);
             double eps = T(h, i) + Omega(h, i) +
                 s_hi * X.row(i).dot(beta) - gamma_hi;
             eps = eps / (s_hi * s_hi * r[i] + 1.0);
-            eps = std::min(eps, Tau(h, i) - gamma_hi);
+            eps = std::min(eps, tau_hi - gamma_hi);
             eps = std::max(eps, -gamma_hi);
             // Update Gamma, Omega, and beta
             Gamma(h, i) += eps;
             beta.noalias() -= eps * s_hi * X.row(i).transpose();
-            if (std::isinf(Tau(h,i)))
-                {}
-            else
-                Omega(h, i) = std::max(0.0, gamma_hi + eps - Tau(h, i));
+            Omega(h, i) = std::max(0.0, gamma_hi + eps - tau_hi);
         }
     }
 }
@@ -202,9 +201,6 @@ inline double dual_objfn(
     const int L = U.rows();
     const int H = S.rows();
     const int K = A.rows();
-
-    // Get Max
-    double max_lim = std::numeric_limits<float>::max();
 
     // A' * xi, [d x 1], A[K x d] may be empty
     Vector Atxi = Vector::Zero(d);
@@ -244,14 +240,18 @@ inline double dual_objfn(
             Lambda.cwiseProduct(V).sum();
     }
     // If H = 0, all terms that depend on S, T, Gamma, or Omega will be zero
-    // Also note that if tau = Inf, then Omega = 0
+    // Also note that if tau_hi = Inf, then omega_hi = 0
     if (H > 0)
     {
+        // To avoid computing 0*Inf, clip tau_hi to the largest finite value,
+        // and then multiply it with omega_hi
+        const double max_finite = std::numeric_limits<double>::max();
+
         // 0.5 * ||Omega||^2 + 0.5 * ||S3G||^2 + 0.5 * ||Gamma||^2
-        // - tr(Gamma * Omega') - tr(Gamma * T') + tau * sum(Omega)
+        // - tr(Gamma * Omega') - tr(Gamma * T') + tr(Tau * Omega')
         obj += 0.5 * Omega.squaredNorm() + 0.5 * S3G.squaredNorm() + 
                0.5 * Gamma.squaredNorm() - Gamma.cwiseProduct(Omega + T).sum() +
-               Omega.cwiseProduct(Tau.cwiseMin(max_lim)).sum();
+               Omega.cwiseProduct(Tau.cwiseMin(max_finite)).sum();
 
         // if (std::isinf(tau))
         //     obj += 0.5 * S3G.squaredNorm() + 0.5 * Gamma.squaredNorm() -
@@ -282,7 +282,6 @@ void l3solver_internal(
     const MapMat& U, const MapMat& V,
     const MapMat& S, const MapMat& T, const MapMat& Tau,
     int max_iter, double tol, bool verbose = false
-    // std::ostream& cout = std::cout
 )
 {
     // Get dimensions
