@@ -1,5 +1,5 @@
 l3solver = function(
-    Xmat, Umat, Vmat, Smat = NULL, Tmat = NULL, tau = Inf,
+    Xmat, Umat, Vmat, Smat = NULL, Tmat = NULL, Tau = Inf,
     Amat = NULL, bvec = NULL,
     max_iter = 1000, tol = 1e-5, verbose = FALSE)
 {
@@ -20,8 +20,12 @@ l3solver = function(
         bvec = numeric(0)
     }
 
+    # Expand Tau to a matrix
+    if(length(Tau) == 1)
+        Tau = matrix(Tau, nrow(Tmat), ncol(Tmat))
+
     l3solver_(
-        Xmat, Amat, bvec, Umat, Vmat, Smat, Tmat, tau,
+        Xmat, Amat, bvec, Umat, Vmat, Smat, Tmat, Tau,
         max_iter, tol, verbose
     )
 }

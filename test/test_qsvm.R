@@ -33,7 +33,7 @@ print(dim(Tmat))
 
 set.seed(123)
 res = l3solver(
-    X, Umat = NULL, V = NULL, Smat = Smat, Tmat = Tmat, tau = tau,
+    X, Umat = NULL, V = NULL, Smat = Smat, Tmat = Tmat, Tau = tau,
     max_iter = 1000, tol = 1e-6, verbose = TRUE)
 print(res$beta)
 #  [1]  0.326476260  0.192968686 -0.019646593  0.630737002  0.504404859
@@ -48,7 +48,7 @@ d = ncol(X)
 A = matrix(rnorm(K * d), K)
 b = rnorm(K)
 res = l3solver(
-    X, Umat = NULL, V = NULL, Smat = Smat, Tmat = Tmat, tau = tau,
+    X, Umat = NULL, V = NULL, Smat = Smat, Tmat = Tmat, Tau = tau,
     Amat = A, bvec = b,
     max_iter = 1000, tol = 1e-6, verbose = TRUE
 )

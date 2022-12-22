@@ -44,9 +44,8 @@ d = ncol(X)
 A = matrix(rnorm(K * d), K)
 b = rnorm(K)
 res = l3solver(
-    X, U, V, Amat = A, bvec = b,max_iter = 1000,
+    X, U, V, Amat = A, bvec = b, max_iter = 1000,
     tol = 1e-6, verbose = TRUE
 )
 # Test whether A * beta + b >= 0
 print(c(A %*% res$beta) + b)
-
