@@ -1,4 +1,4 @@
-library(L3solver)
+library(rehline)
 library(reticulate)
 
 py_config()
@@ -31,7 +31,7 @@ print(dim(U))
 print(dim(V))
 
 set.seed(123)
-res = l3solver(X, U, V, max_iter = 1000, tol = 1e-6, verbose = TRUE)
+res = rehline(X, U, V, max_iter = 1000, tol = 1e-6, verbose = TRUE)
 print(res$beta)
 #  [1]  0.40693474  0.26571104  0.04150807  0.95287610  0.78163841  0.05321983 -0.03329368  0.03607190
 #  [9]  0.04388921 -0.17519971  0.71490548  0.16579140 -0.17195130 -0.18565053  0.41503904  0.09991364
@@ -43,7 +43,7 @@ K = 5
 d = ncol(X)
 A = matrix(rnorm(K * d), K)
 b = rnorm(K)
-res = l3solver(
+res = rehline(
     X, U, V, Amat = A, bvec = b, max_iter = 1000,
     tol = 1e-6, verbose = TRUE
 )

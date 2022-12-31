@@ -1,3 +1,3 @@
 .onUnload <- function(libpath) {
-    library.dynam.unload("L3solver", libpath)
+    library.dynam.unload("rehline", libpath)
 }

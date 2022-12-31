@@ -1,12 +1,11 @@
-Package: L3solver
+Package: rehline
 Type: Package
-Title: Minimizing ReLU-decomposable losses for linear models
-    with linear computational complexity
+Title: Minimizing regularized composite ReHU/ReLU losses with linear computational complexity
 Version: 0.1.0
 Author: Yixuan Qiu, Ben Dai
 Maintainer: Yixuan Qiu <yixuanq@gmail.com>
-Description: Minimizing ReLU-decomposable losses for linear models
-    with linear computational complexity.
+Description: Minimizing regularized composite ReHU/ReLU
+    losses with linear computational complexity.
 License: MIT
 Encoding: UTF-8
 LazyData: true

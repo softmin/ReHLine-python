@@ -1,4 +1,4 @@
-l3solver = function(
+rehline = function(
     Xmat, Umat, Vmat, Smat = NULL, Tmat = NULL, Tau = Inf,
     Amat = NULL, bvec = NULL,
     max_iter = 1000, tol = 1e-5, verbose = FALSE)
@@ -24,7 +24,7 @@ l3solver = function(
     if(length(Tau) == 1)
         Tau = matrix(Tau, nrow(Tmat), ncol(Tmat))
 
-    l3solver_(
+    rehline_(
         Xmat, Amat, bvec, Umat, Vmat, Smat, Tmat, Tau,
         max_iter, tol, verbose
     )

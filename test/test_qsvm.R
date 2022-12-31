@@ -1,4 +1,4 @@
-library(L3solver)
+library(rehline)
 library(reticulate)
 
 py_config()
@@ -32,7 +32,7 @@ print(dim(Smat))
 print(dim(Tmat))
 
 set.seed(123)
-res = l3solver(
+res = rehline(
     X, Umat = NULL, V = NULL, Smat = Smat, Tmat = Tmat, Tau = tau,
     max_iter = 1000, tol = 1e-6, verbose = TRUE)
 print(res$beta)
@@ -47,7 +47,7 @@ K = 5
 d = ncol(X)
 A = matrix(rnorm(K * d), K)
 b = rnorm(K)
-res = l3solver(
+res = rehline(
     X, Umat = NULL, V = NULL, Smat = Smat, Tmat = Tmat, Tau = tau,
     Amat = A, bvec = b,
     max_iter = 1000, tol = 1e-6, verbose = TRUE

@@ -265,7 +265,7 @@ inline double dual_objfn(
 
 
 
-struct L3Result
+struct OptResult
 {
     Vector              beta;
     Vector              xi;
@@ -276,8 +276,8 @@ struct L3Result
     std::vector<double> dual_objfns;
 };
 
-void l3solver_internal(
-    L3Result& result,
+void rehline_internal(
+    OptResult& result,
     const MapMat& X, const MapMat& A, const MapVec& b,
     const MapMat& U, const MapMat& V,
     const MapMat& S, const MapMat& T, const MapMat& Tau,
@@ -346,8 +346,8 @@ void l3solver_internal(
 }
 
 
-// [[Rcpp::export(l3solver_)]]
-List l3solver(
+// [[Rcpp::export(rehline_)]]
+List rehline(
     NumericMatrix Xmat, NumericMatrix Amat, NumericVector bvec,
     NumericMatrix Umat, NumericMatrix Vmat,
     NumericMatrix Smat, NumericMatrix Tmat, NumericMatrix TauMat,
@@ -362,9 +362,9 @@ List l3solver(
     MapMat S = Rcpp::as<MapMat>(Smat);
     MapMat T = Rcpp::as<MapMat>(Tmat);
     MapMat Tau = Rcpp::as<MapMat>(TauMat);
-    L3Result result;
+    OptResult result;
 
-    l3solver_internal(
+    rehline_internal(
         result,
         X, A, b, U, V, S, T,
         Tau, max_iter, tol, verbose, Rcpp::Rcout
