@@ -110,35 +110,7 @@ private:
     std::vector<std::pair<int, int>> m_act_relu;
     std::vector<std::pair<int, int>> m_act_rehu;
 
-public:
-    ReHLineSolver(const MapMat& X, const MapMat& U, const MapMat& V,
-                  const MapMat& S, const MapMat& T, const MapMat& Tau,
-                  const MapMat& A, const MapVec& b) :
-        m_n(X.rows()), m_d(X.cols()), m_L(U.rows()), m_H(S.rows()), m_K(A.rows()),
-        m_X(X), m_U(U), m_V(V), m_S(S), m_T(T), m_Tau(Tau), m_A(A), m_b(b),
-        m_r(m_n), m_p(m_K), m_Ur(m_L, m_n), m_UrV(m_L, m_n), m_Sr(m_H, m_n),
-        m_beta(m_d),
-        m_xi(m_K), m_Lambda(m_L, m_n), m_Gamma(m_H, m_n), m_Omega(m_H, m_n)
-    {
-        // Pre-compute the r vector from X
-        m_r.noalias() = m_X.rowwise().squaredNorm();
-
-        // Pre-compute the p vector from A
-        // A [K x d], K can be zero
-        if (m_K > 0)
-            m_p.noalias() = m_A.rowwise().squaredNorm();
-
-        if (m_L > 0)
-        {
-            m_Ur.array() = m_U.array().rowwise() * m_r.transpose().array();
-            m_UrV.array() = m_V.array() / m_Ur.array() / m_U.array();
-        }
-
-        if (m_H > 0)
-        {
-            m_Sr.array() = m_S.array().square().rowwise() * m_r.transpose().array() + 1.0;
-        }
-    }
+    // =================== Initialization functions =================== //
 
     // Compute the primal variable beta from dual variables
     // beta = A'xi - U3 * vec(Lambda) - S3 * vec(Gamma)
@@ -163,223 +135,7 @@ public:
         m_beta.noalias() -= m_X.transpose() * LHterm;
     }
 
-    // Initialize primal and dual variables
-    inline void init_params()
-    {
-        // xi >= 0, initialized to be 1
-        if (m_K > 0)
-            m_xi.fill(1.0);
-
-        // Each element of Lambda satisfies 0 <= lambda_li <= 1,
-        // and we use 0.5 to initialize Lambda
-        if (m_L > 0)
-            m_Lambda.fill(0.5);
-
-        // Each element of Gamma satisfies 0 <= gamma_hi <= tau_hi,
-        // and we use min(0.5 * tau_hi, 1) to initialize (tau_hi can be Inf)
-        // Each element of Omega satisfies omega_hi >= 0, initialized to be 0
-        if (m_H > 0)
-        {
-            m_Gamma.noalias() = (0.5 * m_Tau).cwiseMin(1.0);
-            // Gamma.fill(std::min(1.0, 0.5 * Tau));
-            m_Omega.fill(0.0);
-        }
-
-        // Set primal variable based on duals
-        set_primal();
-    }
-
-    // Update Lambda and beta
-    inline void update_Lambda_beta()
-    {
-        if (m_L < 1)
-            return;
-
-        for(int i = 0; i < m_n; i++)
-        {
-            for(int l = 0; l < m_L; l++)
-            {
-                const double urv_li = m_UrV(l, i);
-                const double ur_li = m_Ur(l, i);
-                const double u_li = m_U(l, i);
-                const double lambda_li = m_Lambda(l, i);
-
-                // Compute g_li
-                const double g_li = urv_li + m_X.row(i).dot(m_beta) / ur_li;
-                // Compute new lambda_li
-                const double candid = lambda_li + g_li;
-                const double newl = std::max(0.0, std::min(1.0, candid));
-                // Update Lambda and beta
-                m_Lambda(l, i) = newl;
-                m_beta.noalias() -= (newl - lambda_li) * u_li * m_X.row(i).transpose();
-            }
-        }
-    }
-    // Overloaded version based on active set
-    inline void update_Lambda_beta(std::vector<std::pair<int, int>>& active_set)
-    {
-        if (m_L < 1)
-            return;
-
-        // Permutation
-        random_shuffle(active_set.begin(), active_set.end(), rand_less_than);
-        // New active set
-        std::vector<std::pair<int, int>> new_set;
-
-        for(auto rc: active_set)
-        {
-            const int l = rc.first;
-            const int i = rc.second;
-
-            const double urv_li = m_UrV(l, i);
-            const double ur_li = m_Ur(l, i);
-            const double u_li = m_U(l, i);
-            const double lambda_li = m_Lambda(l, i);
-
-            // Compute g_li
-            const double g_li = urv_li + m_X.row(i).dot(m_beta) / ur_li;
-            // Compute new lambda_li
-            const double candid = lambda_li + g_li;
-            const double newl = std::max(0.0, std::min(1.0, candid));
-            // Update Lambda and beta
-            m_Lambda(l, i) = newl;
-            m_beta.noalias() -= (newl - lambda_li) * u_li * m_X.row(i).transpose();
-
-            // Add to new active set
-            new_set.emplace_back(l, i);
-        }
-
-        // Update active set
-        active_set.swap(new_set);
-    }
-
-    // Update Gamma, Omega, and beta
-    inline void update_Gamma_Omega_beta()
-    {
-        if (m_H < 1)
-            return;
-
-        for(int i = 0; i < m_n; i++)
-        {
-            for(int h = 0; h < m_H; h++)
-            {
-                // tau_hi can be Inf
-                const double tau_hi = m_Tau(h, i);
-                const double gamma_hi = m_Gamma(h, i);
-                const double omega_hi = m_Omega(h, i);
-                const double sr_hi = m_Sr(h, i);
-                const double s_hi = m_S(h, i);
-                const double t_hi = m_T(h, i);
-
-                // Compute g_hi
-                const double g_hi = t_hi + s_hi * m_X.row(i).dot(m_beta);
-                // Compute epsilon
-                double eps = (g_hi + omega_hi - gamma_hi) / sr_hi;
-                // Safe to compute std::min(eps, Inf)
-                eps = std::min(eps, tau_hi - gamma_hi);
-                eps = std::max(eps, -gamma_hi);
-                // Update Gamma, Omega, and beta
-                m_Gamma(h, i) += eps;
-                m_beta.noalias() -= eps * s_hi * m_X.row(i).transpose();
-                // Safe to compute std::max(0, -Inf)
-                m_Omega(h, i) = std::max(0.0, gamma_hi + eps - tau_hi);
-            }
-        }
-    }
-    // Overloaded version based on active set
-    inline void update_Gamma_Omega_beta(std::vector<std::pair<int, int>>& active_set)
-    {
-        if (m_H < 1)
-            return;
-
-        // Permutation
-        random_shuffle(active_set.begin(), active_set.end(), rand_less_than);
-        // New active set
-        std::vector<std::pair<int, int>> new_set;
-
-        for(auto rc: active_set)
-        {
-            const int h = rc.first;
-            const int i = rc.second;
-
-            // tau_hi can be Inf
-            const double tau_hi = m_Tau(h, i);
-            const double gamma_hi = m_Gamma(h, i);
-            const double omega_hi = m_Omega(h, i);
-            const double sr_hi = m_Sr(h, i);
-            const double s_hi = m_S(h, i);
-            const double t_hi = m_T(h, i);
-
-            // Compute g_hi
-            const double g_hi = t_hi + s_hi * m_X.row(i).dot(m_beta);
-            // Compute epsilon
-            double eps = (g_hi + omega_hi - gamma_hi) / sr_hi;
-            // Safe to compute std::min(eps, Inf)
-            eps = std::min(eps, tau_hi - gamma_hi);
-            eps = std::max(eps, -gamma_hi);
-            // Update Gamma, Omega, and beta
-            m_Gamma(h, i) += eps;
-            m_beta.noalias() -= eps * s_hi * m_X.row(i).transpose();
-            // Safe to compute std::max(0, -Inf)
-            m_Omega(h, i) = std::max(0.0, gamma_hi + eps - tau_hi);
-
-            // Add to new active set
-            new_set.emplace_back(h, i);
-        }
-
-        // Update active set
-        active_set.swap(new_set);
-    }
-
-    // Update xi and beta
-    inline void update_xi_beta()
-    {
-        if (m_K < 1)
-            return;
-
-        for(int k = 0; k < m_K; k++)
-        {
-            // Compute g_k
-            const double g_k = m_A.row(k).dot(m_beta) + m_b[k];
-            // Compute new xi_k
-            const double xi_k = m_xi[k];
-            const double candid = xi_k - g_k / m_p[k];
-            const double newxi = std::max(0.0, candid);
-            // Update xi and beta
-            m_xi[k] = newxi;
-            m_beta.noalias() += (newxi - xi_k) * m_A.row(k).transpose();
-        }
-    }
-    // Overloaded version based on active set
-    inline void update_xi_beta(std::vector<int>& active_set)
-    {
-        if (m_K < 1)
-            return;
-
-        // Permutation
-        random_shuffle(active_set.begin(), active_set.end(), rand_less_than);
-        // New active set
-        std::vector<int> new_set;
-
-        for(auto k: active_set)
-        {
-            // Compute g_k
-            const double g_k = m_A.row(k).dot(m_beta) + m_b[k];
-            // Compute new xi_k
-            const double xi_k = m_xi[k];
-            const double candid = xi_k - g_k / m_p[k];
-            const double newxi = std::max(0.0, candid);
-            // Update xi and beta
-            m_xi[k] = newxi;
-            m_beta.noalias() += (newxi - xi_k) * m_A.row(k).transpose();
-
-            // Add to new active set
-            new_set.push_back(k);
-        }
-
-        // Update active set
-        active_set.swap(new_set);
-    }
+    // =================== Evaluating objection function =================== //
 
     // Compute the dual objective function value
     inline double dual_objfn() const
@@ -437,6 +193,264 @@ public:
         }
 
         return obj;
+    }
+
+    // =================== Updating functions (sequential) =================== //
+
+    // Update xi and beta
+    inline void update_xi_beta()
+    {
+        if (m_K < 1)
+            return;
+
+        for(int k = 0; k < m_K; k++)
+        {
+            // Compute g_k
+            const double g_k = m_A.row(k).dot(m_beta) + m_b[k];
+            // Compute new xi_k
+            const double xi_k = m_xi[k];
+            const double candid = xi_k - g_k / m_p[k];
+            const double newxi = std::max(0.0, candid);
+            // Update xi and beta
+            m_xi[k] = newxi;
+            m_beta.noalias() += (newxi - xi_k) * m_A.row(k).transpose();
+        }
+    }
+
+    // Update Lambda and beta
+    inline void update_Lambda_beta()
+    {
+        if (m_L < 1)
+            return;
+
+        for(int i = 0; i < m_n; i++)
+        {
+            for(int l = 0; l < m_L; l++)
+            {
+                const double urv_li = m_UrV(l, i);
+                const double ur_li = m_Ur(l, i);
+                const double u_li = m_U(l, i);
+                const double lambda_li = m_Lambda(l, i);
+
+                // Compute g_li
+                const double g_li = urv_li + m_X.row(i).dot(m_beta) / ur_li;
+                // Compute new lambda_li
+                const double candid = lambda_li + g_li;
+                const double newl = std::max(0.0, std::min(1.0, candid));
+                // Update Lambda and beta
+                m_Lambda(l, i) = newl;
+                m_beta.noalias() -= (newl - lambda_li) * u_li * m_X.row(i).transpose();
+            }
+        }
+    }
+
+    // Update Gamma, Omega, and beta
+    inline void update_Gamma_Omega_beta()
+    {
+        if (m_H < 1)
+            return;
+
+        for(int i = 0; i < m_n; i++)
+        {
+            for(int h = 0; h < m_H; h++)
+            {
+                // tau_hi can be Inf
+                const double tau_hi = m_Tau(h, i);
+                const double gamma_hi = m_Gamma(h, i);
+                const double omega_hi = m_Omega(h, i);
+                const double sr_hi = m_Sr(h, i);
+                const double s_hi = m_S(h, i);
+                const double t_hi = m_T(h, i);
+
+                // Compute g_hi
+                const double g_hi = t_hi + s_hi * m_X.row(i).dot(m_beta);
+                // Compute epsilon
+                double eps = (g_hi + omega_hi - gamma_hi) / sr_hi;
+                // Safe to compute std::min(eps, Inf)
+                eps = std::min(eps, tau_hi - gamma_hi);
+                eps = std::max(eps, -gamma_hi);
+                // Update Gamma, Omega, and beta
+                m_Gamma(h, i) += eps;
+                m_beta.noalias() -= eps * s_hi * m_X.row(i).transpose();
+                // Safe to compute std::max(0, -Inf)
+                m_Omega(h, i) = std::max(0.0, gamma_hi + eps - tau_hi);
+            }
+        }
+    }
+
+    // =================== Updating functions (active set) =================== //
+
+    // Update xi and beta
+    // Overloaded version based on active set
+    inline void update_xi_beta(std::vector<int>& active_set)
+    {
+        if (m_K < 1)
+            return;
+
+        // Permutation
+        random_shuffle(active_set.begin(), active_set.end(), rand_less_than);
+        // New active set
+        std::vector<int> new_set;
+
+        for(auto k: active_set)
+        {
+            // Compute g_k
+            const double g_k = m_A.row(k).dot(m_beta) + m_b[k];
+            // Compute new xi_k
+            const double xi_k = m_xi[k];
+            const double candid = xi_k - g_k / m_p[k];
+            const double newxi = std::max(0.0, candid);
+            // Update xi and beta
+            m_xi[k] = newxi;
+            m_beta.noalias() += (newxi - xi_k) * m_A.row(k).transpose();
+
+            // Add to new active set
+            new_set.push_back(k);
+        }
+
+        // Update active set
+        active_set.swap(new_set);
+    }
+
+    // Update Lambda and beta
+    // Overloaded version based on active set
+    inline void update_Lambda_beta(std::vector<std::pair<int, int>>& active_set)
+    {
+        if (m_L < 1)
+            return;
+
+        // Permutation
+        random_shuffle(active_set.begin(), active_set.end(), rand_less_than);
+        // New active set
+        std::vector<std::pair<int, int>> new_set;
+
+        for(auto rc: active_set)
+        {
+            const int l = rc.first;
+            const int i = rc.second;
+
+            const double urv_li = m_UrV(l, i);
+            const double ur_li = m_Ur(l, i);
+            const double u_li = m_U(l, i);
+            const double lambda_li = m_Lambda(l, i);
+
+            // Compute g_li
+            const double g_li = urv_li + m_X.row(i).dot(m_beta) / ur_li;
+            // Compute new lambda_li
+            const double candid = lambda_li + g_li;
+            const double newl = std::max(0.0, std::min(1.0, candid));
+            // Update Lambda and beta
+            m_Lambda(l, i) = newl;
+            m_beta.noalias() -= (newl - lambda_li) * u_li * m_X.row(i).transpose();
+
+            // Add to new active set
+            new_set.emplace_back(l, i);
+        }
+
+        // Update active set
+        active_set.swap(new_set);
+    }
+
+    // Update Gamma, Omega, and beta
+    // Overloaded version based on active set
+    inline void update_Gamma_Omega_beta(std::vector<std::pair<int, int>>& active_set)
+    {
+        if (m_H < 1)
+            return;
+
+        // Permutation
+        random_shuffle(active_set.begin(), active_set.end(), rand_less_than);
+        // New active set
+        std::vector<std::pair<int, int>> new_set;
+
+        for(auto rc: active_set)
+        {
+            const int h = rc.first;
+            const int i = rc.second;
+
+            // tau_hi can be Inf
+            const double tau_hi = m_Tau(h, i);
+            const double gamma_hi = m_Gamma(h, i);
+            const double omega_hi = m_Omega(h, i);
+            const double sr_hi = m_Sr(h, i);
+            const double s_hi = m_S(h, i);
+            const double t_hi = m_T(h, i);
+
+            // Compute g_hi
+            const double g_hi = t_hi + s_hi * m_X.row(i).dot(m_beta);
+            // Compute epsilon
+            double eps = (g_hi + omega_hi - gamma_hi) / sr_hi;
+            // Safe to compute std::min(eps, Inf)
+            eps = std::min(eps, tau_hi - gamma_hi);
+            eps = std::max(eps, -gamma_hi);
+            // Update Gamma, Omega, and beta
+            m_Gamma(h, i) += eps;
+            m_beta.noalias() -= eps * s_hi * m_X.row(i).transpose();
+            // Safe to compute std::max(0, -Inf)
+            m_Omega(h, i) = std::max(0.0, gamma_hi + eps - tau_hi);
+
+            // Add to new active set
+            new_set.emplace_back(h, i);
+        }
+
+        // Update active set
+        active_set.swap(new_set);
+    }
+
+public:
+    ReHLineSolver(const MapMat& X, const MapMat& U, const MapMat& V,
+                  const MapMat& S, const MapMat& T, const MapMat& Tau,
+                  const MapMat& A, const MapVec& b) :
+        m_n(X.rows()), m_d(X.cols()), m_L(U.rows()), m_H(S.rows()), m_K(A.rows()),
+        m_X(X), m_U(U), m_V(V), m_S(S), m_T(T), m_Tau(Tau), m_A(A), m_b(b),
+        m_r(m_n), m_p(m_K), m_Ur(m_L, m_n), m_UrV(m_L, m_n), m_Sr(m_H, m_n),
+        m_beta(m_d),
+        m_xi(m_K), m_Lambda(m_L, m_n), m_Gamma(m_H, m_n), m_Omega(m_H, m_n)
+    {
+        // Pre-compute the r vector from X
+        m_r.noalias() = m_X.rowwise().squaredNorm();
+
+        // Pre-compute the p vector from A
+        // A [K x d], K can be zero
+        if (m_K > 0)
+            m_p.noalias() = m_A.rowwise().squaredNorm();
+
+        if (m_L > 0)
+        {
+            m_Ur.array() = m_U.array().rowwise() * m_r.transpose().array();
+            m_UrV.array() = m_V.array() / m_Ur.array() / m_U.array();
+        }
+
+        if (m_H > 0)
+        {
+            m_Sr.array() = m_S.array().square().rowwise() * m_r.transpose().array() + 1.0;
+        }
+    }
+
+    // Initialize primal and dual variables
+    inline void init_params()
+    {
+        // xi >= 0, initialized to be 1
+        if (m_K > 0)
+            m_xi.fill(1.0);
+
+        // Each element of Lambda satisfies 0 <= lambda_li <= 1,
+        // and we use 0.5 to initialize Lambda
+        if (m_L > 0)
+            m_Lambda.fill(0.5);
+
+        // Each element of Gamma satisfies 0 <= gamma_hi <= tau_hi,
+        // and we use min(0.5 * tau_hi, 1) to initialize (tau_hi can be Inf)
+        // Each element of Omega satisfies omega_hi >= 0, initialized to be 0
+        if (m_H > 0)
+        {
+            m_Gamma.noalias() = (0.5 * m_Tau).cwiseMin(1.0);
+            // Gamma.fill(std::min(1.0, 0.5 * Tau));
+            m_Omega.fill(0.0);
+        }
+
+        // Set primal variable based on duals
+        set_primal();
     }
 
     inline int solve(std::vector<double>& dual_objfns, int max_iter, double tol, bool verbose = false)
