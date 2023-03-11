@@ -118,7 +118,7 @@ public:
 
         // Each element of Gamma satisfies 0 <= gamma_hi <= tau_hi,
         // and we use min(0.5 * tau_hi, 1) to initialize (tau_hi can be Inf)
-        // Each element of Omega satisfies omega_hi >= 0, initialized to be 1
+        // Each element of Omega satisfies omega_hi >= 0, initialized to be 0
         if (m_H > 0)
         {
             m_Gamma.noalias() = (0.5 * m_Tau).cwiseMin(1.0);
@@ -133,9 +133,9 @@ public:
     // Update Lambda and beta
     inline void update_Lambda_beta()
     {
-        for(int l = 0; l < m_L; l++)
+        for(int i = 0; i < m_n; i++)
         {
-            for(int i = 0; i < m_n; i++)
+            for(int l = 0; l < m_L; l++)
             {
                 // Compute epsilon
                 const double u_li = m_U(l, i);
@@ -154,9 +154,9 @@ public:
     // Update Gamma, Omega, and beta
     inline void update_Gamma_Omega_beta()
     {
-        for(int h = 0; h < m_H; h++)
+        for(int i = 0; i < m_n; i++)
         {
-            for(int i = 0; i < m_n; i++)
+            for(int h = 0; h < m_H; h++)
             {
                 // tau_hi can be Inf
                 const double tau_hi = m_Tau(h, i);
