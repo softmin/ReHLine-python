@@ -12,6 +12,16 @@ using Vector = Eigen::VectorXd;
 using MapVec = Eigen::Map<Vector>;
 
 // Used in random_shuffle(), generating a random integer from {0, 1, ..., i-1}
+// This function is designed for R, as CRAN requires using R's own RNG
+// For C++ or Python, the following simplified version can be used:
+/*
+
+inline int rand_less_than(int i)
+{
+    return int(std::rand() % i);
+}
+
+*/
 inline int rand_less_than(int i)
 {
     // Typically on Linux and MacOS, RAND_MAX == 2147483647
@@ -38,12 +48,15 @@ void random_shuffle(RandomAccessIterator first, RandomAccessIterator last, Rando
     }
 }
 
+// Reset the active set to [0, 1, ..., n-1]
 inline void reset_active_set(std::vector<int>& actset, std::size_t n)
 {
     actset.resize(n);
+    // Fill the vector with 0, 1, ..., n-1
     std::iota(actset.begin(), actset.end(), 0);
 }
 
+// Reset the active set to [(0, 0), (0, 1), ..., (n-1, m-2), (n-1, m-1)]
 inline void reset_active_set(std::vector<std::pair<int, int>>& actset, std::size_t n, std::size_t m)
 {
     actset.resize(n * m);
