@@ -159,14 +159,14 @@ public:
                 const double u_li = m_U(l, i);
                 const double lambda_li = m_Lambda(l, i);
 
-                // Compute epsilon
-                double eps = urv_li + m_X.row(i).dot(m_beta) / ur_li;
-                eps = std::min(eps, 1.0 - lambda_li);
-                eps = std::max(eps, -lambda_li);
-
+                // Compute g_li
+                const double g_li = urv_li + m_X.row(i).dot(m_beta) / ur_li;
+                // Compute new lambda_li
+                const double candid = lambda_li + g_li;
+                const double newl = std::max(0.0, std::min(1.0, candid));
                 // Update Lambda and beta
-                m_Lambda(l, i) += eps;
-                m_beta.noalias() -= eps * u_li * m_X.row(i).transpose();
+                m_Lambda(l, i) = newl;
+                m_beta.noalias() -= (newl - lambda_li) * u_li * m_X.row(i).transpose();
             }
         }
     }
@@ -189,11 +189,10 @@ public:
                 const double s_hi = m_S(h, i);
                 const double t_hi = m_T(h, i);
 
+                // Compute g_hi
+                const double g_hi = t_hi + s_hi * m_X.row(i).dot(m_beta);
                 // Compute epsilon
-
-                double eps = t_hi + omega_hi +
-                    s_hi * m_X.row(i).dot(m_beta) - gamma_hi;
-                eps = eps / sr_hi;
+                double eps = (g_hi + omega_hi - gamma_hi) / sr_hi;
                 // Safe to compute std::min(eps, Inf)
                 eps = std::min(eps, tau_hi - gamma_hi);
                 eps = std::max(eps, -gamma_hi);
@@ -211,12 +210,15 @@ public:
     {
         for(int k = 0; k < m_K; k++)
         {
-            // Compute epsilon
-            double eps = -(m_A.row(k).dot(m_beta) + m_b[k]) / m_p[k];
-            eps = std::max(eps, -m_xi[k]);
+            // Compute g_k
+            const double g_k = m_A.row(k).dot(m_beta) + m_b[k];
+            // Compute new xi_k
+            const double xi_k = m_xi[k];
+            const double candid = xi_k - g_k / m_p[k];
+            const double newxi = std::max(0.0, candid);
             // Update xi and beta
-            m_xi[k] += eps;
-            m_beta.noalias() += eps * m_A.row(k).transpose();
+            m_xi[k] = newxi;
+            m_beta.noalias() += (newxi - xi_k) * m_A.row(k).transpose();
         }
     }
 
