@@ -11,6 +11,46 @@ using MapMat = Eigen::Map<Matrix>;
 using Vector = Eigen::VectorXd;
 using MapVec = Eigen::Map<Vector>;
 
+// Used in random_shuffle(), generating a random integer from {0, 1, ..., i-1}
+inline int rand_less_than(int i)
+{
+    // Typically on Linux and MacOS, RAND_MAX == 2147483647
+    // Windows has different definition, RAND_MAX == 32767
+    // We manually set the limit to make sure that different OS are compatible
+    std::int32_t rand_max = std::numeric_limits<std::int32_t>::max();
+    std::int32_t r = std::int32_t(R::unif_rand() * rand_max);
+    return int(r % i);
+}
+
+// On Mac, std::random_shuffle() uses a "backward" implementation,
+// which leads to different results from Windows and Linux
+// Therefore, we use a consistent implementation based on GCC
+template <typename RandomAccessIterator, typename RandomNumberGenerator>
+void random_shuffle(RandomAccessIterator first, RandomAccessIterator last, RandomNumberGenerator& gen)
+{
+    if(first == last)
+        return;
+    for(RandomAccessIterator i = first + 1; i != last; ++i)
+    {
+        RandomAccessIterator j = first + gen((i - first) + 1);
+        if(i != j)
+            std::iter_swap(i, j);
+    }
+}
+
+inline void reset_active_set(std::vector<int>& actset, std::size_t n)
+{
+    actset.resize(n);
+    std::iota(actset.begin(), actset.end(), 0);
+}
+
+inline void reset_active_set(std::vector<std::pair<int, int>>& actset, std::size_t n, std::size_t m)
+{
+    actset.resize(n * m);
+    for(std::size_t i = 0; i < n * m; i++)
+        actset[i] = std::make_pair(i % n, i / n);
+}
+
 // Dimensions of the matrices involved
 // - Input
 //   * X        : [n x d]
@@ -64,6 +104,11 @@ private:
     Matrix m_Lambda;
     Matrix m_Gamma;
     Matrix m_Omega;
+
+    // Active sets
+    std::vector<int> m_act_feas;
+    std::vector<std::pair<int, int>> m_act_relu;
+    std::vector<std::pair<int, int>> m_act_rehu;
 
 public:
     ReHLineSolver(const MapMat& X, const MapMat& U, const MapMat& V,
@@ -170,6 +215,43 @@ public:
             }
         }
     }
+    // Overloaded version based on active set
+    inline void update_Lambda_beta(std::vector<std::pair<int, int>>& active_set)
+    {
+        if (m_L < 1)
+            return;
+
+        // Permutation
+        random_shuffle(active_set.begin(), active_set.end(), rand_less_than);
+        // New active set
+        std::vector<std::pair<int, int>> new_set;
+
+        for(auto rc: active_set)
+        {
+            const int l = rc.first;
+            const int i = rc.second;
+
+            const double urv_li = m_UrV(l, i);
+            const double ur_li = m_Ur(l, i);
+            const double u_li = m_U(l, i);
+            const double lambda_li = m_Lambda(l, i);
+
+            // Compute g_li
+            const double g_li = urv_li + m_X.row(i).dot(m_beta) / ur_li;
+            // Compute new lambda_li
+            const double candid = lambda_li + g_li;
+            const double newl = std::max(0.0, std::min(1.0, candid));
+            // Update Lambda and beta
+            m_Lambda(l, i) = newl;
+            m_beta.noalias() -= (newl - lambda_li) * u_li * m_X.row(i).transpose();
+
+            // Add to new active set
+            new_set.emplace_back(l, i);
+        }
+
+        // Update active set
+        active_set.swap(new_set);
+    }
 
     // Update Gamma, Omega, and beta
     inline void update_Gamma_Omega_beta()
@@ -204,10 +286,57 @@ public:
             }
         }
     }
+    // Overloaded version based on active set
+    inline void update_Gamma_Omega_beta(std::vector<std::pair<int, int>>& active_set)
+    {
+        if (m_H < 1)
+            return;
+
+        // Permutation
+        random_shuffle(active_set.begin(), active_set.end(), rand_less_than);
+        // New active set
+        std::vector<std::pair<int, int>> new_set;
+
+        for(auto rc: active_set)
+        {
+            const int h = rc.first;
+            const int i = rc.second;
+
+            // tau_hi can be Inf
+            const double tau_hi = m_Tau(h, i);
+            const double gamma_hi = m_Gamma(h, i);
+            const double omega_hi = m_Omega(h, i);
+            const double sr_hi = m_Sr(h, i);
+            const double s_hi = m_S(h, i);
+            const double t_hi = m_T(h, i);
+
+            // Compute g_hi
+            const double g_hi = t_hi + s_hi * m_X.row(i).dot(m_beta);
+            // Compute epsilon
+            double eps = (g_hi + omega_hi - gamma_hi) / sr_hi;
+            // Safe to compute std::min(eps, Inf)
+            eps = std::min(eps, tau_hi - gamma_hi);
+            eps = std::max(eps, -gamma_hi);
+            // Update Gamma, Omega, and beta
+            m_Gamma(h, i) += eps;
+            m_beta.noalias() -= eps * s_hi * m_X.row(i).transpose();
+            // Safe to compute std::max(0, -Inf)
+            m_Omega(h, i) = std::max(0.0, gamma_hi + eps - tau_hi);
+
+            // Add to new active set
+            new_set.emplace_back(h, i);
+        }
+
+        // Update active set
+        active_set.swap(new_set);
+    }
 
     // Update xi and beta
     inline void update_xi_beta()
     {
+        if (m_K < 1)
+            return;
+
         for(int k = 0; k < m_K; k++)
         {
             // Compute g_k
@@ -220,6 +349,36 @@ public:
             m_xi[k] = newxi;
             m_beta.noalias() += (newxi - xi_k) * m_A.row(k).transpose();
         }
+    }
+    // Overloaded version based on active set
+    inline void update_xi_beta(std::vector<int>& active_set)
+    {
+        if (m_K < 1)
+            return;
+
+        // Permutation
+        random_shuffle(active_set.begin(), active_set.end(), rand_less_than);
+        // New active set
+        std::vector<int> new_set;
+
+        for(auto k: active_set)
+        {
+            // Compute g_k
+            const double g_k = m_A.row(k).dot(m_beta) + m_b[k];
+            // Compute new xi_k
+            const double xi_k = m_xi[k];
+            const double candid = xi_k - g_k / m_p[k];
+            const double newxi = std::max(0.0, candid);
+            // Update xi and beta
+            m_xi[k] = newxi;
+            m_beta.noalias() += (newxi - xi_k) * m_A.row(k).transpose();
+
+            // Add to new active set
+            new_set.push_back(k);
+        }
+
+        // Update active set
+        active_set.swap(new_set);
     }
 
     // Compute the dual objective function value
@@ -282,6 +441,11 @@ public:
 
     inline int solve(std::vector<double>& dual_objfns, int max_iter, double tol, bool verbose = false)
     {
+        // Active sets
+        reset_active_set(m_act_feas, m_K);
+        reset_active_set(m_act_relu, m_L, m_n);
+        reset_active_set(m_act_rehu, m_H, m_n);
+
         // Main iterations
         int i = 0;
         for(; i < max_iter; i++)
@@ -289,9 +453,9 @@ public:
             Vector old_xi = m_xi;
             Vector old_beta = m_beta;
 
-            update_xi_beta();
-            update_Lambda_beta();
-            update_Gamma_Omega_beta();
+            update_xi_beta(m_act_feas);
+            update_Lambda_beta(m_act_relu);
+            update_Gamma_Omega_beta(m_act_rehu);
 
             // Compute difference of alpha and beta
             const double xi_diff = (m_K > 0) ?
