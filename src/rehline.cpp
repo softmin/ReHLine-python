@@ -29,6 +29,273 @@ using MapVec = Eigen::Map<Vector>;
 //   * Gamma : [H x n]
 //   * Omega : [H x n]
 
+class ReHLineSolver
+{
+private:
+    // Dimensions
+    const int m_n;
+    const int m_d;
+    const int m_L;
+    const int m_H;
+    const int m_K;
+
+    // Input matrices and vectors
+    const MapMat& m_X;
+    const MapMat& m_U;
+    const MapMat& m_V;
+    const MapMat& m_S;
+    const MapMat& m_T;
+    const MapMat& m_Tau;
+    const MapMat& m_A;
+    const MapVec& m_b;
+
+    // Pre-computed
+    Vector m_r;
+    Vector m_p;
+
+    // Primal variable
+    Vector m_beta;
+
+    // Dual variables
+    Vector m_xi;
+    Matrix m_Lambda;
+    Matrix m_Gamma;
+    Matrix m_Omega;
+
+public:
+    ReHLineSolver(const MapMat& X, const MapMat& U, const MapMat& V,
+                  const MapMat& S, const MapMat& T, const MapMat& Tau,
+                  const MapMat& A, const MapVec& b) :
+        m_n(X.rows()), m_d(X.cols()), m_L(U.rows()), m_H(S.rows()), m_K(A.rows()),
+        m_X(X), m_U(U), m_V(V), m_S(S), m_T(T), m_Tau(Tau), m_A(A), m_b(b),
+        m_r(m_n), m_p(m_K),
+        m_beta(m_d),
+        m_xi(m_K), m_Lambda(m_L, m_n), m_Gamma(m_H, m_n), m_Omega(m_H, m_n)
+    {
+        // Pre-compute the r vector from X
+        m_r.noalias() = m_X.rowwise().squaredNorm();
+
+        // Pre-compute the p vector from A
+        // A [K x d], K can be zero
+        if (m_K > 0)
+            m_p.noalias() = m_A.rowwise().squaredNorm();
+    }
+
+    // Compute the primal variable beta from dual variables
+    // beta = A'xi - U3 * vec(Lambda) - S3 * vec(Gamma)
+    // A can be empty, one of U and V may be empty
+    inline void set_primal()
+    {
+        // Initialize beta to zero
+        m_beta.setZero();
+
+        // First term
+        if (m_K > 0)
+            m_beta.noalias() = m_A.transpose() * m_xi;
+
+        // [n x 1]
+        Vector LHterm = Vector::Zero(m_n);
+        if (m_L > 0)
+            LHterm.noalias() = m_U.cwiseProduct(m_Lambda).colwise().sum().transpose();
+        // [n x 1]
+        if (m_H > 0)
+            LHterm.noalias() += m_S.cwiseProduct(m_Gamma).colwise().sum().transpose();
+
+        m_beta.noalias() -= m_X.transpose() * LHterm;
+    }
+
+    // Initialize primal and dual variables
+    inline void init_params()
+    {
+        // xi >= 0, initialized to be 1
+        if (m_K > 0)
+            m_xi.fill(1.0);
+
+        // Each element of Lambda satisfies 0 <= lambda_li <= 1,
+        // and we use 0.5 to initialize Lambda
+        if (m_L > 0)
+            m_Lambda.fill(0.5);
+
+        // Each element of Gamma satisfies 0 <= gamma_hi <= tau_hi,
+        // and we use min(0.5 * tau_hi, 1) to initialize (tau_hi can be Inf)
+        // Each element of Omega satisfies omega_hi >= 0, initialized to be 1
+        if (m_H > 0)
+        {
+            m_Gamma.noalias() = (0.5 * m_Tau).cwiseMin(1.0);
+            // Gamma.fill(std::min(1.0, 0.5 * Tau));
+            m_Omega.fill(0.0);
+        }
+
+        // Set primal variable based on duals
+        set_primal();
+    }
+
+    // Update Lambda and beta
+    inline void update_Lambda_beta()
+    {
+        for(int l = 0; l < m_L; l++)
+        {
+            for(int i = 0; i < m_n; i++)
+            {
+                // Compute epsilon
+                const double u_li = m_U(l, i);
+                const double denom = m_r[i] * u_li * u_li;
+                double eps = (m_V(l, i) + u_li * m_X.row(i).dot(m_beta)) / denom;
+                const double lambda_li = m_Lambda(l, i);
+                eps = std::min(eps, 1.0 - lambda_li);
+                eps = std::max(eps, -lambda_li);
+                // Update Lambda and beta
+                m_Lambda(l, i) += eps;
+                m_beta.noalias() -= eps * u_li * m_X.row(i).transpose();
+            }
+        }
+    }
+
+    // Update Gamma, Omega, and beta
+    inline void update_Gamma_Omega_beta()
+    {
+        for(int h = 0; h < m_H; h++)
+        {
+            for(int i = 0; i < m_n; i++)
+            {
+                // tau_hi can be Inf
+                const double tau_hi = m_Tau(h, i);
+                // Compute epsilon
+                const double s_hi = m_S(h, i);
+                const double gamma_hi = m_Gamma(h, i);
+                double eps = m_T(h, i) + m_Omega(h, i) +
+                    s_hi * m_X.row(i).dot(m_beta) - gamma_hi;
+                eps = eps / (s_hi * s_hi * m_r[i] + 1.0);
+                // Safe to compute std::min(eps, Inf)
+                eps = std::min(eps, tau_hi - gamma_hi);
+                eps = std::max(eps, -gamma_hi);
+                // Update Gamma, Omega, and beta
+                m_Gamma(h, i) += eps;
+                m_beta.noalias() -= eps * s_hi * m_X.row(i).transpose();
+                // Safe to compute std::max(0, -Inf)
+                m_Omega(h, i) = std::max(0.0, gamma_hi + eps - tau_hi);
+            }
+        }
+    }
+
+    // Update xi and beta
+    inline void update_xi_beta()
+    {
+        for(int k = 0; k < m_K; k++)
+        {
+            // Compute epsilon
+            double eps = -(m_A.row(k).dot(m_beta) + m_b[k]) / m_p[k];
+            eps = std::max(eps, -m_xi[k]);
+            // Update xi and beta
+            m_xi[k] += eps;
+            m_beta.noalias() += eps * m_A.row(k).transpose();
+        }
+    }
+
+    // Compute the dual objective function value
+    inline double dual_objfn() const
+    {
+        // A' * xi, [d x 1], A[K x d] may be empty
+        Vector Atxi = Vector::Zero(m_d);
+        if (m_K > 0)
+            Atxi.noalias() = m_A.transpose() * m_xi;
+        // U3 * vec(Lambda), [n x 1], U[L x n] may be empty
+        Vector UL(m_n), U3L = Vector::Zero(m_d);
+        if (m_L > 0)
+        {
+            UL.noalias() = m_U.cwiseProduct(m_Lambda).colwise().sum().transpose();
+            U3L.noalias() = m_X.transpose() * UL;
+        }
+        // S3 * vec(Gamma), [n x 1], S[H x n] may be empty
+        Vector SG(m_n), S3G = Vector::Zero(m_d);
+        if (m_H > 0)
+        {
+            SG.noalias() = m_S.cwiseProduct(m_Gamma).colwise().sum().transpose();
+            S3G.noalias() = m_X.transpose() * SG;
+        }
+
+        // Compute dual objective function value
+        double obj = 0.0;
+        // If K = 0, all terms that depend on A, xi, or b will be zero
+        if (m_K > 0)
+        {
+            // 0.5 * ||Atxi||^2 - Atxi' * U3L - Atxi' * S3G + xi' * b
+            const double Atxi_U3L = (m_L > 0) ? (Atxi.dot(U3L)) : 0.0;
+            const double Atxi_S3G = (m_H > 0) ? (Atxi.dot(S3G)) : 0.0;
+            obj += 0.5 * Atxi.squaredNorm() - Atxi_U3L - Atxi_S3G + m_xi.dot(m_b);
+        }
+        // If L = 0, all terms that depend on U, V, or Lambda will be zero
+        if (m_L > 0)
+        {
+            // 0.5 * ||U3L||^2 + U3L' * S3G - tr(Lambda * V')
+            const double U3L_S3G = (m_H > 0) ? (U3L.dot(S3G)) : 0.0;
+            obj += 0.5 * U3L.squaredNorm() + U3L_S3G -
+                m_Lambda.cwiseProduct(m_V).sum();
+        }
+        // If H = 0, all terms that depend on S, T, Gamma, or Omega will be zero
+        // Also note that if tau_hi = Inf, then omega_hi = 0
+        if (m_H > 0)
+        {
+            // To avoid computing 0*Inf, clip tau_hi to the largest finite value,
+            // and then multiply it with omega_hi
+            const double max_finite = std::numeric_limits<double>::max();
+
+            // 0.5 * ||Omega||^2 + 0.5 * ||S3G||^2 + 0.5 * ||Gamma||^2
+            // - tr(Gamma * Omega') - tr(Gamma * T') + tr(Tau * Omega')
+            obj += 0.5 * m_Omega.squaredNorm() + 0.5 * S3G.squaredNorm() +
+                0.5 * m_Gamma.squaredNorm() - m_Gamma.cwiseProduct(m_Omega + m_T).sum() +
+                m_Omega.cwiseProduct(m_Tau.cwiseMin(max_finite)).sum();
+        }
+
+        return obj;
+    }
+
+    inline int solve(std::vector<double>& dual_objfns, int max_iter, double tol, bool verbose = false)
+    {
+        // Main iterations
+        int i = 0;
+        for(; i < max_iter; i++)
+        {
+            Vector old_xi = m_xi;
+            Vector old_beta = m_beta;
+
+            update_xi_beta();
+            update_Lambda_beta();
+            update_Gamma_Omega_beta();
+
+            // Compute difference of alpha and beta
+            const double xi_diff = (m_K > 0) ?
+                (m_xi - old_xi).norm() :
+                (0.0);
+            const double beta_diff = (m_beta - old_beta).norm();
+
+            // Print progress
+            if(verbose && (i % 10 == 0))
+            {
+                double obj = dual_objfn();
+                dual_objfns.push_back(obj);
+                std::cout << "Iter " << i << ", dual_objfn = " << obj <<
+                    ", xi_diff = " << xi_diff <<
+                        ", beta_diff = " << beta_diff << std::endl;
+            }
+
+            // Convergence test
+            if(xi_diff < tol && beta_diff < tol)
+                break;
+        }
+
+        return i;
+    }
+
+    Vector& get_beta_ref() { return m_beta; }
+    Vector& get_xi_ref() { return m_xi; }
+    Matrix& get_Lambda_ref() { return m_Lambda; }
+    Matrix& get_Gamma_ref() { return m_Gamma; }
+    Matrix& get_Omega_ref() { return m_Omega; }
+};
+
+
+
 // Pre-compute the r vector from X
 inline Vector precompute_r(const MapMat& X)
 {
@@ -345,7 +612,6 @@ void rehline_internal(
     result.dual_objfns.swap(dual_objfns);
 }
 
-
 // [[Rcpp::export(rehline_)]]
 List rehline(
     NumericMatrix Xmat, NumericMatrix Amat, NumericVector bvec,
@@ -365,6 +631,72 @@ List rehline(
     OptResult result;
 
     rehline_internal(
+        result,
+        X, A, b, U, V, S, T,
+        Tau, max_iter, tol, verbose, Rcpp::Rcout
+    );
+
+    return List::create(
+        Rcpp::Named("beta")        = result.beta,
+        Rcpp::Named("xi")          = result.xi,
+        Rcpp::Named("Lambda")      = result.Lambda,
+        Rcpp::Named("Gamma")       = result.Gamma,
+        Rcpp::Named("Omega")       = result.Omega,
+        Rcpp::Named("niter")       = result.niter,
+        Rcpp::Named("dual_objfns") = result.dual_objfns
+    );
+}
+
+
+
+void rehline_internal2(
+    OptResult& result,
+    const MapMat& X, const MapMat& A, const MapVec& b,
+    const MapMat& U, const MapMat& V,
+    const MapMat& S, const MapMat& T, const MapMat& Tau,
+    int max_iter, double tol, bool verbose = false,
+    std::ostream& cout = std::cout
+)
+{
+    // Create solver
+    ReHLineSolver solver(X, U, V, S, T, Tau, A, b);
+
+    // Initialize parameters
+    solver.init_params();
+
+    // Main iterations
+    std::vector<double> dual_objfns;
+    int niter = solver.solve(dual_objfns, max_iter, tol, verbose);
+
+    // Save result
+    result.beta.swap(solver.get_beta_ref());
+    result.xi.swap(solver.get_xi_ref());
+    result.Lambda.swap(solver.get_Lambda_ref());
+    result.Gamma.swap(solver.get_Gamma_ref());
+    result.Omega.swap(solver.get_Omega_ref());
+    result.niter = niter;
+    result.dual_objfns.swap(dual_objfns);
+}
+
+// [[Rcpp::export(rehline2_)]]
+List rehline2(
+    NumericMatrix Xmat, NumericMatrix Amat, NumericVector bvec,
+    NumericMatrix Umat, NumericMatrix Vmat,
+    NumericMatrix Smat, NumericMatrix Tmat, NumericMatrix TauMat,
+    int max_iter, double tol, bool verbose = false
+)
+{
+    MapMat X = Rcpp::as<MapMat>(Xmat);
+    MapMat A = Rcpp::as<MapMat>(Amat);
+    MapVec b = Rcpp::as<MapVec>(bvec);
+    MapMat U = Rcpp::as<MapMat>(Umat);
+    MapMat V = Rcpp::as<MapMat>(Vmat);
+    MapMat S = Rcpp::as<MapMat>(Smat);
+    MapMat T = Rcpp::as<MapMat>(Tmat);
+    MapMat Tau = Rcpp::as<MapMat>(TauMat);
+    OptResult result;
+
+    rehline_internal2(
         result,
         X, A, b, U, V, S, T,
         Tau, max_iter, tol, verbose, Rcpp::Rcout
