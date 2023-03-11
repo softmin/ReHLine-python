@@ -52,6 +52,8 @@ private:
     // Pre-computed
     Vector m_r;
     Vector m_p;
+    Matrix m_Ur;   // u[li] * r[i]
+    Matrix m_UrV;  // v[li] / r[i] / u[li]^2
 
     // Primal variable
     Vector m_beta;
@@ -68,7 +70,7 @@ public:
                   const MapMat& A, const MapVec& b) :
         m_n(X.rows()), m_d(X.cols()), m_L(U.rows()), m_H(S.rows()), m_K(A.rows()),
         m_X(X), m_U(U), m_V(V), m_S(S), m_T(T), m_Tau(Tau), m_A(A), m_b(b),
-        m_r(m_n), m_p(m_K),
+        m_r(m_n), m_p(m_K), m_Ur(m_L, m_n), m_UrV(m_L, m_n),
         m_beta(m_d),
         m_xi(m_K), m_Lambda(m_L, m_n), m_Gamma(m_H, m_n), m_Omega(m_H, m_n)
     {
@@ -79,6 +81,12 @@ public:
         // A [K x d], K can be zero
         if (m_K > 0)
             m_p.noalias() = m_A.rowwise().squaredNorm();
+
+        if (m_L > 0)
+        {
+            m_Ur.array() = m_U.array().rowwise() * m_r.transpose().array();
+            m_UrV.array() = m_V.array() / m_Ur.array() / m_U.array();
+        }
     }
 
     // Compute the primal variable beta from dual variables
@@ -138,10 +146,12 @@ public:
             for(int l = 0; l < m_L; l++)
             {
                 // Compute epsilon
+                const double urv_li = m_UrV(l, i);
+                const double ur_li = m_Ur(l, i);
                 const double u_li = m_U(l, i);
-                const double denom = m_r[i] * u_li * u_li;
-                double eps = (m_V(l, i) + u_li * m_X.row(i).dot(m_beta)) / denom;
                 const double lambda_li = m_Lambda(l, i);
+
+                double eps = urv_li + m_X.row(i).dot(m_beta) / ur_li;
                 eps = std::min(eps, 1.0 - lambda_li);
                 eps = std::max(eps, -lambda_li);
                 // Update Lambda and beta
