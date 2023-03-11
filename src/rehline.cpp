@@ -54,6 +54,7 @@ private:
     Vector m_p;
     Matrix m_Ur;   // u[li] * r[i]
     Matrix m_UrV;  // v[li] / r[i] / u[li]^2
+    Matrix m_Sr;   // s[hi]^2 * r[i] + 1
 
     // Primal variable
     Vector m_beta;
@@ -70,7 +71,7 @@ public:
                   const MapMat& A, const MapVec& b) :
         m_n(X.rows()), m_d(X.cols()), m_L(U.rows()), m_H(S.rows()), m_K(A.rows()),
         m_X(X), m_U(U), m_V(V), m_S(S), m_T(T), m_Tau(Tau), m_A(A), m_b(b),
-        m_r(m_n), m_p(m_K), m_Ur(m_L, m_n), m_UrV(m_L, m_n),
+        m_r(m_n), m_p(m_K), m_Ur(m_L, m_n), m_UrV(m_L, m_n), m_Sr(m_H, m_n),
         m_beta(m_d),
         m_xi(m_K), m_Lambda(m_L, m_n), m_Gamma(m_H, m_n), m_Omega(m_H, m_n)
     {
@@ -86,6 +87,11 @@ public:
         {
             m_Ur.array() = m_U.array().rowwise() * m_r.transpose().array();
             m_UrV.array() = m_V.array() / m_Ur.array() / m_U.array();
+        }
+
+        if (m_H > 0)
+        {
+            m_Sr.array() = m_S.array().square().rowwise() * m_r.transpose().array() + 1.0;
         }
     }
 
@@ -141,19 +147,23 @@ public:
     // Update Lambda and beta
     inline void update_Lambda_beta()
     {
+        if (m_L < 1)
+            return;
+
         for(int i = 0; i < m_n; i++)
         {
             for(int l = 0; l < m_L; l++)
             {
-                // Compute epsilon
                 const double urv_li = m_UrV(l, i);
                 const double ur_li = m_Ur(l, i);
                 const double u_li = m_U(l, i);
                 const double lambda_li = m_Lambda(l, i);
 
+                // Compute epsilon
                 double eps = urv_li + m_X.row(i).dot(m_beta) / ur_li;
                 eps = std::min(eps, 1.0 - lambda_li);
                 eps = std::max(eps, -lambda_li);
+
                 // Update Lambda and beta
                 m_Lambda(l, i) += eps;
                 m_beta.noalias() -= eps * u_li * m_X.row(i).transpose();
@@ -164,18 +174,26 @@ public:
     // Update Gamma, Omega, and beta
     inline void update_Gamma_Omega_beta()
     {
+        if (m_H < 1)
+            return;
+
         for(int i = 0; i < m_n; i++)
         {
             for(int h = 0; h < m_H; h++)
             {
                 // tau_hi can be Inf
                 const double tau_hi = m_Tau(h, i);
-                // Compute epsilon
-                const double s_hi = m_S(h, i);
                 const double gamma_hi = m_Gamma(h, i);
-                double eps = m_T(h, i) + m_Omega(h, i) +
+                const double omega_hi = m_Omega(h, i);
+                const double sr_hi = m_Sr(h, i);
+                const double s_hi = m_S(h, i);
+                const double t_hi = m_T(h, i);
+
+                // Compute epsilon
+
+                double eps = t_hi + omega_hi +
                     s_hi * m_X.row(i).dot(m_beta) - gamma_hi;
-                eps = eps / (s_hi * s_hi * m_r[i] + 1.0);
+                eps = eps / sr_hi;
                 // Safe to compute std::min(eps, Inf)
                 eps = std::min(eps, tau_hi - gamma_hi);
                 eps = std::max(eps, -gamma_hi);
