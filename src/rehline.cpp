@@ -48,20 +48,20 @@ void random_shuffle(RandomAccessIterator first, RandomAccessIterator last, Rando
     }
 }
 
-// Reset the active set to [0, 1, ..., n-1]
-inline void reset_active_set(std::vector<int>& actset, std::size_t n)
+// Reset the free variable set to [0, 1, ..., n-1]
+inline void reset_fv_set(std::vector<int>& fvset, std::size_t n)
 {
-    actset.resize(n);
+    fvset.resize(n);
     // Fill the vector with 0, 1, ..., n-1
-    std::iota(actset.begin(), actset.end(), 0);
+    std::iota(fvset.begin(), fvset.end(), 0);
 }
 
-// Reset the active set to [(0, 0), (0, 1), ..., (n-1, m-2), (n-1, m-1)]
-inline void reset_active_set(std::vector<std::pair<int, int>>& actset, std::size_t n, std::size_t m)
+// Reset the free variable set to [(0, 0), (0, 1), ..., (n-1, m-2), (n-1, m-1)]
+inline void reset_fv_set(std::vector<std::pair<int, int>>& fvset, std::size_t n, std::size_t m)
 {
-    actset.resize(n * m);
+    fvset.resize(n * m);
     for(std::size_t i = 0; i < n * m; i++)
-        actset[i] = std::make_pair(i % n, i / n);
+        fvset[i] = std::make_pair(i % n, i / n);
 }
 
 // Dimensions of the matrices involved
@@ -116,10 +116,10 @@ private:
     Matrix m_Gamma;
     Matrix m_Omega;
 
-    // Active sets
-    std::vector<int> m_act_feas;
-    std::vector<std::pair<int, int>> m_act_relu;
-    std::vector<std::pair<int, int>> m_act_rehu;
+    // Free variable sets
+    std::vector<int> m_fv_feas;
+    std::vector<std::pair<int, int>> m_fv_relu;
+    std::vector<std::pair<int, int>> m_fv_rehu;
 
     // =================== Initialization functions =================== //
 
@@ -286,10 +286,10 @@ private:
         }
     }
 
-    // =================== Updating functions (active set) =================== //
+    // =================== Updating functions (free variable set) ================ //
 
-    // Determine whether to shrink xi, and determine the projected gradient
-    // Projected gradient is zero if xi=0 and grad>=0
+    // Determine whether to shrink xi, and determine the projected gradient (PG)
+    // PG is zero if xi=0 and grad>=0
     inline bool pg_xi(double xi, double grad, double ub, double& pg)
     {
         pg = (xi == 0.0 && grad >= 0.0) ? 0.0 : grad;
@@ -297,15 +297,15 @@ private:
         return shrink;
     }
     // Update xi and beta
-    // Overloaded version based on active set
-    inline void update_xi_beta(std::vector<int>& active_set, double& min_pg, double& max_pg)
+    // Overloaded version based on free variable set
+    inline void update_xi_beta(std::vector<int>& fv_set, double& min_pg, double& max_pg)
     {
         if (m_K < 1)
             return;
 
         // Permutation
-        random_shuffle(active_set.begin(), active_set.end(), rand_less_than);
-        // New active set
+        random_shuffle(fv_set.begin(), fv_set.end(), rand_less_than);
+        // New free variable set
         std::vector<int> new_set;
 
         // Compute shrinking threshold
@@ -313,7 +313,7 @@ private:
         // Compute minimum and maximum projected gradient (PG) for this round
         min_pg = std::numeric_limits<double>::infinity();
         max_pg = -min_pg;
-        for(auto k: active_set)
+        for(auto k: fv_set)
         {
             const double xi_k = m_xi[k];
 
@@ -337,27 +337,27 @@ private:
             m_xi[k] = newxi;
             m_beta.noalias() += (newxi - xi_k) * m_A.row(k).transpose();
 
-            // Add to new active set
+            // Add to new free variable set
             new_set.push_back(k);
         }
 
-        // Update active set
-        active_set.swap(new_set);
+        // Update free variable set
+        fv_set.swap(new_set);
     }
 
     // Update Lambda and beta
-    // Overloaded version based on active set
-    inline void update_Lambda_beta(std::vector<std::pair<int, int>>& active_set)
+    // Overloaded version based on free variable set
+    inline void update_Lambda_beta(std::vector<std::pair<int, int>>& fv_set)
     {
         if (m_L < 1)
             return;
 
         // Permutation
-        random_shuffle(active_set.begin(), active_set.end(), rand_less_than);
-        // New active set
+        random_shuffle(fv_set.begin(), fv_set.end(), rand_less_than);
+        // New free variable set
         std::vector<std::pair<int, int>> new_set;
 
-        for(auto rc: active_set)
+        for(auto rc: fv_set)
         {
             const int l = rc.first;
             const int i = rc.second;
@@ -375,27 +375,27 @@ private:
             m_Lambda(l, i) = newl;
             m_beta.noalias() -= (newl - lambda_li) * u_li * m_X.row(i).transpose();
 
-            // Add to new active set
+            // Add to new free variable set
             new_set.emplace_back(l, i);
         }
 
-        // Update active set
-        active_set.swap(new_set);
+        // Update free variable set
+        fv_set.swap(new_set);
     }
 
     // Update Gamma, Omega, and beta
-    // Overloaded version based on active set
-    inline void update_Gamma_Omega_beta(std::vector<std::pair<int, int>>& active_set)
+    // Overloaded version based on free variable set
+    inline void update_Gamma_Omega_beta(std::vector<std::pair<int, int>>& fv_set)
     {
         if (m_H < 1)
             return;
 
         // Permutation
-        random_shuffle(active_set.begin(), active_set.end(), rand_less_than);
-        // New active set
+        random_shuffle(fv_set.begin(), fv_set.end(), rand_less_than);
+        // New free variable set
         std::vector<std::pair<int, int>> new_set;
 
-        for(auto rc: active_set)
+        for(auto rc: fv_set)
         {
             const int h = rc.first;
             const int i = rc.second;
@@ -418,12 +418,12 @@ private:
             // Safe to compute std::max(0, -Inf)
             m_Omega(h, i) = std::max(0.0, newg - tau_hi);
 
-            // Add to new active set
+            // Add to new free variable set
             new_set.emplace_back(h, i);
         }
 
-        // Update active set
-        active_set.swap(new_set);
+        // Update free variable set
+        fv_set.swap(new_set);
     }
 
 public:
@@ -480,10 +480,10 @@ public:
 
     inline int solve(std::vector<double>& dual_objfns, int max_iter, double tol, bool verbose = false)
     {
-        // Active sets
-        reset_active_set(m_act_feas, m_K);
-        reset_active_set(m_act_relu, m_L, m_n);
-        reset_active_set(m_act_rehu, m_H, m_n);
+        // Free variable sets
+        reset_fv_set(m_fv_feas, m_K);
+        reset_fv_set(m_fv_relu, m_L, m_n);
+        reset_fv_set(m_fv_rehu, m_H, m_n);
 
         // Shrinking thresholds
         double xi_min_pg = std::numeric_limits<double>::infinity();
@@ -496,9 +496,9 @@ public:
             Vector old_xi = m_xi;
             Vector old_beta = m_beta;
 
-            update_xi_beta(m_act_feas, xi_min_pg, xi_max_pg);
-            update_Lambda_beta(m_act_relu);
-            update_Gamma_Omega_beta(m_act_rehu);
+            update_xi_beta(m_fv_feas, xi_min_pg, xi_max_pg);
+            update_Lambda_beta(m_fv_relu);
+            update_Gamma_Omega_beta(m_fv_rehu);
 
             // Compute difference of alpha and beta
             const double xi_diff = (m_K > 0) ?
@@ -527,7 +527,7 @@ public:
 
             // If variable value or PG converges but not on all variables,
             // use all variables in the next iteration
-            const bool all_vars = (m_act_feas.size() == static_cast<std::size_t>(m_K));
+            const bool all_vars = (m_fv_feas.size() == static_cast<std::size_t>(m_K));
             if ((vars_conv || pg_conv) && (!all_vars))
             {
                 if(verbose)
@@ -535,7 +535,7 @@ public:
                     std::cout << "*** Iter " << i <<
                         ", free variables converge; next test on all variables" << std::endl;
                 }
-                reset_active_set(m_act_feas, m_K);
+                reset_fv_set(m_fv_feas, m_K);
                 xi_min_pg = std::numeric_limits<double>::infinity();
                 xi_max_pg = -xi_min_pg;
                 continue;
