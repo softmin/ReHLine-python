@@ -103,11 +103,9 @@ private:
     const MapVec& m_b;
 
     // Pre-computed
-    Vector m_r;
-    Vector m_p;
-    Matrix m_Ur;   // u[li] * r[i]
-    Matrix m_UrV;  // v[li] / r[i] / u[li]^2
-    Matrix m_Sr;   // s[hi]^2 * r[i] + 1
+    Vector m_gk_denom;   // ||a[k]||^2
+    Matrix m_gli_denom;  // (u[li] * ||x[i]||)^2
+    Matrix m_ghi_denom;  // (s[hi] * ||x[i]||)^2 + 1
 
     // Primal variable
     Vector m_beta;
@@ -218,11 +216,12 @@ private:
 
         for(int k = 0; k < m_K; k++)
         {
+            const double xi_k = m_xi[k];
+
             // Compute g_k
             const double g_k = m_A.row(k).dot(m_beta) + m_b[k];
             // Compute new xi_k
-            const double xi_k = m_xi[k];
-            const double candid = xi_k - g_k / m_p[k];
+            const double candid = xi_k - g_k / m_gk_denom[k];
             const double newxi = std::max(0.0, candid);
             // Update xi and beta
             m_xi[k] = newxi;
@@ -240,15 +239,14 @@ private:
         {
             for(int l = 0; l < m_L; l++)
             {
-                const double urv_li = m_UrV(l, i);
-                const double ur_li = m_Ur(l, i);
                 const double u_li = m_U(l, i);
+                const double v_li = m_V(l, i);
                 const double lambda_li = m_Lambda(l, i);
 
                 // Compute g_li
-                const double g_li = urv_li + m_X.row(i).dot(m_beta) / ur_li;
+                const double g_li = -(u_li * m_X.row(i).dot(m_beta) + v_li);
                 // Compute new lambda_li
-                const double candid = lambda_li + g_li;
+                const double candid = lambda_li - g_li / m_gli_denom(l, i);
                 const double newl = std::max(0.0, std::min(1.0, candid));
                 // Update Lambda and beta
                 m_Lambda(l, i) = newl;
@@ -271,22 +269,19 @@ private:
                 const double tau_hi = m_Tau(h, i);
                 const double gamma_hi = m_Gamma(h, i);
                 const double omega_hi = m_Omega(h, i);
-                const double sr_hi = m_Sr(h, i);
                 const double s_hi = m_S(h, i);
                 const double t_hi = m_T(h, i);
 
                 // Compute g_hi
-                const double g_hi = t_hi + s_hi * m_X.row(i).dot(m_beta);
-                // Compute epsilon
-                double eps = (g_hi + omega_hi - gamma_hi) / sr_hi;
-                // Safe to compute std::min(eps, Inf)
-                eps = std::min(eps, tau_hi - gamma_hi);
-                eps = std::max(eps, -gamma_hi);
+                const double g_hi = gamma_hi - (s_hi * m_X.row(i).dot(m_beta) + t_hi + omega_hi);
+                // Compute new gamma_hi
+                const double candid = gamma_hi - g_hi / m_ghi_denom(h, i);
+                const double newg = std::max(0.0, std::min(tau_hi, candid));
                 // Update Gamma, Omega, and beta
-                m_Gamma(h, i) += eps;
-                m_beta.noalias() -= eps * s_hi * m_X.row(i).transpose();
+                m_Gamma(h, i) = newg;
+                m_beta.noalias() -= (newg - gamma_hi) * s_hi * m_X.row(i).transpose();
                 // Safe to compute std::max(0, -Inf)
-                m_Omega(h, i) = std::max(0.0, gamma_hi + eps - tau_hi);
+                m_Omega(h, i) = std::max(0.0, newg - tau_hi);
             }
         }
     }
@@ -307,11 +302,12 @@ private:
 
         for(auto k: active_set)
         {
+            const double xi_k = m_xi[k];
+
             // Compute g_k
             const double g_k = m_A.row(k).dot(m_beta) + m_b[k];
             // Compute new xi_k
-            const double xi_k = m_xi[k];
-            const double candid = xi_k - g_k / m_p[k];
+            const double candid = xi_k - g_k / m_gk_denom[k];
             const double newxi = std::max(0.0, candid);
             // Update xi and beta
             m_xi[k] = newxi;
@@ -342,15 +338,14 @@ private:
             const int l = rc.first;
             const int i = rc.second;
 
-            const double urv_li = m_UrV(l, i);
-            const double ur_li = m_Ur(l, i);
             const double u_li = m_U(l, i);
+            const double v_li = m_V(l, i);
             const double lambda_li = m_Lambda(l, i);
 
             // Compute g_li
-            const double g_li = urv_li + m_X.row(i).dot(m_beta) / ur_li;
+            const double g_li = -(u_li * m_X.row(i).dot(m_beta) + v_li);
             // Compute new lambda_li
-            const double candid = lambda_li + g_li;
+            const double candid = lambda_li - g_li / m_gli_denom(l, i);;
             const double newl = std::max(0.0, std::min(1.0, candid));
             // Update Lambda and beta
             m_Lambda(l, i) = newl;
@@ -385,22 +380,19 @@ private:
             const double tau_hi = m_Tau(h, i);
             const double gamma_hi = m_Gamma(h, i);
             const double omega_hi = m_Omega(h, i);
-            const double sr_hi = m_Sr(h, i);
             const double s_hi = m_S(h, i);
             const double t_hi = m_T(h, i);
 
             // Compute g_hi
-            const double g_hi = t_hi + s_hi * m_X.row(i).dot(m_beta);
-            // Compute epsilon
-            double eps = (g_hi + omega_hi - gamma_hi) / sr_hi;
-            // Safe to compute std::min(eps, Inf)
-            eps = std::min(eps, tau_hi - gamma_hi);
-            eps = std::max(eps, -gamma_hi);
+            const double g_hi = gamma_hi - (s_hi * m_X.row(i).dot(m_beta) + t_hi + omega_hi);
+            // Compute new gamma_hi
+            const double candid = gamma_hi - g_hi / m_ghi_denom(h, i);
+            const double newg = std::max(0.0, std::min(tau_hi, candid));
             // Update Gamma, Omega, and beta
-            m_Gamma(h, i) += eps;
-            m_beta.noalias() -= eps * s_hi * m_X.row(i).transpose();
+            m_Gamma(h, i) = newg;
+            m_beta.noalias() -= (newg - gamma_hi) * s_hi * m_X.row(i).transpose();
             // Safe to compute std::max(0, -Inf)
-            m_Omega(h, i) = std::max(0.0, gamma_hi + eps - tau_hi);
+            m_Omega(h, i) = std::max(0.0, newg - tau_hi);
 
             // Add to new active set
             new_set.emplace_back(h, i);
@@ -416,27 +408,23 @@ public:
                   const MapMat& A, const MapVec& b) :
         m_n(X.rows()), m_d(X.cols()), m_L(U.rows()), m_H(S.rows()), m_K(A.rows()),
         m_X(X), m_U(U), m_V(V), m_S(S), m_T(T), m_Tau(Tau), m_A(A), m_b(b),
-        m_r(m_n), m_p(m_K), m_Ur(m_L, m_n), m_UrV(m_L, m_n), m_Sr(m_H, m_n),
+        m_gk_denom(m_K), m_gli_denom(m_L, m_n), m_ghi_denom(m_H, m_n),
         m_beta(m_d),
         m_xi(m_K), m_Lambda(m_L, m_n), m_Gamma(m_H, m_n), m_Omega(m_H, m_n)
     {
-        // Pre-compute the r vector from X
-        m_r.noalias() = m_X.rowwise().squaredNorm();
-
-        // Pre-compute the p vector from A
         // A [K x d], K can be zero
         if (m_K > 0)
-            m_p.noalias() = m_A.rowwise().squaredNorm();
+            m_gk_denom.noalias() = m_A.rowwise().squaredNorm();
 
+        Vector xi2 = m_X.rowwise().squaredNorm();
         if (m_L > 0)
         {
-            m_Ur.array() = m_U.array().rowwise() * m_r.transpose().array();
-            m_UrV.array() = m_V.array() / m_Ur.array() / m_U.array();
+            m_gli_denom.array() = m_U.array().square().rowwise() * xi2.transpose().array();
         }
 
         if (m_H > 0)
         {
-            m_Sr.array() = m_S.array().square().rowwise() * m_r.transpose().array() + 1.0;
+            m_ghi_denom.array() = m_S.array().square().rowwise() * xi2.transpose().array() + 1.0;
         }
     }
 
