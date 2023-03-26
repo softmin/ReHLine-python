@@ -288,9 +288,17 @@ private:
 
     // =================== Updating functions (active set) =================== //
 
+    // Determine whether to shrink xi, and determine the projected gradient
+    // Projected gradient is zero if xi=0 and grad>=0
+    inline bool pg_xi(double xi, double grad, double ub, double& pg)
+    {
+        pg = (xi == 0.0 && grad >= 0.0) ? 0.0 : grad;
+        const bool shrink = (xi == 0.0) && (grad > ub);
+        return shrink;
+    }
     // Update xi and beta
     // Overloaded version based on active set
-    inline void update_xi_beta(std::vector<int>& active_set)
+    inline void update_xi_beta(std::vector<int>& active_set, double& min_pg, double& max_pg)
     {
         if (m_K < 1)
             return;
@@ -300,12 +308,28 @@ private:
         // New active set
         std::vector<int> new_set;
 
+        // Compute shrinking threshold
+        const double ub = (max_pg > 0.0) ? max_pg : std::numeric_limits<double>::infinity();
+        // Compute minimum and maximum projected gradient (PG) for this round
+        min_pg = std::numeric_limits<double>::infinity();
+        max_pg = -min_pg;
         for(auto k: active_set)
         {
             const double xi_k = m_xi[k];
 
             // Compute g_k
             const double g_k = m_A.row(k).dot(m_beta) + m_b[k];
+            // PG and shrink
+            double pg;
+            const bool shrink = pg_xi(xi_k, g_k, ub, pg);
+            // if (shrink)
+            //     std::cout << "*** xi[" << k << "] is shrunk" << std::endl;
+            if (shrink)
+               continue;
+
+            // Update PG bounds
+            max_pg = std::max(max_pg, pg);
+            min_pg = std::min(min_pg, pg);
             // Compute new xi_k
             const double candid = xi_k - g_k / m_gk_denom[k];
             const double newxi = std::max(0.0, candid);
@@ -461,6 +485,10 @@ public:
         reset_active_set(m_act_relu, m_L, m_n);
         reset_active_set(m_act_rehu, m_H, m_n);
 
+        // Shrinking thresholds
+        double xi_min_pg = std::numeric_limits<double>::infinity();
+        double xi_max_pg = -xi_min_pg;
+
         // Main iterations
         int i = 0;
         for(; i < max_iter; i++)
@@ -468,7 +496,7 @@ public:
             Vector old_xi = m_xi;
             Vector old_beta = m_beta;
 
-            update_xi_beta(m_act_feas);
+            update_xi_beta(m_act_feas, xi_min_pg, xi_max_pg);
             update_Lambda_beta(m_act_relu);
             update_Gamma_Omega_beta(m_act_rehu);
 
@@ -485,11 +513,34 @@ public:
                 dual_objfns.push_back(obj);
                 std::cout << "Iter " << i << ", dual_objfn = " << obj <<
                     ", xi_diff = " << xi_diff <<
-                        ", beta_diff = " << beta_diff << std::endl;
+                    ", beta_diff = " << beta_diff << std::endl;
+                std::cout << "    min_pg = " << xi_min_pg <<
+                    ", max_pg = " << xi_max_pg << std::endl;
             }
 
-            // Convergence test
-            if(xi_diff < tol && beta_diff < tol)
+            // Convergence test based on change of variable values
+            const bool vars_conv = (xi_diff < tol) && (beta_diff < tol);
+            // Convergence test based on PG
+            const bool pg_conv = (xi_max_pg - xi_min_pg < tol) &&
+                                 (std::abs(xi_max_pg) < tol) &&
+                                 (std::abs(xi_min_pg) < tol);
+
+            // If variable value or PG converges but not on all variables,
+            // use all variables in the next iteration
+            const bool all_vars = (m_act_feas.size() == static_cast<std::size_t>(m_K));
+            if ((vars_conv || pg_conv) && (!all_vars))
+            {
+                if(verbose)
+                {
+                    std::cout << "*** Iter " << i <<
+                        ", free variables converge; next test on all variables" << std::endl;
+                }
+                reset_active_set(m_act_feas, m_K);
+                xi_min_pg = std::numeric_limits<double>::infinity();
+                xi_max_pg = -xi_min_pg;
+                continue;
+            }
+            if (all_vars && (pg_conv || vars_conv))
                 break;
         }
 
