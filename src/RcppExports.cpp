@@ -33,7 +33,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // rehline2
-List rehline2(NumericMatrix Xmat, NumericMatrix Amat, NumericVector bvec, NumericMatrix Umat, NumericMatrix Vmat, NumericMatrix Smat, NumericMatrix Tmat, NumericMatrix TauMat, int max_iter, double tol, bool verbose);
+List rehline2(NumericMatrix Xmat, NumericMatrix Amat, NumericVector bvec, NumericMatrix Umat, NumericMatrix Vmat, NumericMatrix Smat, NumericMatrix Tmat, NumericMatrix TauMat, int max_iter, double tol, int verbose);
 RcppExport SEXP _rehline_rehline2(SEXP XmatSEXP, SEXP AmatSEXP, SEXP bvecSEXP, SEXP UmatSEXP, SEXP VmatSEXP, SEXP SmatSEXP, SEXP TmatSEXP, SEXP TauMatSEXP, SEXP max_iterSEXP, SEXP tolSEXP, SEXP verboseSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -48,7 +48,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< NumericMatrix >::type TauMat(TauMatSEXP);
     Rcpp::traits::input_parameter< int >::type max_iter(max_iterSEXP);
     Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
-    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
+    Rcpp::traits::input_parameter< int >::type verbose(verboseSEXP);
     rcpp_result_gen = Rcpp::wrap(rehline2(Xmat, Amat, bvec, Umat, Vmat, Smat, Tmat, TauMat, max_iter, tol, verbose));
     return rcpp_result_gen;
 END_RCPP

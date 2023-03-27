@@ -33,7 +33,7 @@ rehline = function(
 rehline2 = function(
     Xmat, Umat, Vmat, Smat = NULL, Tmat = NULL, Tau = Inf,
     Amat = NULL, bvec = NULL,
-    max_iter = 1000, tol = 1e-5, verbose = FALSE)
+    max_iter = 1000, tol = 1e-5, verbose = 0)
 {
     n = nrow(Xmat)
     d = ncol(Xmat)

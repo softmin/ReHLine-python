@@ -534,7 +534,7 @@ public:
         set_primal();
     }
 
-    inline int solve(std::vector<double>& dual_objfns, int max_iter, double tol, bool verbose = false)
+    inline int solve(std::vector<double>& dual_objfns, int max_iter, double tol, int verbose = 0)
     {
         // Free variable sets
         reset_fv_set(m_fv_feas, m_K);
@@ -563,18 +563,6 @@ public:
                 (0.0);
             const double beta_diff = (m_beta - old_beta).norm();
 
-            // Print progress
-            if(verbose && (i % 10 == 0))
-            {
-                double obj = dual_objfn();
-                dual_objfns.push_back(obj);
-                std::cout << "Iter " << i << ", dual_objfn = " << obj <<
-                    ", xi_diff = " << xi_diff <<
-                    ", beta_diff = " << beta_diff << std::endl;
-                std::cout << "    min_pg = " << xi_min_pg <<
-                    ", max_pg = " << xi_max_pg << std::endl;
-            }
-
             // Convergence test based on change of variable values
             const bool vars_conv = (xi_diff < tol) && (beta_diff < tol);
             // Convergence test based on PG
@@ -587,15 +575,35 @@ public:
                                  (gamma_max_pg - gamma_min_pg < tol) &&
                                  (std::abs(gamma_max_pg) < tol) &&
                                  (std::abs(gamma_min_pg) < tol);
-
-            // If variable value or PG converges but not on all variables,
-            // use all variables in the next iteration
+            // Whether we are using all variables
             const bool all_vars = (m_fv_feas.size() == static_cast<std::size_t>(m_K)) &&
                                   (m_fv_relu.size() == static_cast<std::size_t>(m_L * m_n)) &&
                                   (m_fv_rehu.size() == static_cast<std::size_t>(m_H * m_n));
+
+            // Print progress
+            if (verbose && (i % 50 == 0))
+            {
+                double obj = dual_objfn();
+                dual_objfns.push_back(obj);
+                std::cout << "Iter " << i << ", dual_objfn = " << obj <<
+                    ", xi_diff = " << xi_diff <<
+                    ", beta_diff = " << beta_diff << std::endl;
+                if (verbose >= 2)
+                {
+                    std::cout << "    xi (" << m_fv_feas.size() << "/" << m_K <<
+                        "), lambda (" << m_fv_relu.size() << "/" << m_L * m_n <<
+                        "), gamma (" << m_fv_rehu.size() << "/" << m_H * m_n << ")" << std::endl;
+                    std::cout << "    xi_pg = (" << xi_min_pg << ", " << xi_max_pg <<
+                        "), lambda_pg = (" << lambda_min_pg << ", " << lambda_max_pg <<
+                        "), gamma_pg = (" << gamma_min_pg << ", " << gamma_max_pg << ")" << std::endl;
+                }
+            }
+
+            // If variable value or PG converges but not on all variables,
+            // use all variables in the next iteration
             if ((vars_conv || pg_conv) && (!all_vars))
             {
-                if(verbose)
+                if (verbose)
                 {
                     std::cout << "*** Iter " << i <<
                         ", free variables converge; next test on all variables" << std::endl;
@@ -983,7 +991,7 @@ void rehline_internal2(
     const MapMat& X, const MapMat& A, const MapVec& b,
     const MapMat& U, const MapMat& V,
     const MapMat& S, const MapMat& T, const MapMat& Tau,
-    int max_iter, double tol, bool verbose = false,
+    int max_iter, double tol, int verbose = 0,
     std::ostream& cout = std::cout
 )
 {
@@ -1012,7 +1020,7 @@ List rehline2(
     NumericMatrix Xmat, NumericMatrix Amat, NumericVector bvec,
     NumericMatrix Umat, NumericMatrix Vmat,
     NumericMatrix Smat, NumericMatrix Tmat, NumericMatrix TauMat,
-    int max_iter, double tol, bool verbose = false
+    int max_iter, double tol, int verbose = 0
 )
 {
     MapMat X = Rcpp::as<MapMat>(Xmat);

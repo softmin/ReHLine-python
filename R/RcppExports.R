@@ -5,7 +5,7 @@ rehline_ <- function(Xmat, Amat, bvec, Umat, Vmat, Smat, Tmat, TauMat, max_iter,
     .Call(`_rehline_rehline`, Xmat, Amat, bvec, Umat, Vmat, Smat, Tmat, TauMat, max_iter, tol, verbose)
 }
 
-rehline2_ <- function(Xmat, Amat, bvec, Umat, Vmat, Smat, Tmat, TauMat, max_iter, tol, verbose = FALSE) {
+rehline2_ <- function(Xmat, Amat, bvec, Umat, Vmat, Smat, Tmat, TauMat, max_iter, tol, verbose = 0L) {
     .Call(`_rehline_rehline2`, Xmat, Amat, bvec, Umat, Vmat, Smat, Tmat, TauMat, max_iter, tol, verbose)
 }
 
