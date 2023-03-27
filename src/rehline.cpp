@@ -288,7 +288,8 @@ private:
 
     // =================== Updating functions (free variable set) ================ //
 
-    // Determine whether to shrink xi, and determine the projected gradient (PG)
+    // Determine whether to shrink xi, and compute the projected gradient (PG)
+    // Shrink if xi=0 and grad>ub
     // PG is zero if xi=0 and grad>=0
     inline bool pg_xi(double xi, double grad, double ub, double& pg)
     {
@@ -309,10 +310,11 @@ private:
         std::vector<int> new_set;
 
         // Compute shrinking threshold
-        const double ub = (max_pg > 0.0) ? max_pg : std::numeric_limits<double>::infinity();
+        constexpr double Inf = std::numeric_limits<double>::infinity();
+        const double ub = (max_pg > 0.0) ? max_pg : Inf;
         // Compute minimum and maximum projected gradient (PG) for this round
-        min_pg = std::numeric_limits<double>::infinity();
-        max_pg = -min_pg;
+        min_pg = Inf;
+        max_pg = -Inf;
         for(auto k: fv_set)
         {
             const double xi_k = m_xi[k];
@@ -345,9 +347,20 @@ private:
         fv_set.swap(new_set);
     }
 
+    // Determine whether to shrink lambda, and compute the projected gradient (PG)
+    // Shrink if (lambda=0 and grad>ub) or (lambda=1 and grad<lb)
+    // PG is zero if (lambda=0 and grad>=0) or (lambda=1 and grad<=0)
+    inline bool pg_lambda(double lambda, double grad, double lb, double ub, double& pg)
+    {
+        pg = ((lambda == 0.0 && grad >= 0.0) || (lambda == 1.0 && grad <= 0.0)) ?
+             0.0 :
+             grad;
+        const bool shrink = (lambda == 0.0 && grad > ub) || (lambda == 1.0 && grad < lb);
+        return shrink;
+    }
     // Update Lambda and beta
     // Overloaded version based on free variable set
-    inline void update_Lambda_beta(std::vector<std::pair<int, int>>& fv_set)
+    inline void update_Lambda_beta(std::vector<std::pair<int, int>>& fv_set, double& min_pg, double& max_pg)
     {
         if (m_L < 1)
             return;
@@ -357,6 +370,13 @@ private:
         // New free variable set
         std::vector<std::pair<int, int>> new_set;
 
+        // Compute shrinking thresholds
+        constexpr double Inf = std::numeric_limits<double>::infinity();
+        const double lb = (min_pg < 0.0) ? min_pg : -Inf;
+        const double ub = (max_pg > 0.0) ? max_pg : Inf;
+        // Compute minimum and maximum projected gradient (PG) for this round
+        min_pg = Inf;
+        max_pg = -Inf;
         for(auto rc: fv_set)
         {
             const int l = rc.first;
@@ -368,6 +388,15 @@ private:
 
             // Compute g_li
             const double g_li = -(u_li * m_X.row(i).dot(m_beta) + v_li);
+            // PG and shrink
+            double pg;
+            const bool shrink = pg_lambda(lambda_li, g_li, lb, ub, pg);
+            if (shrink)
+                continue;
+
+            // Update PG bounds
+            max_pg = std::max(max_pg, pg);
+            min_pg = std::min(min_pg, pg);
             // Compute new lambda_li
             const double candid = lambda_li - g_li / m_gli_denom(l, i);;
             const double newl = std::max(0.0, std::min(1.0, candid));
@@ -383,9 +412,20 @@ private:
         fv_set.swap(new_set);
     }
 
+    // Determine whether to shrink gamma, and compute the projected gradient (PG)
+    // Shrink if (gamma=0 and grad>ub) or (lambda=tau and grad<lb)
+    // PG is zero if (lambda=0 and grad>=0) or (lambda=1 and grad<=0)
+    inline bool pg_gamma(double gamma, double grad, double tau, double lb, double ub, double& pg)
+    {
+        pg = ((gamma == 0.0 && grad >= 0.0) || (gamma == tau && grad <= 0.0)) ?
+             0.0 :
+             grad;
+        const bool shrink = (gamma == 0.0 && grad > ub) || (gamma == tau && grad < lb);
+        return shrink;
+    }
     // Update Gamma, Omega, and beta
     // Overloaded version based on free variable set
-    inline void update_Gamma_Omega_beta(std::vector<std::pair<int, int>>& fv_set)
+    inline void update_Gamma_Omega_beta(std::vector<std::pair<int, int>>& fv_set, double& min_pg, double& max_pg)
     {
         if (m_H < 1)
             return;
@@ -395,6 +435,13 @@ private:
         // New free variable set
         std::vector<std::pair<int, int>> new_set;
 
+        // Compute shrinking thresholds
+        constexpr double Inf = std::numeric_limits<double>::infinity();
+        const double lb = (min_pg < 0.0) ? min_pg : -Inf;
+        const double ub = (max_pg > 0.0) ? max_pg : Inf;
+        // Compute minimum and maximum projected gradient (PG) for this round
+        min_pg = Inf;
+        max_pg = -Inf;
         for(auto rc: fv_set)
         {
             const int h = rc.first;
@@ -409,6 +456,15 @@ private:
 
             // Compute g_hi
             const double g_hi = gamma_hi - (s_hi * m_X.row(i).dot(m_beta) + t_hi + omega_hi);
+            // PG and shrink
+            double pg;
+            const bool shrink = pg_gamma(gamma_hi, gamma_hi, tau_hi, lb, ub, pg);
+            if (shrink)
+                continue;
+
+            // Update PG bounds
+            max_pg = std::max(max_pg, pg);
+            min_pg = std::min(min_pg, pg);
             // Compute new gamma_hi
             const double candid = gamma_hi - g_hi / m_ghi_denom(h, i);
             const double newg = std::max(0.0, std::min(tau_hi, candid));
@@ -486,8 +542,9 @@ public:
         reset_fv_set(m_fv_rehu, m_H, m_n);
 
         // Shrinking thresholds
-        double xi_min_pg = std::numeric_limits<double>::infinity();
-        double xi_max_pg = -xi_min_pg;
+        constexpr double Inf = std::numeric_limits<double>::infinity();
+        double xi_min_pg = Inf, lambda_min_pg = Inf, gamma_min_pg = Inf;
+        double xi_max_pg = -Inf, lambda_max_pg = -Inf, gamma_max_pg = -Inf;
 
         // Main iterations
         int i = 0;
@@ -497,10 +554,10 @@ public:
             Vector old_beta = m_beta;
 
             update_xi_beta(m_fv_feas, xi_min_pg, xi_max_pg);
-            update_Lambda_beta(m_fv_relu);
-            update_Gamma_Omega_beta(m_fv_rehu);
+            update_Lambda_beta(m_fv_relu, lambda_min_pg, lambda_max_pg);
+            update_Gamma_Omega_beta(m_fv_rehu, gamma_min_pg, gamma_max_pg);
 
-            // Compute difference of alpha and beta
+            // Compute difference of xi and beta
             const double xi_diff = (m_K > 0) ?
                 (m_xi - old_xi).norm() :
                 (0.0);
@@ -523,11 +580,19 @@ public:
             // Convergence test based on PG
             const bool pg_conv = (xi_max_pg - xi_min_pg < tol) &&
                                  (std::abs(xi_max_pg) < tol) &&
-                                 (std::abs(xi_min_pg) < tol);
+                                 (std::abs(xi_min_pg) < tol) &&
+                                 (lambda_max_pg - lambda_min_pg < tol) &&
+                                 (std::abs(lambda_max_pg) < tol) &&
+                                 (std::abs(lambda_min_pg) < tol) &&
+                                 (gamma_max_pg - gamma_min_pg < tol) &&
+                                 (std::abs(gamma_max_pg) < tol) &&
+                                 (std::abs(gamma_min_pg) < tol);
 
             // If variable value or PG converges but not on all variables,
             // use all variables in the next iteration
-            const bool all_vars = (m_fv_feas.size() == static_cast<std::size_t>(m_K));
+            const bool all_vars = (m_fv_feas.size() == static_cast<std::size_t>(m_K)) &&
+                                  (m_fv_relu.size() == static_cast<std::size_t>(m_L * m_n)) &&
+                                  (m_fv_rehu.size() == static_cast<std::size_t>(m_H * m_n));
             if ((vars_conv || pg_conv) && (!all_vars))
             {
                 if(verbose)
@@ -536,11 +601,15 @@ public:
                         ", free variables converge; next test on all variables" << std::endl;
                 }
                 reset_fv_set(m_fv_feas, m_K);
-                xi_min_pg = std::numeric_limits<double>::infinity();
-                xi_max_pg = -xi_min_pg;
+                reset_fv_set(m_fv_relu, m_L, m_n);
+                reset_fv_set(m_fv_rehu, m_H, m_n);
+                xi_min_pg = lambda_min_pg = gamma_min_pg = Inf;
+                xi_max_pg = lambda_max_pg = gamma_max_pg = -Inf;
+                // Also recompute beta to improve precision
+                // set_primal();
                 continue;
             }
-            if (all_vars && (pg_conv || vars_conv))
+            if (all_vars && (vars_conv || pg_conv))
                 break;
         }
 
