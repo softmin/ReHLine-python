@@ -34,7 +34,7 @@ print(dim(Tmat))
 set.seed(123)
 res = rehline(
     X, Umat = NULL, V = NULL, Smat = Smat, Tmat = Tmat, Tau = tau,
-    max_iter = 1000, tol = 1e-6, verbose = TRUE)
+    max_iter = 1000, tol = 1e-6, verbose = 1)
 print(res$beta)
 #  [1]  0.326476260  0.192968686 -0.019646593  0.630737002  0.504404859
 #  [6] -0.026382578  0.015123459 -0.005368009  0.135625386 -0.194919709
@@ -50,7 +50,7 @@ b = rnorm(K)
 res = rehline(
     X, Umat = NULL, V = NULL, Smat = Smat, Tmat = Tmat, Tau = tau,
     Amat = A, bvec = b,
-    max_iter = 1000, tol = 1e-6, verbose = TRUE
+    max_iter = 1000, tol = 1e-6, verbose = 1
 )
 # Test whether A * beta + b >= 0
 print(c(A %*% res$beta) + b)

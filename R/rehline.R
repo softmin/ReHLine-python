@@ -1,4 +1,4 @@
-rehline = function(
+rehline_old = function(
     Xmat, Umat, Vmat, Smat = NULL, Tmat = NULL, Tau = Inf,
     Amat = NULL, bvec = NULL,
     max_iter = 1000, tol = 1e-5, verbose = FALSE)
@@ -24,13 +24,13 @@ rehline = function(
     if(length(Tau) == 1)
         Tau = matrix(Tau, nrow(Tmat), ncol(Tmat))
 
-    rehline_(
+    rehline_old_(
         Xmat, Amat, bvec, Umat, Vmat, Smat, Tmat, Tau,
         max_iter, tol, verbose
     )
 }
 
-rehline2 = function(
+rehline = function(
     Xmat, Umat, Vmat, Smat = NULL, Tmat = NULL, Tau = Inf,
     Amat = NULL, bvec = NULL,
     max_iter = 1000, tol = 1e-5, verbose = 0)
@@ -56,7 +56,7 @@ rehline2 = function(
     if(length(Tau) == 1)
         Tau = matrix(Tau, nrow(Tmat), ncol(Tmat))
 
-    rehline2_(
+    rehline_(
         Xmat, Amat, bvec, Umat, Vmat, Smat, Tmat, Tau,
         max_iter, tol, verbose
     )
