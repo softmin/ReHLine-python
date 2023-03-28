@@ -443,7 +443,7 @@ private:
             const double g_hi = gamma_hi - (s_hi * m_X.row(i).dot(m_beta) + t_hi);
             // PG and shrink
             double pg;
-            const bool shrink = pg_gamma(gamma_hi, gamma_hi, tau_hi, lb, ub, pg);
+            const bool shrink = pg_gamma(gamma_hi, g_hi, tau_hi, lb, ub, pg);
             if (shrink)
                 continue;
 
