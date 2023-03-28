@@ -515,7 +515,8 @@ public:
         set_primal();
     }
 
-    inline int solve(std::vector<double>& dual_objfns, int max_iter, double tol, int verbose = 0)
+    inline int solve(std::vector<double>& dual_objfns, int max_iter, double tol,
+                     int verbose = 0, std::ostream& cout = std::cout)
     {
         // Free variable sets
         reset_fv_set(m_fv_feas, m_K);
@@ -566,15 +567,15 @@ public:
             {
                 double obj = dual_objfn();
                 dual_objfns.push_back(obj);
-                std::cout << "Iter " << i << ", dual_objfn = " << obj <<
+                cout << "Iter " << i << ", dual_objfn = " << obj <<
                     ", xi_diff = " << xi_diff <<
                     ", beta_diff = " << beta_diff << std::endl;
                 if (verbose >= 2)
                 {
-                    std::cout << "    xi (" << m_fv_feas.size() << "/" << m_K <<
+                    cout << "    xi (" << m_fv_feas.size() << "/" << m_K <<
                         "), lambda (" << m_fv_relu.size() << "/" << m_L * m_n <<
                         "), gamma (" << m_fv_rehu.size() << "/" << m_H * m_n << ")" << std::endl;
-                    std::cout << "    xi_pg = (" << xi_min_pg << ", " << xi_max_pg <<
+                    cout << "    xi_pg = (" << xi_min_pg << ", " << xi_max_pg <<
                         "), lambda_pg = (" << lambda_min_pg << ", " << lambda_max_pg <<
                         "), gamma_pg = (" << gamma_min_pg << ", " << gamma_max_pg << ")" << std::endl;
                 }
@@ -586,7 +587,7 @@ public:
             {
                 if (verbose)
                 {
-                    std::cout << "*** Iter " << i <<
+                    cout << "*** Iter " << i <<
                         ", free variables converge; next test on all variables" << std::endl;
                 }
                 reset_fv_set(m_fv_feas, m_K);
@@ -983,7 +984,7 @@ void rehline_internal2(
 
     // Main iterations
     std::vector<double> dual_objfns;
-    int niter = solver.solve(dual_objfns, max_iter, tol, verbose);
+    int niter = solver.solve(dual_objfns, max_iter, tol, verbose, cout);
 
     // Save result
     result.beta.swap(solver.get_beta_ref());
