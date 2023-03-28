@@ -6,7 +6,7 @@
 # License: MIT License
 
 import numpy as np
-from scipy.special import huber 
+from scipy.special import huber
 
 def relu(x):
     """
@@ -44,9 +44,8 @@ def rehu(x, cut=1):
 
 def _check_relu(relu_coef, relu_intercept):
     assert relu_coef.shape == relu_intercept.shape, "`relu_coef` and `relu_intercept` should be the same shape!"
-    
+
 def _check_rehu(rehu_coef, rehu_intercept, rehu_cut):
     assert rehu_coef.shape == rehu_intercept.shape, "`rehu_coef` and `rehu_intercept` should be the same shape!"
     if len(rehu_coef) > 0:
         assert (rehu_cut >= 0.0).all(), "`rehu_cut` must be non-negative!"
-

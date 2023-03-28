@@ -26,13 +26,13 @@ ext_modules = [
 ]
 
 setup(
-    name="RedLine",
+    name="ReHLine",
     version=__version__,
     author=["Ben Dai", "Yixuan Qiu"],
     author_email="bendai@cuhk.edu.hk",
-    url="https://github.com/softmin/L3-solver",
-    description=" Minimizing ReLU/ReHU Losses with Linear Computational Complexity ",
-    long_description="https://github.com/softmin/L3-solver",
+    url="https://github.com/softmin/ReHLine",
+    description=" Minimizing Regularized Composite ReHU/ReLU Losses with Linear Computational Complexity ",
+    long_description="https://github.com/softmin/ReHLine",
     ext_modules=ext_modules,
     # extras_require={"test": "pytest"},
     # Currently, build_ext only provides an optional "highest supported C++

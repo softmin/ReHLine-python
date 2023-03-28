@@ -48,7 +48,7 @@ class ReHLoss(object):
     >>> random_loss(x)
     """
 
-    def __init__(self, relu_coef, relu_intercept, 
+    def __init__(self, relu_coef, relu_intercept,
                        rehu_coef=np.empty(shape=(0,0)), rehu_intercept=np.empty(shape=(0,0)), rehu_cut=1):
         self.relu_coef = relu_coef
         self.relu_intercept = relu_intercept
@@ -58,7 +58,7 @@ class ReHLoss(object):
         self.H = rehu_coef.shape[0]
         self.L = relu_coef.shape[0]
         self.n = relu_coef.shape[1]
-    
+
     def __call__(self, x):
         """Evaluate ReHLoss given a data matrix
 
@@ -67,7 +67,7 @@ class ReHLoss(object):
         """
         if (self.L > 0) and (self.H > 0):
             assert self.relu_coef.shape[1] == self.rehu_coef.shape[1], "n_samples for `relu_coef` and `rehu_coef` should be the same shape!"
-        
+
         base._check_relu(self.relu_coef, self.relu_intercept)
         base._check_rehu(self.rehu_coef, self.rehu_intercept, self.rehu_cut)
 
@@ -79,18 +79,18 @@ class ReHLoss(object):
 
 
 class PQLoss(object):
-    """ PQLoss: continuous convex piecewise quandratic function (with a function converting to ReHLoss). 
-    
+    """ PQLoss: continuous convex piecewise quandratic function (with a function converting to ReHLoss).
+
     Parameters
     ----------
 
-    cutpoints : list of cutpoints 
+    cutpoints : list of cutpoints
         cutpoints of the PQLoss, except -np.inf and np.inf
 
     quad_coef : {dict-like} of {'a': [], 'b': [], 'c': []}
         The quandratic coefficients in pieces of the PQLoss
         The i-th piece Q is: a[i]**2 * x**2 + b[i] * x + c[i]
-    
+
     Example
     -------
     >>> import numpy as np
@@ -107,7 +107,7 @@ class PQLoss(object):
         self.quad_coef = quad_coef
         self.n_pieces = len(self.cutpoints) - 1
         self.min = 0
-    
+
     def __call__(self, x):
         """ Evaluation of PQLoss
 
@@ -124,7 +124,7 @@ class PQLoss(object):
             cond_tmp = (x > self.cutpoints[i])&(x <= self.cutpoints[i+1])
             y[cond_tmp] = self.quad_coef['a'][i]*x[cond_tmp]**2 + self.quad_coef['b'][i]*x[cond_tmp] + self.quad_coef['c'][i]
         return y
-    
+
     def _2ReHLoss(self):
         relu_coef, relu_intercept = [], []
         rehu_coef, rehu_intercept, rehu_cut = [], [], []
@@ -139,7 +139,7 @@ class PQLoss(object):
             self.min = min(out_cut)
             quad_coef['c'] -= self.min
             out_cut -= self.min
-        
+
         ## remove a ReLU/ReHU function from this point; i-th point -> i-th or (i+1)-th interval
         ind_tmp = np.argmax(out_cut == 0.)
         ## Left

@@ -1,4 +1,4 @@
-""" ReMin: Regularized ReLU/ReHU Composite Loss Minimization """
+""" ReHLine: Regularized Composite ReHU/ReLU Loss Minimization """
 
 # Authors: Ben Dai <bendai@cuhk.edu.hk>
 #          C++ support by Yixuan Qiu <yixuanq@gmail.com>
@@ -10,10 +10,10 @@ from sklearn.base import BaseEstimator
 import l3solver
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 
-def ReMin_solver(X, U, V, 
+def ReMin_solver(X, U, V,
         Tau=np.empty(shape=(0, 0)),
-        S=np.empty(shape=(0, 0)), T=np.empty(shape=(0, 0)), 
-        A=np.empty(shape=(0, 0)), b=np.empty(shape=(0)), 
+        S=np.empty(shape=(0, 0)), T=np.empty(shape=(0, 0)),
+        A=np.empty(shape=(0, 0)), b=np.empty(shape=(0)),
         max_iter=1000, tol=1e-4, verbose=True):
 
     result = l3solver.L3Result()
@@ -22,14 +22,14 @@ def ReMin_solver(X, U, V,
 
 class ReMin(BaseEstimator):
     """Regularized ReLU/ReHU Minimization. (draft version v1.0)
-    
+
     Parameters
     ----------
 
     C : float, default=1.0
         Regularization parameter. The strength of the regularization is
         inversely proportional to C. Must be strictly positive.
-    
+
     verbose : int, default=0
         Enable verbose output. Note that this setting takes advantage of a
         per-process runtime setting in liblinear that, if enabled, may not work
@@ -41,15 +41,15 @@ class ReMin(BaseEstimator):
     Attributes
     ----------
 
-    coef_ : array of shape (n_features,) 
+    coef_ : array of shape (n_features,)
         Weights assigned to the features (coefficients in the primal
         problem).
-    
+
     n_iter_: int
         Maximum number of iterations run across all classes.
     """
 
-    def __init__(self, loss={'name':'QR', 'qt':[.25, .75]}, C=1., 
+    def __init__(self, loss={'name':'QR', 'qt':[.25, .75]}, C=1.,
                        U=np.empty(shape=(0,0)), V=np.empty(shape=(0,0)),
                        Tau=np.empty(shape=(0,0)),
                        S=np.empty(shape=(0,0)), T=np.empty(shape=(0,0)),
@@ -113,12 +113,12 @@ class ReMin(BaseEstimator):
             pass
         else:
             raise Exception("Sorry, ReMin currently do not support this loss function, \
-                            but you can manually set ReLoss params to solve the problem") 
-                    
+                            but you can manually set ReLoss params to solve the problem")
+
 
     def fit(self, X, sample_weight=None):
         """Fit the model based on the given training data.
-        
+
         Parameters
         ----------
 
@@ -134,7 +134,7 @@ class ReMin(BaseEstimator):
         -------
         self : object
             An instance of the estimator.
-        
+
         """
         X = check_array(X)
         if sample_weight is None:
@@ -152,8 +152,8 @@ class ReMin(BaseEstimator):
             Tau_weight = self.Tau
             S_weight = self.S
             T_weight = self.T
-            
-        result = ReMin_solver(X=X, 
+
+        result = ReMin_solver(X=X,
                             U=U_weight, V=V_weight,
                             Tau=Tau_weight,
                             S=S_weight, T=T_weight,
@@ -178,19 +178,8 @@ class ReMin(BaseEstimator):
         dec : ndarray of shape (n_samples,)
             Returns the decision function of the samples.
         """
-
-
         # Check if fit has been called
         check_is_fitted(self)
-        
+
         X = check_array(X)
         return np.dot(X, self.coef_)
-
-
-
-
-
-
-
-
-
