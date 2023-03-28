@@ -635,6 +635,7 @@ void rehline_internal(
     int max_iter, double tol, int verbose = 0
 )
 {
+    std::srand(0);
     // Create solver
     ReHLineSolver solver(X, U, V, S, T, Tau, A, b);
 
