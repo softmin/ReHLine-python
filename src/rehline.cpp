@@ -279,7 +279,7 @@ private:
     // Determine whether to shrink xi, and compute the projected gradient (PG)
     // Shrink if xi=0 and grad>ub
     // PG is zero if xi=0 and grad>=0
-    inline bool pg_xi(double xi, double grad, double ub, double& pg)
+    inline constexpr bool pg_xi(double xi, double grad, double ub, double& pg) const
     {
         pg = (xi == 0.0 && grad >= 0.0) ? 0.0 : grad;
         const bool shrink = (xi == 0.0) && (grad > ub);
@@ -296,6 +296,7 @@ private:
         random_shuffle(fv_set.begin(), fv_set.end(), rand_less_than);
         // New free variable set
         std::vector<int> new_set;
+        new_set.reserve(fv_set.size());
 
         // Compute shrinking threshold
         constexpr double Inf = std::numeric_limits<double>::infinity();
@@ -336,7 +337,7 @@ private:
     // Determine whether to shrink lambda, and compute the projected gradient (PG)
     // Shrink if (lambda=0 and grad>ub) or (lambda=1 and grad<lb)
     // PG is zero if (lambda=0 and grad>=0) or (lambda=1 and grad<=0)
-    inline bool pg_lambda(double lambda, double grad, double lb, double ub, double& pg)
+    inline constexpr bool pg_lambda(double lambda, double grad, double lb, double ub, double& pg) const
     {
         pg = ((lambda == 0.0 && grad >= 0.0) || (lambda == 1.0 && grad <= 0.0)) ?
              0.0 :
@@ -355,6 +356,7 @@ private:
         random_shuffle(fv_set.begin(), fv_set.end(), rand_less_than);
         // New free variable set
         std::vector<std::pair<int, int>> new_set;
+        new_set.reserve(fv_set.size());
 
         // Compute shrinking thresholds
         constexpr double Inf = std::numeric_limits<double>::infinity();
@@ -401,7 +403,7 @@ private:
     // Determine whether to shrink gamma, and compute the projected gradient (PG)
     // Shrink if (gamma=0 and grad>ub) or (lambda=tau and grad<lb)
     // PG is zero if (lambda=0 and grad>=0) or (lambda=1 and grad<=0)
-    inline bool pg_gamma(double gamma, double grad, double tau, double lb, double ub, double& pg)
+    inline constexpr bool pg_gamma(double gamma, double grad, double tau, double lb, double ub, double& pg) const
     {
         pg = ((gamma == 0.0 && grad >= 0.0) || (gamma == tau && grad <= 0.0)) ?
              0.0 :
@@ -420,6 +422,7 @@ private:
         random_shuffle(fv_set.begin(), fv_set.end(), rand_less_than);
         // New free variable set
         std::vector<std::pair<int, int>> new_set;
+        new_set.reserve(fv_set.size());
 
         // Compute shrinking thresholds
         constexpr double Inf = std::numeric_limits<double>::infinity();
@@ -540,9 +543,7 @@ public:
             update_Gamma_beta(m_fv_rehu, gamma_min_pg, gamma_max_pg);
 
             // Compute difference of xi and beta
-            const double xi_diff = (m_K > 0) ?
-                (m_xi - old_xi).norm() :
-                (0.0);
+            const double xi_diff = (m_K > 0) ? (m_xi - old_xi).norm() : 0.0;
             const double beta_diff = (m_beta - old_beta).norm();
 
             // Convergence test based on change of variable values
