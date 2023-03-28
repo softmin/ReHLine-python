@@ -1,0 +1,7 @@
+*.o
+*.so
+*.dll
+__pycache__/*
+build/*
+ReHLine.egg-info/*
+
