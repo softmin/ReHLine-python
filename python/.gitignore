@@ -2,6 +2,7 @@
 *.so
 *.dll
 __pycache__/*
+benchmark/__pycache__/*
 build/*
 ReHLine.egg-info/*
 
