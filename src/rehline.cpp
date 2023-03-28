@@ -114,7 +114,6 @@ private:
     Vector m_xi;
     Matrix m_Lambda;
     Matrix m_Gamma;
-    Matrix m_Omega;
 
     // Free variable sets
     std::vector<int> m_fv_feas;
@@ -188,19 +187,11 @@ private:
             obj += 0.5 * U3L.squaredNorm() + U3L_S3G -
                 m_Lambda.cwiseProduct(m_V).sum();
         }
-        // If H = 0, all terms that depend on S, T, Gamma, or Omega will be zero
-        // Also note that if tau_hi = Inf, then omega_hi = 0
+        // If H = 0, all terms that depend on S, T, or Gamma will be zero
         if (m_H > 0)
         {
-            // To avoid computing 0*Inf, clip tau_hi to the largest finite value,
-            // and then multiply it with omega_hi
-            const double max_finite = std::numeric_limits<double>::max();
-
-            // 0.5 * ||Omega||^2 + 0.5 * ||S3G||^2 + 0.5 * ||Gamma||^2
-            // - tr(Gamma * Omega') - tr(Gamma * T') + tr(Tau * Omega')
-            obj += 0.5 * m_Omega.squaredNorm() + 0.5 * S3G.squaredNorm() +
-                0.5 * m_Gamma.squaredNorm() - m_Gamma.cwiseProduct(m_Omega + m_T).sum() +
-                m_Omega.cwiseProduct(m_Tau.cwiseMin(max_finite)).sum();
+            // 0.5 * ||S3G||^2 + 0.5 * ||Gamma||^2 - tr(Gamma * T')
+            obj += 0.5 * S3G.squaredNorm() + 0.5 * m_Gamma.squaredNorm() - m_Gamma.cwiseProduct(m_T).sum();
         }
 
         return obj;
@@ -255,8 +246,8 @@ private:
         }
     }
 
-    // Update Gamma, Omega, and beta
-    inline void update_Gamma_Omega_beta()
+    // Update Gamma, and beta
+    inline void update_Gamma_beta()
     {
         if (m_H < 1)
             return;
@@ -268,20 +259,17 @@ private:
                 // tau_hi can be Inf
                 const double tau_hi = m_Tau(h, i);
                 const double gamma_hi = m_Gamma(h, i);
-                const double omega_hi = m_Omega(h, i);
                 const double s_hi = m_S(h, i);
                 const double t_hi = m_T(h, i);
 
                 // Compute g_hi
-                const double g_hi = gamma_hi - (s_hi * m_X.row(i).dot(m_beta) + t_hi + omega_hi);
+                const double g_hi = gamma_hi - (s_hi * m_X.row(i).dot(m_beta) + t_hi);
                 // Compute new gamma_hi
                 const double candid = gamma_hi - g_hi / m_ghi_denom(h, i);
                 const double newg = std::max(0.0, std::min(tau_hi, candid));
-                // Update Gamma, Omega, and beta
+                // Update Gamma and beta
                 m_Gamma(h, i) = newg;
                 m_beta.noalias() -= (newg - gamma_hi) * s_hi * m_X.row(i).transpose();
-                // Safe to compute std::max(0, -Inf)
-                m_Omega(h, i) = std::max(0.0, newg - tau_hi);
             }
         }
     }
@@ -324,8 +312,6 @@ private:
             // PG and shrink
             double pg;
             const bool shrink = pg_xi(xi_k, g_k, ub, pg);
-            // if (shrink)
-            //     std::cout << "*** xi[" << k << "] is shrunk" << std::endl;
             if (shrink)
                continue;
 
@@ -423,9 +409,9 @@ private:
         const bool shrink = (gamma == 0.0 && grad > ub) || (gamma == tau && grad < lb);
         return shrink;
     }
-    // Update Gamma, Omega, and beta
+    // Update Gamma and beta
     // Overloaded version based on free variable set
-    inline void update_Gamma_Omega_beta(std::vector<std::pair<int, int>>& fv_set, double& min_pg, double& max_pg)
+    inline void update_Gamma_beta(std::vector<std::pair<int, int>>& fv_set, double& min_pg, double& max_pg)
     {
         if (m_H < 1)
             return;
@@ -450,12 +436,11 @@ private:
             // tau_hi can be Inf
             const double tau_hi = m_Tau(h, i);
             const double gamma_hi = m_Gamma(h, i);
-            const double omega_hi = m_Omega(h, i);
             const double s_hi = m_S(h, i);
             const double t_hi = m_T(h, i);
 
             // Compute g_hi
-            const double g_hi = gamma_hi - (s_hi * m_X.row(i).dot(m_beta) + t_hi + omega_hi);
+            const double g_hi = gamma_hi - (s_hi * m_X.row(i).dot(m_beta) + t_hi);
             // PG and shrink
             double pg;
             const bool shrink = pg_gamma(gamma_hi, gamma_hi, tau_hi, lb, ub, pg);
@@ -468,11 +453,9 @@ private:
             // Compute new gamma_hi
             const double candid = gamma_hi - g_hi / m_ghi_denom(h, i);
             const double newg = std::max(0.0, std::min(tau_hi, candid));
-            // Update Gamma, Omega, and beta
+            // Update Gamma and beta
             m_Gamma(h, i) = newg;
             m_beta.noalias() -= (newg - gamma_hi) * s_hi * m_X.row(i).transpose();
-            // Safe to compute std::max(0, -Inf)
-            m_Omega(h, i) = std::max(0.0, newg - tau_hi);
 
             // Add to new free variable set
             new_set.emplace_back(h, i);
@@ -490,7 +473,7 @@ public:
         m_X(X), m_U(U), m_V(V), m_S(S), m_T(T), m_Tau(Tau), m_A(A), m_b(b),
         m_gk_denom(m_K), m_gli_denom(m_L, m_n), m_ghi_denom(m_H, m_n),
         m_beta(m_d),
-        m_xi(m_K), m_Lambda(m_L, m_n), m_Gamma(m_H, m_n), m_Omega(m_H, m_n)
+        m_xi(m_K), m_Lambda(m_L, m_n), m_Gamma(m_H, m_n)
     {
         // A [K x d], K can be zero
         if (m_K > 0)
@@ -522,12 +505,10 @@ public:
 
         // Each element of Gamma satisfies 0 <= gamma_hi <= tau_hi,
         // and we use min(0.5 * tau_hi, 1) to initialize (tau_hi can be Inf)
-        // Each element of Omega satisfies omega_hi >= 0, initialized to be 0
         if (m_H > 0)
         {
             m_Gamma.noalias() = (0.5 * m_Tau).cwiseMin(1.0);
-            // Gamma.fill(std::min(1.0, 0.5 * Tau));
-            m_Omega.fill(0.0);
+            // Gamma.fill(std::min(1.0, 0.5 * tau));
         }
 
         // Set primal variable based on duals
@@ -555,7 +536,7 @@ public:
 
             update_xi_beta(m_fv_feas, xi_min_pg, xi_max_pg);
             update_Lambda_beta(m_fv_relu, lambda_min_pg, lambda_max_pg);
-            update_Gamma_Omega_beta(m_fv_rehu, gamma_min_pg, gamma_max_pg);
+            update_Gamma_beta(m_fv_rehu, gamma_min_pg, gamma_max_pg);
 
             // Compute difference of xi and beta
             const double xi_diff = (m_K > 0) ?
@@ -628,7 +609,6 @@ public:
     Vector& get_xi_ref() { return m_xi; }
     Matrix& get_Lambda_ref() { return m_Lambda; }
     Matrix& get_Gamma_ref() { return m_Gamma; }
-    Matrix& get_Omega_ref() { return m_Omega; }
 };
 
 
@@ -1010,7 +990,6 @@ void rehline_internal2(
     result.xi.swap(solver.get_xi_ref());
     result.Lambda.swap(solver.get_Lambda_ref());
     result.Gamma.swap(solver.get_Gamma_ref());
-    result.Omega.swap(solver.get_Omega_ref());
     result.niter = niter;
     result.dual_objfns.swap(dual_objfns);
 }
@@ -1044,7 +1023,6 @@ List rehline2(
         Rcpp::Named("xi")          = result.xi,
         Rcpp::Named("Lambda")      = result.Lambda,
         Rcpp::Named("Gamma")       = result.Gamma,
-        Rcpp::Named("Omega")       = result.Omega,
         Rcpp::Named("niter")       = result.niter,
         Rcpp::Named("dual_objfns") = result.dual_objfns
     );
