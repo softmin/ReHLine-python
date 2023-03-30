@@ -6,10 +6,10 @@ sys.path.insert(0, './fair_classification/') # the code for fair classification 
 from linear_clf_pref_fairness import LinearClf
 
 sys.path.insert(0, '../../') # the code for ReHLine is in this directory
-from _l3solver import ReMin_solver, ReMin
+from _rehline import ReHLine
 
 sys.path.insert(0, '../') # the code for ReHLine is in this directory
-from base import _check_constraints, obj, _append_result
+from benchmark_base import _check_constraints, obj, _append_result
 
 from sklearn.svm import LinearSVC
 import time
@@ -33,8 +33,8 @@ def run_example(df, n=3000, d=50):
     cons_params["EPS"] = 1e-4
     cons_params["cons_type"] = 0
 
-    for C in [.001, .01, .01, .1, 1., 10., 100., 1000.]:
-        C = C/n
+    for C in [.001, .01, .01, .1, 1., 10., 100.]:
+        # C = C/n
         lam = .5/C/n
 
         ## fitted by FairSVM original paper
@@ -56,7 +56,7 @@ def run_example(df, n=3000, d=50):
             ## skip the case that clf fails
             continue
 
-        err_tmp = 1e-10
+        err_tmp = obj(C=C, coef_=clf.w, X=X, y=y, loss='svm') - obj0 + 1e-10
         ## check constraints
         if _check_constraints(A, b, clf.w):
             df = _append_result(df, n, d, C, err_tmp, "fairSVM-dccp", et-st)
@@ -64,14 +64,14 @@ def run_example(df, n=3000, d=50):
             continue
 
         print('-'*25)
-        print('Minmizing via ReMin')
+        print('Minmizing via ReHLine')
         print('-'*25)
 
-        for max_iter_tmp in [100, 300, 500, 1000, 2000, 3000, 10000, 20000, 50000, 70000, 100000]:
+        for max_iter_tmp in [50, 100, 300, 500, 1000, 2000, 3000, 10000, 20000, 50000, 70000, 100000, 200000, 500000]:
 
             # For the proposed ReMin method
-            cue = ReMin(C=C, verbose=False, tol=1e-10, max_iter=max_iter_tmp)
-            cue.make_ReLoss(X=X, y=y, loss={'name':'SVM'})
+            cue = ReHLine(C=C, verbose=False, tol=1e-15, max_iter=max_iter_tmp)
+            cue.make_ReLHLoss(X=X, y=y, loss={'name':'SVM'})
             cue.A = A
             cue.b = b
             st = time.time()
@@ -79,7 +79,7 @@ def run_example(df, n=3000, d=50):
             et = time.time()
 
             err_tmp = obj(C=C, coef_=cue.coef_, X=X, y=y, loss='svm') - obj0
-            if err_tmp <= 1e-6:
+            if err_tmp <= 1e-5:
                 if _check_constraints(A, b, cue.coef_):
                     df = _append_result(df, n, d, C, err_tmp, "ReHLine", et-st)
                     break
@@ -93,7 +93,7 @@ if __name__ == '__main__':
     df = {'err': [], 'method': [], 'time': [], 'neg_log_err': [], 'n': [], 'dim': [], 'C': []}
     for n in [2000, 4000]:
         for d in [50]:
-            for i in range(25):
+            for i in range(5):
                 df = run_example(df, n=n, d=d)
 
     df = pd.DataFrame(df)

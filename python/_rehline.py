@@ -15,7 +15,6 @@ def ReHLine_solver(X, U, V,
         S=np.empty(shape=(0, 0)), T=np.empty(shape=(0, 0)),
         A=np.empty(shape=(0, 0)), b=np.empty(shape=(0)),
         max_iter=1000, tol=1e-4, verbose=True):
-
     result = rehline.rehline_result()
     rehline.rehline_internal(result, X, A, b, U, V, S, T, Tau, max_iter, tol, verbose)
     return result
@@ -72,7 +71,7 @@ class ReHLine(BaseEstimator):
         self.H = S.shape[0]
         self.K = A.shape[0]
 
-    def make_ReLoss(self, X, y, loss={'name':'QR', 'qt':[.25, .75]}):
+    def make_ReLHLoss(self, X, y, loss={'name':'QR', 'qt':[.25, .75]}):
         """Generate ReLoss params based on the given training data.
 
         """

@@ -1,5 +1,6 @@
 #include <vector>
 #include <iostream>
+#include <cstdlib>
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include <pybind11/eigen.h>
@@ -20,23 +21,25 @@ using MapVec = Eigen::Ref<Vector>;
 // Used in random_shuffle(), generating a random integer from {0, 1, ..., i-1}
 // This function is designed for R, as CRAN requires using R's own RNG
 // For C++ or Python, the following simplified version can be used:
-/*
+
 
 inline int rand_less_than(int i)
 {
     return int(std::rand() % i);
 }
 
-*/
-inline int rand_less_than(int i)
-{
-    // Typically on Linux and MacOS, RAND_MAX == 2147483647
-    // Windows has different definition, RAND_MAX == 32767
-    // We manually set the limit to make sure that different OS are compatible
-    std::int32_t rand_max = std::numeric_limits<std::int32_t>::max();
-    std::int32_t r = std::int32_t(R::unif_rand() * rand_max);
-    return int(r % i);
-}
+
+// inline int rand_less_than(int i)
+// {
+//     // Typically on Linux and MacOS, RAND_MAX == 2147483647
+//     // Windows has different definition, RAND_MAX == 32767
+//     // We manually set the limit to make sure that different OS are compatible
+//     std::int32_t rand_max = std::numeric_limits<std::int32_t>::max();
+//     std::int32_t r = std::int32_t(std::rand() * rand_max);
+//     // std::int32_t r = std::int32_t(R::unif_rand() * rand_max);
+//     // std::int32_t r = std::int32_t( ( rand() / ((double) rand_max+1)) * 2 * rand_max);
+//     return int(r % i);
+// }
 
 // On Mac, std::random_shuffle() uses a "backward" implementation,
 // which leads to different results from Windows and Linux
@@ -634,8 +637,8 @@ void rehline_internal(
     const MapMat& X, const MapMat& A, const MapVec& b,
     const MapMat& U, const MapMat& V,
     const MapMat& S, const MapMat& T, const MapMat& Tau,
-    int max_iter, double tol, int verbose = 0,
-    std::ostream& cout = std::cout
+    int max_iter, double tol, int verbose = 0
+    // std::ostream& cout = std::cout
 )
 {
     // Create solver
@@ -646,7 +649,7 @@ void rehline_internal(
 
     // Main iterations
     std::vector<double> dual_objfns;
-    int niter = solver.solve(dual_objfns, max_iter, tol, verbose, cout);
+    int niter = solver.solve(dual_objfns, max_iter, tol, verbose, std::cout);
 
     // Save result
     result.beta.swap(solver.get_beta_ref());
