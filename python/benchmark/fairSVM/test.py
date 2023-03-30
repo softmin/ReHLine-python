@@ -33,9 +33,9 @@ def run_example(df, n=3000, d=50):
     cons_params["EPS"] = 1e-4
     cons_params["cons_type"] = 0
 
-    for C in [.001, .01, .01, .1, 1., 10., 100.]:
-        # C = C/n
-        lam = .5/C/n
+    for C in [10.]:
+        C0 = C/n
+        lam = .5/C0/n
 
         ## fitted by FairSVM original paper
         ## GitHub: https://github.com/mbilalzafar/fair-classification
@@ -48,7 +48,9 @@ def run_example(df, n=3000, d=50):
         st = time.time()
         clf.fit(X, y, x_sensitive, cons_params)
         et = time.time()
-        obj0 = obj(C=C, coef_=clf.w, X=X, y=y, loss='svm')
+        obj0 = obj(C=C0, coef_=clf.w, X=X, y=y, loss='svm')
+
+        fea_esp = np.sum((A @ clf.w - b)**2)
 
         if clf.result[2] == "Converged" or clf.result[2] == "optimal":
             pass
@@ -56,7 +58,7 @@ def run_example(df, n=3000, d=50):
             ## skip the case that clf fails
             continue
 
-        err_tmp = obj(C=C, coef_=clf.w, X=X, y=y, loss='svm') - obj0 + 1e-10
+        err_tmp = obj(C=C0, coef_=clf.w, X=X, y=y, loss='svm') - obj0 + 1e-10
         ## check constraints
         if _check_constraints(A, b, clf.w):
             df = _append_result(df, n, d, C, err_tmp, "fairSVM-dccp", et-st)
@@ -70,7 +72,7 @@ def run_example(df, n=3000, d=50):
         for max_iter_tmp in [50, 100, 300, 500, 1000, 2000, 3000, 10000, 20000, 50000, 70000, 100000, 200000, 500000]:
 
             # For the proposed ReMin method
-            cue = ReHLine(C=C, verbose=False, tol=1e-15, max_iter=max_iter_tmp)
+            cue = ReHLine(C=C0, verbose=False, tol=1e-15, max_iter=max_iter_tmp)
             cue.make_ReLHLoss(X=X, y=y, loss={'name':'SVM'})
             cue.A = A
             cue.b = b
@@ -78,7 +80,8 @@ def run_example(df, n=3000, d=50):
             cue.fit(X=X)
             et = time.time()
 
-            err_tmp = obj(C=C, coef_=cue.coef_, X=X, y=y, loss='svm') - obj0
+            err_tmp = obj(C=C0, coef_=cue.coef_, X=X, y=y, loss='svm') - obj0
+            print('ReHLine with err: %.6f' %err_tmp)
             if err_tmp <= 1e-5:
                 if _check_constraints(A, b, cue.coef_):
                     df = _append_result(df, n, d, C, err_tmp, "ReHLine", et-st)
@@ -91,19 +94,27 @@ def run_example(df, n=3000, d=50):
 if __name__ == '__main__':
 
     df = {'err': [], 'method': [], 'time': [], 'neg_log_err': [], 'n': [], 'dim': [], 'C': []}
-    for n in [2000, 4000]:
+    for n in [1000, 2000, 5000, 8000, 10000, 12000, 15000, 17000, 20000]:
         for d in [50]:
-            for i in range(5):
+            for i in range(20):
                 df = run_example(df, n=n, d=d)
 
     df = pd.DataFrame(df)
 
     sns.set_theme(style="white")
 
-    sns.relplot(
-        data=df, x="n", y="time",
-        col="C", hue="method", style="method", kind="scatter")
+    # sns.relplot(
+    #     data=df, x="n", y="time",
+    #     col="C", hue="method", style="method", kind="scatter")
 
+    # sns.lineplot(data=df, x="n", y="time", hue="method", style="method")
+
+    sns.lineplot(data=df,
+        x="n", y="time", hue="method", style="method",
+        markers=True, dashes=False)
+
+
+    # sns.lineplot(data=df, x="n", y="time", hue="method")
     # sns.stripplot(x="C", y="time",
     #              dodge=True, alpha=.25, zorder=1,
     #              hue="method",
