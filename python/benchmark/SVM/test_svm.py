@@ -1,20 +1,22 @@
 ### Test for SVM
+import sys
+sys.path.append('../../')
 
-def warn(*args, **kwargs):
-    pass
-import warnings
-warnings.warn = warn
 import unittest
 import numpy as np
 from numpy.testing import assert_array_equal
 import io 
 from sklearn.datasets import make_classification
-from _l3solver import ReMin_solver, ReMin
+from _rehline import ReHLine
+# from _l3solver import ReMin
 from sklearn.svm import LinearSVC
 import pandas as pd
 import time
 from qp_solver import qp_admm, qp_cvxpy
-
+import warnings
+from sklearn.exceptions import ConvergenceWarning
+warnings.simplefilter("ignore", category=ConvergenceWarning)
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 df = {'err': [], 'method': [], 'time': [], 'neg_log_err': [], 'n': [], 'dim': [], 'C': []}
 
@@ -22,8 +24,8 @@ df = {'err': [], 'method': [], 'time': [], 'neg_log_err': [], 'n': [], 'dim': []
 def obj(C, coef_, X, y):
     return np.sum(C*np.maximum(1 - y*( X @ coef_), 0)) + .5*np.sum(coef_**2)
 
-iter_range = range(200, 10000, 100)
-tol_range = 10**np.array(list(reversed(np.arange(-4,-1,.2))))
+iter_range = range(200, 10000, 200)
+tol_range = 10**np.array(list(reversed(np.arange(-4,-1,.3))))
 
 for n in [2000, 4000, 6000]:
     for d in [50]:
@@ -52,7 +54,8 @@ for n in [2000, 4000, 6000]:
             ub = np.ones(L*n)
 
             ## True solution
-            cue = ReMin(U=U, V=V, verbose=False, tol=1e-9, max_iter=1000000)
+            cue = ReHLine(U=U, V=V, verbose=False, tol=1e-9, max_iter=1000000)
+            # cue = ReMin(U=U, V=V, verbose=False, tol=1e-9, max_iter=1000000)
             cue.fit(X)
             sol = cue.coef_
             obj0 = obj(C, sol, X, y)
@@ -72,8 +75,8 @@ for n in [2000, 4000, 6000]:
             for max_iter_tmp in iter_range:
             # for max_iter_tmp in range(int(ReMin_base), 10000, 20):
                 
-                ## solve by ReMin
-                cue = ReMin(U=U, V=V, verbose=False, tol=1e-6, max_iter=max_iter_tmp)
+                ## solve by ReHLine
+                cue = ReHLine(U=U, V=V, verbose=False, tol=1e-6, max_iter=max_iter_tmp)
                 st = time.time()
                 cue.fit(X)
                 et = time.time()
@@ -84,59 +87,60 @@ for n in [2000, 4000, 6000]:
                     break
 
                 if eps_remin < 1e-4:
-                    df['method'].append('ReMin')
+                    df['method'].append('ReHLine')
                     df['time'].append(et - st)
                     df['err'].append(eps_remin)
-                    df['-log_err'].append(-np.log10(eps_remin))
+                    df['neg_log_err'].append(-np.log10(eps_remin))
                     df['n'].append(n)
                     df['dim'].append(d)
                     df['C'].append(C)
-                    print('ReMin is done with #Iters: %d' %max_iter_tmp)
+                    print('ReHLine is done with #Iters: %d' %max_iter_tmp)
                     # break
 
-            for tol_tmp in tol_range:
 
-                ## solve by CVXOPT
-                st = time.time()
-                Dsol_cvxopt, __ = qp_cvxpy(P, q, lb, ub, max_iter=max_iter_tmp, abstol=tol_tmp, reltol=tol_tmp, feastol=tol_tmp)
-                Psol_cvxopt = - mat_Ux.dot(Dsol_cvxopt)
-                et = time.time()
-                eps_cvxopt = abs(obj(C, Psol_cvxopt, X, y) - obj0)
+            # for tol_tmp in tol_range:
 
-                if eps_cvxopt < 1e-5:
-                    break
+            #     ## solve by CVXOPT
+            #     st = time.time()
+            #     Dsol_cvxopt, __ = qp_cvxpy(P, q, lb, ub, max_iter=max_iter_tmp, abstol=tol_tmp, reltol=tol_tmp, feastol=tol_tmp)
+            #     Psol_cvxopt = - mat_Ux.dot(Dsol_cvxopt)
+            #     et = time.time()
+            #     eps_cvxopt = abs(obj(C, Psol_cvxopt, X, y) - obj0)
 
-                if eps_cvxopt < 1e-4:
-                    df['method'].append('CVXOPT')
-                    df['time'].append(et - st)
-                    df['err'].append(eps_cvxopt)
-                    df['-log_err'].append(-np.log10(eps_cvxopt))
-                    df['n'].append(n)
-                    df['dim'].append(d)
-                    df['C'].append(C)
-                    print('CVXOPT is done with #Iters: %d' %max_iter_tmp)
+            #     if eps_cvxopt < 1e-5:
+            #         break
 
-            for max_iter_tmp in iter_range:
+            #     if eps_cvxopt < 1e-4:
+            #         df['method'].append('CVXOPT')
+            #         df['time'].append(et - st)
+            #         df['err'].append(eps_cvxopt)
+            #         df['neg_log_err'].append(-np.log10(eps_cvxopt))
+            #         df['n'].append(n)
+            #         df['dim'].append(d)
+            #         df['C'].append(C)
+            #         print('CVXOPT is done with #Iters: %d' %max_iter_tmp)
 
-                ## solve by ADMM
-                st = time.time()
-                Dsol_admm, __ = qp_cvxpy(P, q, lb, ub, solver='SCS', max_iters=max_iter_tmp)
-                Psol_admm = - mat_Ux.dot(Dsol_admm)
-                et = time.time()
-                eps_admm = abs(obj(C, Psol_admm, X, y) - obj0)
+            # for max_iter_tmp in iter_range:
 
-                if eps_admm < 1e-5:
-                    break
+            #     ## solve by ADMM
+            #     st = time.time()
+            #     Dsol_admm, __ = qp_cvxpy(P, q, lb, ub, solver='SCS', max_iters=max_iter_tmp)
+            #     Psol_admm = - mat_Ux.dot(Dsol_admm)
+            #     et = time.time()
+            #     eps_admm = abs(obj(C, Psol_admm, X, y) - obj0)
 
-                if eps_admm < 1e-4:
-                    df['method'].append('ADMM')
-                    df['time'].append(et - st)
-                    df['err'].append(eps_admm)
-                    df['-log_err'].append(-np.log10(eps_admm))
-                    df['n'].append(n)
-                    df['dim'].append(d)
-                    df['C'].append(C)
-                    print('ADMM is done with #Iters: %d' %max_iter_tmp)
+            #     if eps_admm < 1e-5:
+            #         break
+
+            #     if eps_admm < 1e-4:
+            #         df['method'].append('ADMM')
+            #         df['time'].append(et - st)
+            #         df['err'].append(eps_admm)
+            #         df['neg_log_err'].append(-np.log10(eps_admm))
+            #         df['n'].append(n)
+            #         df['dim'].append(d)
+            #         df['C'].append(C)
+            #         print('ADMM is done with #Iters: %d' %max_iter_tmp)
 
             # for max_iter_tmp in range(int(liblinear_base), 10000, 20):
             for max_iter_tmp in iter_range:
@@ -156,7 +160,7 @@ for n in [2000, 4000, 6000]:
                     df['method'].append('liblinear')
                     df['time'].append(et - st)
                     df['err'].append(eps_liblinear)
-                    df['-log_err'].append(-np.log10(eps_liblinear))
+                    df['neg_log_err'].append(-np.log10(eps_liblinear))
                     df['n'].append(n)
                     df['dim'].append(d)
                     df['C'].append(C)
@@ -165,12 +169,14 @@ for n in [2000, 4000, 6000]:
 
 ## Show the results
 df = pd.DataFrame(df)
+
+
 import seaborn as sns
 import matplotlib.pyplot as plt
 sns.set_theme(style="white")
 
 sns.relplot(
-    data=df, x="-log_err", y="time",
+    data=df, x="neg_log_err", y="time",
     col="n", hue="method", style="method",
     kind="scatter"
 )

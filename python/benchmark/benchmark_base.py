@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
 
-def _check_constraints(A, b, coef_):
-    return all(A @ coef_ <= b + 1e-6)
+def _check_constraints(A, b, coef_, eps=1e-5):
+    return all(A @ coef_ <= b + eps)
 
 def obj(C, coef_, X, y, loss='svm'):
     if loss=='svm':
