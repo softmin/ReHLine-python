@@ -16,9 +16,9 @@ import time
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-def run_example(df, n=3000, d=50):
+def run_example(df, n=3000, d=50, random_state=0):
 
-    X, y = make_classification(n_samples=n, n_features=d, n_informative=40, random_state=0)
+    X, y = make_classification(n_samples=n, n_features=d, n_informative=40, random_state=random_state)
     x_sensitive = X[:,np.random.randint(d)]
     x_sensitive = x_sensitive - np.mean(x_sensitive)
 
@@ -43,25 +43,25 @@ def run_example(df, n=3000, d=50):
         print('-'*25)
         print('Minmizing via DCCP')
         print('-'*25)
+        try:
+            clf = LinearClf(loss_function, cov_thresh=cov_thresh, lam=lam, train_multiple=False, max_iters=100)
+            st = time.time()
+            clf.fit(X, y, x_sensitive, cons_params)
+            et = time.time()
+            obj0 = obj(C=C0, coef_=clf.w, X=X, y=y, loss='svm')
+            b0 = np.sum((A @ clf.w - b)**2)
 
-        clf = LinearClf(loss_function, cov_thresh=cov_thresh, lam=lam, train_multiple=False, max_iters=100)
-        st = time.time()
-        clf.fit(X, y, x_sensitive, cons_params)
-        et = time.time()
-        obj0 = obj(C=C0, coef_=clf.w, X=X, y=y, loss='svm')
-
-        fea_esp = np.sum((A @ clf.w - b)**2)
-
-        if clf.result[2] == "Converged" or clf.result[2] == "optimal":
-            pass
-        else:
-            ## skip the case that clf fails
+            if clf.result[2] == "Converged" or clf.result[2] == "optimal":
+                pass
+            else:
+                ## skip the case that clf fails
+                continue
+        except:
             continue
 
-        err_tmp = obj(C=C0, coef_=clf.w, X=X, y=y, loss='svm') - obj0 + 1e-10
         ## check constraints
-        if _check_constraints(A, b, clf.w):
-            df = _append_result(df, n, d, C, err_tmp, "fairSVM-dccp", et-st)
+        if _check_constraints(A, b0, clf.w):
+            df = _append_result(df, n, d, C, 0., "fairSVM-dccp", et-st)
         else:
             continue
 
@@ -94,10 +94,10 @@ def run_example(df, n=3000, d=50):
 if __name__ == '__main__':
 
     df = {'err': [], 'method': [], 'time': [], 'neg_log_err': [], 'n': [], 'dim': [], 'C': []}
-    for n in [1000, 2000, 5000, 8000, 10000, 12000, 15000, 17000, 20000]:
+    for n in [1000, 2000, 5000, 10000, 15000, 20000, 25000, 30000, 35000, 40000, 45000, 50000]:
         for d in [50]:
             for i in range(20):
-                df = run_example(df, n=n, d=d)
+                df = run_example(df, n=n, d=d, random_state=i)
 
     df = pd.DataFrame(df)
 
@@ -107,20 +107,8 @@ if __name__ == '__main__':
     #     data=df, x="n", y="time",
     #     col="C", hue="method", style="method", kind="scatter")
 
-    # sns.lineplot(data=df, x="n", y="time", hue="method", style="method")
-
     sns.lineplot(data=df,
         x="n", y="time", hue="method", style="method",
-        markers=True, dashes=False)
-
-
-    # sns.lineplot(data=df, x="n", y="time", hue="method")
-    # sns.stripplot(x="C", y="time",
-    #              dodge=True, alpha=.25, zorder=1,
-    #              hue="method",
-    #              data=df)
-
-    # sns.catplot(x="n", y="time", hue="method", col="C", aspect=.5,
-    #             kind='strip')
-
+        markers=True, dashes=True)
+    plt.tight_layout()
     plt.show()
