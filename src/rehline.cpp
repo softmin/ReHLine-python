@@ -32,9 +32,11 @@ inline int rand_less_than(int i)
     return int(r % i);
 }
 
+// Randomly shuffle a vector
+//
 // On Mac, std::random_shuffle() uses a "backward" implementation,
 // which leads to different results from Windows and Linux
-// Therefore, we use a consistent implementation based on GCC
+// Therefore, we use a consistent implementation based on GCC code
 template <typename RandomAccessIterator, typename RandomNumberGenerator>
 void random_shuffle(RandomAccessIterator first, RandomAccessIterator last, RandomNumberGenerator& gen)
 {
@@ -80,7 +82,6 @@ inline void reset_fv_set(std::vector<std::pair<int, int>>& fvset, std::size_t n,
 //   * xi    : [K]
 //   * Lambda: [L x n]
 //   * Gamma : [H x n]
-//   * Omega : [H x n]
 
 class ReHLineSolver
 {
