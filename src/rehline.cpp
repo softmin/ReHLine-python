@@ -1,6 +1,7 @@
 #include <RcppEigen.h>
 #include <vector>
 #include <iostream>
+#include <type_traits>
 
 using Rcpp::List;
 using Rcpp::NumericVector;
@@ -10,6 +11,17 @@ using Matrix = Eigen::MatrixXd;
 using MapMat = Eigen::Map<Matrix>;
 using Vector = Eigen::VectorXd;
 using MapVec = Eigen::Map<Vector>;
+
+// We really want some matrices to be row-majored, since they can be more
+// efficient in certain matrix operations, for example X.row(i).dot(v)
+//
+// If Matrix is already row-majored, we save a const reference; otherwise
+// we make a copy
+using RMatrix = std::conditional<
+    Matrix::IsRowMajor,
+    Eigen::Ref<const Matrix>,
+    Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
+>::type;
 
 // Used in random_shuffle(), generating a random integer from {0, 1, ..., i-1}
 // This function is designed for R, as CRAN requires using R's own RNG
@@ -94,13 +106,13 @@ private:
     const int m_K;
 
     // Input matrices and vectors
-    const MapMat& m_X;
+    RMatrix       m_X;
     const MapMat& m_U;
     const MapMat& m_V;
     const MapMat& m_S;
     const MapMat& m_T;
     const MapMat& m_Tau;
-    const MapMat& m_A;
+    RMatrix       m_A;
     const MapVec& m_b;
 
     // Pre-computed
@@ -280,7 +292,7 @@ private:
     // Determine whether to shrink xi, and compute the projected gradient (PG)
     // Shrink if xi=0 and grad>ub
     // PG is zero if xi=0 and grad>=0
-    inline constexpr bool pg_xi(double xi, double grad, double ub, double& pg) const
+    inline bool pg_xi(double xi, double grad, double ub, double& pg) const
     {
         pg = (xi == 0.0 && grad >= 0.0) ? 0.0 : grad;
         const bool shrink = (xi == 0.0) && (grad > ub);
@@ -338,7 +350,7 @@ private:
     // Determine whether to shrink lambda, and compute the projected gradient (PG)
     // Shrink if (lambda=0 and grad>ub) or (lambda=1 and grad<lb)
     // PG is zero if (lambda=0 and grad>=0) or (lambda=1 and grad<=0)
-    inline constexpr bool pg_lambda(double lambda, double grad, double lb, double ub, double& pg) const
+    inline bool pg_lambda(double lambda, double grad, double lb, double ub, double& pg) const
     {
         pg = ((lambda == 0.0 && grad >= 0.0) || (lambda == 1.0 && grad <= 0.0)) ?
              0.0 :
@@ -404,7 +416,7 @@ private:
     // Determine whether to shrink gamma, and compute the projected gradient (PG)
     // Shrink if (gamma=0 and grad>ub) or (lambda=tau and grad<lb)
     // PG is zero if (lambda=0 and grad>=0) or (lambda=1 and grad<=0)
-    inline constexpr bool pg_gamma(double gamma, double grad, double tau, double lb, double ub, double& pg) const
+    inline bool pg_gamma(double gamma, double grad, double tau, double lb, double ub, double& pg) const
     {
         pg = ((gamma == 0.0 && grad >= 0.0) || (gamma == tau && grad <= 0.0)) ?
              0.0 :
@@ -534,10 +546,11 @@ public:
 
         // Main iterations
         int i = 0;
+        Vector old_xi(m_K), old_beta(m_d);
         for(; i < max_iter; i++)
         {
-            Vector old_xi = m_xi;
-            Vector old_beta = m_beta;
+            old_xi.noalias() = m_xi;
+            old_beta.noalias() = m_beta;
 
             update_xi_beta(m_fv_feas, xi_min_pg, xi_max_pg);
             update_Lambda_beta(m_fv_relu, lambda_min_pg, lambda_max_pg);
