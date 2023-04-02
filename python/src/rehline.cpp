@@ -1,49 +1,54 @@
 #include <vector>
 #include <iostream>
-#include <cstdlib>
+#include <type_traits>
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include <pybind11/eigen.h>
 #include <pybind11/stl.h>
-#include <limits>
-// #include <RcppEigen.h>
 
 namespace py = pybind11;
 
-using Matrix = Eigen::MatrixXd;
-// using MapMat = Eigen::Map<Matrix>;
-using MapMat = py::EigenDRef<Matrix>;
+using Matrix = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
+using MapMat = Eigen::Ref<const Matrix>;
 using Vector = Eigen::VectorXd;
-// using MapVec = Eigen::Map<Vector>;
 using MapVec = Eigen::Ref<Vector>;
 
+// We really want some matrices to be row-majored, since they can be more
+// efficient in certain matrix operations, for example X.row(i).dot(v)
+//
+// If Matrix is already row-majored, we save a const reference; otherwise
+// we make a copy
+using RMatrix = std::conditional<
+    Matrix::IsRowMajor,
+    Eigen::Ref<const Matrix>,
+    Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
+>::type;
 
 // Used in random_shuffle(), generating a random integer from {0, 1, ..., i-1}
 // This function is designed for R, as CRAN requires using R's own RNG
 // For C++ or Python, the following simplified version can be used:
-
-
 inline int rand_less_than(int i)
 {
     return int(std::rand() % i);
 }
 
+/*
+inline int rand_less_than(int i)
+{
+    // Typically on Linux and MacOS, RAND_MAX == 2147483647
+    // Windows has different definition, RAND_MAX == 32767
+    // We manually set the limit to make sure that different OS are compatible
+    std::int32_t rand_max = std::numeric_limits<std::int32_t>::max();
+    std::int32_t r = std::int32_t(R::unif_rand() * rand_max);
+    return int(r % i);
+}
+*/
 
-// inline int rand_less_than(int i)
-// {
-//     // Typically on Linux and MacOS, RAND_MAX == 2147483647
-//     // Windows has different definition, RAND_MAX == 32767
-//     // We manually set the limit to make sure that different OS are compatible
-//     std::int32_t rand_max = std::numeric_limits<std::int32_t>::max();
-//     std::int32_t r = std::int32_t(std::rand() * rand_max);
-//     // std::int32_t r = std::int32_t(R::unif_rand() * rand_max);
-//     // std::int32_t r = std::int32_t( ( rand() / ((double) rand_max+1)) * 2 * rand_max);
-//     return int(r % i);
-// }
-
+// Randomly shuffle a vector
+//
 // On Mac, std::random_shuffle() uses a "backward" implementation,
 // which leads to different results from Windows and Linux
-// Therefore, we use a consistent implementation based on GCC
+// Therefore, we use a consistent implementation based on GCC code
 template <typename RandomAccessIterator, typename RandomNumberGenerator>
 void random_shuffle(RandomAccessIterator first, RandomAccessIterator last, RandomNumberGenerator& gen)
 {
@@ -89,7 +94,6 @@ inline void reset_fv_set(std::vector<std::pair<int, int>>& fvset, std::size_t n,
 //   * xi    : [K]
 //   * Lambda: [L x n]
 //   * Gamma : [H x n]
-//   * Omega : [H x n]
 
 class ReHLineSolver
 {
@@ -102,13 +106,13 @@ private:
     const int m_K;
 
     // Input matrices and vectors
-    const MapMat& m_X;
+    RMatrix       m_X;
     const MapMat& m_U;
     const MapMat& m_V;
     const MapMat& m_S;
     const MapMat& m_T;
     const MapMat& m_Tau;
-    const MapMat& m_A;
+    RMatrix       m_A;
     const MapVec& m_b;
 
     // Pre-computed
@@ -288,7 +292,7 @@ private:
     // Determine whether to shrink xi, and compute the projected gradient (PG)
     // Shrink if xi=0 and grad>ub
     // PG is zero if xi=0 and grad>=0
-    inline constexpr bool pg_xi(double xi, double grad, double ub, double& pg) const
+    inline bool pg_xi(double xi, double grad, double ub, double& pg) const
     {
         pg = (xi == 0.0 && grad >= 0.0) ? 0.0 : grad;
         const bool shrink = (xi == 0.0) && (grad > ub);
@@ -346,7 +350,7 @@ private:
     // Determine whether to shrink lambda, and compute the projected gradient (PG)
     // Shrink if (lambda=0 and grad>ub) or (lambda=1 and grad<lb)
     // PG is zero if (lambda=0 and grad>=0) or (lambda=1 and grad<=0)
-    inline constexpr bool pg_lambda(double lambda, double grad, double lb, double ub, double& pg) const
+    inline bool pg_lambda(double lambda, double grad, double lb, double ub, double& pg) const
     {
         pg = ((lambda == 0.0 && grad >= 0.0) || (lambda == 1.0 && grad <= 0.0)) ?
              0.0 :
@@ -412,7 +416,7 @@ private:
     // Determine whether to shrink gamma, and compute the projected gradient (PG)
     // Shrink if (gamma=0 and grad>ub) or (lambda=tau and grad<lb)
     // PG is zero if (lambda=0 and grad>=0) or (lambda=1 and grad<=0)
-    inline constexpr bool pg_gamma(double gamma, double grad, double tau, double lb, double ub, double& pg) const
+    inline bool pg_gamma(double gamma, double grad, double tau, double lb, double ub, double& pg) const
     {
         pg = ((gamma == 0.0 && grad >= 0.0) || (gamma == tau && grad <= 0.0)) ?
              0.0 :
@@ -542,10 +546,11 @@ public:
 
         // Main iterations
         int i = 0;
+        Vector old_xi(m_K), old_beta(m_d);
         for(; i < max_iter; i++)
         {
-            Vector old_xi = m_xi;
-            Vector old_beta = m_beta;
+            old_xi.noalias() = m_xi;
+            old_beta.noalias() = m_beta;
 
             update_xi_beta(m_fv_feas, xi_min_pg, xi_max_pg);
             update_Lambda_beta(m_fv_relu, lambda_min_pg, lambda_max_pg);
@@ -673,37 +678,3 @@ PYBIND11_MODULE(rehline, m) {
     m.doc() = "rehline";
     m.def("rehline_internal", &rehline_internal);
 }
-
-// // [[Rcpp::export(rehline_)]]
-// List rehline(
-//     NumericMatrix Xmat, NumericMatrix Amat, NumericVector bvec,
-//     NumericMatrix Umat, NumericMatrix Vmat,
-//     NumericMatrix Smat, NumericMatrix Tmat, NumericMatrix TauMat,
-//     int max_iter, double tol, int verbose = 0
-// )
-// {
-//     MapMat X = Rcpp::as<MapMat>(Xmat);
-//     MapMat A = Rcpp::as<MapMat>(Amat);
-//     MapVec b = Rcpp::as<MapVec>(bvec);
-//     MapMat U = Rcpp::as<MapMat>(Umat);
-//     MapMat V = Rcpp::as<MapMat>(Vmat);
-//     MapMat S = Rcpp::as<MapMat>(Smat);
-//     MapMat T = Rcpp::as<MapMat>(Tmat);
-//     MapMat Tau = Rcpp::as<MapMat>(TauMat);
-//     OptResult result;
-
-//     rehline_internal(
-//         result,
-//         X, A, b, U, V, S, T,
-//         Tau, max_iter, tol, verbose, Rcpp::Rcout
-//     );
-
-//     return List::create(
-//         Rcpp::Named("beta")        = result.beta,
-//         Rcpp::Named("xi")          = result.xi,
-//         Rcpp::Named("Lambda")      = result.Lambda,
-//         Rcpp::Named("Gamma")       = result.Gamma,
-//         Rcpp::Named("niter")       = result.niter,
-//         Rcpp::Named("dual_objfns") = result.dual_objfns
-//     );
-// }
