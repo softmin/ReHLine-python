@@ -106,7 +106,7 @@ class ReHLine(BaseEstimator):
             
             self.auto_shape()    
             return X_fake
-
+    
         elif (self.loss['name'] == 'sSVM') \
                 or (self.loss['name'] == 'smooth SVM') \
                 or (self.loss['name'] == 'smooth hinge'):
@@ -132,6 +132,28 @@ class ReHLine(BaseEstimator):
             raise Exception("Sorry, ReHLine currently do not support this loss function, \
                             but you can manually set ReLoss params to solve the problem.")
         self.auto_shape()
+
+    def append_l1(self, X, l1_pen=1.0):
+        n, d = X.shape
+        l1_pen = l1_pen*np.ones(d)
+        U_new = np.zeros((self.L+2, n+d))
+        V_new = np.zeros((self.L+2, n+d))
+        ## Block 1
+        U_new[:self.L, :n] = self.U
+        V_new[:self.L, :n] = self.V
+        ## Block 2
+        U_new[-2,n:] = l1_pen
+        U_new[-1,n:] = -l1_pen
+
+        ## fake X
+        X_fake = np.zeros((n+d, d))
+        X_fake[:n,:] = X
+        X_fake[n:,:] = np.identity(d)
+
+        self.U = U_new
+        self.V = V_new
+        self.auto_shape()
+        return X_fake
 
     def auto_shape(self):
         """
