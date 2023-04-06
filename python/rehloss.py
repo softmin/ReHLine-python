@@ -75,7 +75,7 @@ class ReHLoss(object):
         relu_input = (self.relu_coef.T * x[:,np.newaxis]).T + self.relu_intercept
         rehu_input = (self.rehu_coef.T * x[:,np.newaxis]).T + self.rehu_intercept
 
-        return np.sum(base.relu(relu_input), 0) + np.sum(base.rehu(relu_input), 0)
+        return np.sum(base.relu(relu_input), 0) + np.sum(base.rehu(rehu_input), 0)
 
 
 class PQLoss(object):

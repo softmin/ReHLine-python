@@ -9,6 +9,7 @@ import numpy as np
 from sklearn.base import BaseEstimator
 import rehline
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
+import base
 
 def ReHLine_solver(X, U, V,
         Tau=np.empty(shape=(0, 0)),
@@ -78,17 +79,34 @@ class ReHLine(BaseEstimator):
         self.loss.update(loss)
 
         n, d = X.shape
+
         if (self.loss['name'] == 'hinge') or (self.loss['name'] == 'svm')\
             or (self.loss['name'] == 'SVM'):
             self.U = -(self.C*y).reshape(1,-1)
-            self.L = self.U.shape[0]
             self.V = (self.C*np.array(np.ones(n))).reshape(1,-1)
         elif (self.loss['name'] == 'check') \
                 or (self.loss['name'] == 'quantile') \
                 or (self.loss['name'] == 'quantile regression') \
                 or (self.loss['name'] == 'QR'):
-            ## todo
-            pass
+
+            n_qt = len(loss['qt'])
+            self.U = np.ones((2, n*n_qt))
+            self.V = np.ones((2, n*n_qt))
+            X_fake = np.zeros((n*n_qt, d+n_qt))
+            
+            for l,qt_tmp in enumerate(loss['qt']):
+                self.U[0,l*n:(l+1)*n] = - (self.C*qt_tmp*self.U[0,l*n:(l+1)*n])
+                self.U[1,l*n:(l+1)*n] = (self.C*(1.-qt_tmp)*self.U[1,l*n:(l+1)*n])
+
+                self.V[0,l*n:(l+1)*n] = self.C*qt_tmp*self.V[0,l*n:(l+1)*n]*y
+                self.V[1,l*n:(l+1)*n] = - self.C*(1.-qt_tmp)*self.V[1,l*n:(l+1)*n]*y
+
+                X_fake[l*n:(l+1)*n,:d] = X
+                X_fake[l*n:(l+1)*n,d+l] = 1.
+            
+            self.auto_shape()    
+            return X_fake
+
         elif (self.loss['name'] == 'sSVM') \
                 or (self.loss['name'] == 'smooth SVM') \
                 or (self.loss['name'] == 'smooth hinge'):
@@ -113,6 +131,25 @@ class ReHLine(BaseEstimator):
         else:
             raise Exception("Sorry, ReHLine currently do not support this loss function, \
                             but you can manually set ReLoss params to solve the problem.")
+        self.auto_shape()
+
+    def auto_shape(self):
+        """
+        Automatically generate the shape of the parameters of ReHLine loss functions.
+        """
+        self.L = self.U.shape[0]
+        self.n = self.U.shape[1]
+        self.H = self.S.shape[0]
+        self.K = self.A.shape[0]
+
+    def call_ReLHLoss(self, input):
+        relu_input = np.zeros((self.L, self.n))
+        rehu_input = np.zeros((self.H, self.n))
+        if self.L > 0:
+            relu_input = (self.U.T * input[:,np.newaxis]).T + self.V
+        if self.H > 0:
+            rehu_input = (self.S.T * input[:,np.newaxis]).T + self.T
+        return np.sum(base.relu(relu_input), 0) + np.sum(base.rehu(rehu_input), 0)
 
 
     def fit(self, X, sample_weight=None):
