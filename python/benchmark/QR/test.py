@@ -14,7 +14,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
 
-iter_range = np.arange(10, 10000, 50)
+iter_range = np.arange(50, 10000, 50)
 
 def run_example(df, n=3000, d=10, random_state=0):
     np.random.seed(random_state)
@@ -26,7 +26,7 @@ def run_example(df, n=3000, d=10, random_state=0):
     y = X@beta0 + np.random.rand()*np.random.randn(n)
 
     # X, y = make_regression(n_samples=n, n_features=d, n_informative=d, noise=np.random.rand(), random_state=random_state)
-
+    ## true solution
     model = QuantReg(y, sm.add_constant(X))
     res = model.fit(q=q, max_iter=10000000, p_tol=1e-8)
     out_true = res.params[0] + X @ res.params[1:]
@@ -57,30 +57,33 @@ def run_example(df, n=3000, d=10, random_state=0):
     print('Minmizing via ReHLine')
     print('-'*25)
 
-    for max_iter_tmp in iter_range:
-        cue = ReHLine(C=1., verbose=False, tol=1e-10, max_iter=max_iter_tmp)
-        X_fake=cue.make_ReLHLoss(X=X, y=y, loss={'name':'QR', 'qt':[q]})
+    for c_tmp in [.001, 0.1, 1, 10, 100, 1000, 10000]:
+        for max_iter_tmp in iter_range:
+            cue = ReHLine(C=c_tmp, verbose=False, tol=1e-10, max_iter=max_iter_tmp)
+            X_fake=cue.make_ReLHLoss(X=X, y=y, loss={'name':'QR', 'qt':[q]})
 
-        st = time.time()
-        cue.fit(X_fake)
-        et = time.time()
+            st = time.time()
+            cue.fit(X_fake)
+            et = time.time()
 
-        out_rehl = X @ cue.coef_[:-1] + cue.coef_[-1]
-        obj_rehl = obj(C=1., y=y, out=out_rehl, loss={'name':'QR', 'qt': [q]})
+            out_rehl = X @ cue.coef_[:-1] + cue.coef_[-1]
+            obj_rehl = obj(C=1., y=y, out=out_rehl, loss={'name':'QR', 'qt': [q]})
 
-        err_tmp = obj_rehl - obj0
+            err_tmp = obj_rehl - obj0
 
+            if err_tmp <= 1e-5:
+                df = _append_result(df, n, d, c_tmp, err_tmp, "ReHLine", et-st)
+                break
+        
         if err_tmp <= 1e-5:
-            df = _append_result(df, n, d, 1.0, err_tmp, "ReHLine", et-st)
             break
-
     return df
 
 
 if __name__ == '__main__':
 
     df = {'err': [], 'method': [], 'time': [], 'neg_log_err': [], 'n': [], 'dim': [], 'C': []}
-    for n in [1000, 2000, 5000, 10000]:
+    for n in [1000]:
     # for n in [50000, 100000, 150000, 200000, 250000, 300000, 350000, 400000, 450000, 500000]:
         for d in [100]:
             for i in range(20):
