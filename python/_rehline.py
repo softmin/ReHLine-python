@@ -129,7 +129,7 @@ class ReHLine(BaseEstimator):
         elif (self.loss['name'] == 'custom'):
             pass
         else:
-            raise Exception("Sorry, ReHLine currently do not support this loss function, \
+            raise Exception("Sorry, ReHLine currently does not support this loss function, \
                             but you can manually set ReLoss params to solve the problem.")
         self.auto_shape()
 

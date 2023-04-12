@@ -16,11 +16,12 @@ import statsmodels.api as sm
 from funs import cvxQR_elastic, cvxQR_l2
 tol = 0.01
 
-n, d, random_state = 1000, 100, 1
+n, d, random_state = 5000, 100, 8
 
 iter_range = 10**np.arange(3, 8, 0.2)
 iter_range = np.array(iter_range, dtype=int)
 tol_range = 10**np.arange(-10, -3, 0.3)
+C_range = np.logspace(-3, 3)
 
 def run_example(df, n=3000, d=10, random_state=0):
     np.random.seed(random_state)
@@ -36,7 +37,7 @@ def run_example(df, n=3000, d=10, random_state=0):
 
     # l2_term = np.sum(beta0**2) / 2
     # C = l2_term / obj0
-    C = 1.0
+    C = np.random.choice(C_range) / n
 
     ## true solution
     # https://www.cvxpy.org/tutorial/advanced/index.html
@@ -45,7 +46,6 @@ def run_example(df, n=3000, d=10, random_state=0):
     out0 = X@beta0[:-1] + beta0[-1]
     obj0 = obj(C=C, y=y, out=out0, loss={'name':'QR', 'qt': [q]}) + 0.5*np.sum(beta0**2)
     
-
     print('-'*25)
     print('Minmizing via ECOS')
     print('-'*25)
