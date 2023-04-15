@@ -51,4 +51,4 @@ def cvxQR_l2(X_train, y_train, lam2, q, solver_config):
     problem.solve(**solver_config)
     et = time.time()
 
-    return betas.value, et - st
+    return betas.value, et - st, problem
