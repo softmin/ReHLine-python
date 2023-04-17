@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 import statsmodels.api as sm
 from funs import cvxQR_elastic, cvxQR_l2
 from matplotlib.pyplot import figure
-tol = 1e-3
+tol = 1e-2
 
 n, d, random_state = 5000, 100, 8
 
@@ -65,7 +65,7 @@ def run_example(df, n=3000, d=10, random_state=0):
 
             err_tmp = (obj_ECOS - obj0) / obj0
 
-            if err_tmp <= tol:
+            if err_tmp <= tol*max(1, obj0):
                 df = _append_result(df, n, d, C, err_tmp, "ECOS", time_ECOS)
                 print('ECOS ends with max_iter: %d' %max_iter_tmp)
                 break

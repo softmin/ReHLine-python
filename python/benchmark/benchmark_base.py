@@ -6,7 +6,7 @@ def _check_constraints(A, b, coef_, eps=1e-5):
 
 def obj(C, y, out, loss={'name': 'svm'}):
     if loss['name']=='svm':
-        return np.sum(C*np.maximum(1 - y*out, 0)) + .5*np.sum(coef_**2)
+        return np.sum(C*np.maximum(1 - y*out, 0))
     elif loss['name']=='QR':
         kappa = loss['qt']
         loss_mat = np.zeros((len(y), len(kappa)))
