@@ -13,6 +13,8 @@ def obj(C, y, out, loss={'name': 'svm'}):
         for i, kappa_tmp in enumerate(kappa):
             loss_mat[:,i] = kappa_tmp * np.maximum(y - out, 0) + (1 - kappa_tmp) * np.maximum(out - y, 0)
         return np.sum(loss_mat)
+    elif loss['name']=='TV':
+        return C*np.sum(abs(y - out))
     else:
         pass
 
