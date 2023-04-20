@@ -117,6 +117,13 @@ class ReHLine(BaseEstimator):
             self.S[0] = - np.sqrt(self.C)*y
             self.T[0] = np.sqrt(self.C)
             self.Tau[0] = np.sqrt(self.C)
+        elif self.loss['name'] == 'TV':
+            self.U = np.ones((2, n))*self.C
+            self.V = np.ones((2, n))*self.C
+            self.U[1] = -self.U[1]
+            
+            self.V[0] = - X.dot(y)*self.C
+            self.V[1] = X.dot(y)*self.C
         elif (self.loss['name'] == 'huber'):
             self.S = np.ones((2, n))
             self.T = np.ones((2, n))
@@ -194,9 +201,9 @@ class ReHLine(BaseEstimator):
             An instance of the estimator.
 
         """
-        X = check_array(X)
+        # X = check_array(X)
         if sample_weight is None:
-            sample_weight = np.ones(len(X))
+            sample_weight = np.ones(X.shape[0])
 
         U_weight = self.U * sample_weight
         V_weight = self.V * sample_weight

@@ -13,10 +13,11 @@ import matplotlib.pyplot as plt
 import statsmodels.api as sm
 from matplotlib.pyplot import figure
 from skimage.restoration import denoise_tv_chambolle, denoise_tv_bregman
+from scipy.sparse import csr_array
 tol = 1e-2
 
 n, d, random_state = 5000, 100, 8
-
+max_iter_tmp=1000
 iter_range = 10**np.arange(2, 8, 0.2)
 iter_range = np.array(iter_range, dtype=int)
 tol_range = 10**np.arange(-10, -3, 0.3)
@@ -38,7 +39,7 @@ def run_example(df, n=3000, d=10, random_state=0):
 
     try:
         y_chambolle = denoise_tv_chambolle(y, weight=C)
-        y_bregman = denoise_tv_bregman(y, weight=C)
+        # y_bregman = denoise_tv_bregman(y, weight=C)
 
     except:
         return df
@@ -50,13 +51,21 @@ def run_example(df, n=3000, d=10, random_state=0):
     try:
         for max_iter_tmp in iter_range:
             cue = ReHLine(C=C, verbose=False, tol=1e-7, max_iter=max_iter_tmp)
-            X_fake=cue.make_ReLHLoss(X=X, y=y, loss={'name':'QR', 'qt':[q]})
+            # X = np.zeros((n-1, n))
+            X = csr_array((n-1, n))
+            X[:,:-1].setdiag(-1)
+            X[:,1:].setdiag(-1)
+
+            # np.fill_diagonal(X[:,:-1], -1)
+            # np.fill_diagonal(X[:,1:], 1)
+
+            cue.make_ReLHLoss(X=X, y=y, loss={'name':'TV'})
 
             st = time.time()
-            cue.fit(X_fake)
+            cue.fit(X)
             et = time.time()
 
-            out_rehl = X @ cue.coef_[:-1] + cue.coef_[-1]
+            out_rehl = cue.coef_ + y
             obj_rehl = obj(C=C, y=y, out=out_rehl, loss={'name':'QR', 'qt': [q]}) + 0.5*np.sum(cue.coef_**2)
 
             err_tmp = (obj_rehl - obj0) / obj0
