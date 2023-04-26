@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 def _check_constraints(A, b, coef_, eps=1e-5):
-    return all(A @ coef_ <= b + eps)
+    return all(A @ coef_ + b <= eps)
 
 def obj(C, y, out, loss={'name': 'svm'}):
     if loss['name']=='svm':

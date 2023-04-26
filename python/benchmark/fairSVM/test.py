@@ -56,11 +56,10 @@ def run_example(df, n=3000, d=50, random_state=0):
         et = time.time()
         out0 = X @ clf.w
         obj0 = obj(C=C0, y=y, out=out0, loss={'name': 'svm'}) + .5*np.sum(clf.w**2)
-        b0 = np.sum((A @ clf.w - b)**2)
 
         if clf.result[2] == "Converged" or clf.result[2] == "optimal":
             ## check constraints
-            if _check_constraints(A, b0, clf.w):
+            if _check_constraints(A, b, clf.w):
                 df = _append_result(df, n, d, C, 0., "fairSVM-dccp", et-st)
             else:
                 pass
