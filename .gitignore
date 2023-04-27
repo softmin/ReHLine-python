@@ -12,6 +12,9 @@
 *.csv
 
 # Python cache and build files
+python/benchmark/benchmark_FairSVM/__cache__/
+python/benchmark/benchmark_QR/__cache__/
+
 __pycache__/
 python/build/
 python/ReHLine.egg-info/
