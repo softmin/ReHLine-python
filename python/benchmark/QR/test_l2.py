@@ -100,6 +100,7 @@ def run_example(df, n=3000, d=10, random_state=0):
         for max_iter_tmp in iter_range:
             cue = ReHLine(C=C, verbose=False, tol=1e-7, max_iter=max_iter_tmp)
             X_fake=cue.make_ReLHLoss(X=X, y=y, loss={'name':'QR', 'qt':[q]})
+            
 
             st = time.time()
             cue.fit(X_fake)
