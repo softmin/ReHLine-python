@@ -14,7 +14,7 @@ if __name__=='__main__':
     df = df.replace({'objective_name': 'FairSVM[C=1.0,obj=0,rho=0.01]'}, 'FairSVM: constraints')
     df = df.replace({'objective_name': 'FairSVM[C=1.0,obj=1,rho=0.01]'}, 'FairSVM: objective')
 
-    df = df[df['objective_value'] < 1.0]
+    # df = df[df['objective_value'] < 1.0]
     # df = df[df['objective_name'] == 'FairSVM: objective']
     df = df[df['data_name'] != 'Simulated[n_features=100,n_samples=500000]']
 
@@ -36,3 +36,4 @@ if __name__=='__main__':
     plt.show()
 
 # benchopt_run_2023-04-27_09h19m17.parquet
+# benchopt_run_2023-04-28_00h31m41.parquet
