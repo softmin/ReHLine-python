@@ -39,7 +39,7 @@ for n in [2000, 4000, 6000]:
             y = 2*y - 1
             C = 10./n
 
-            ## generate dataset for `L3-solver`
+            ## generate dataset for `ReHLine`
             n, d = X.shape
             U = -(C*y).reshape(1,-1)
             L = U.shape[0]
@@ -54,10 +54,9 @@ for n in [2000, 4000, 6000]:
             ub = np.ones(L*n)
 
             ## True solution
-            cue = ReHLine(U=U, V=V, verbose=False, tol=1e-9, max_iter=1000000)
-            # cue = ReMin(U=U, V=V, verbose=False, tol=1e-9, max_iter=1000000)
-            cue.fit(X)
-            sol = cue.coef_
+            clf_true = LinearSVC(C=C, loss='hinge', fit_intercept=False, random_state=0, tol=1e-10, max_iter=1000000)
+            clf_true.fit(X, y)
+            sol = clf_true.coef_
             obj0 = obj(C, sol, X, y)
 
             ## find the starting max_iter 
