@@ -18,10 +18,10 @@ class Objective(BaseObjective):
         self.X, self.y, self.q = X, y, q
 
     def compute(self, beta):
-        n,d = self.X.shape
+        n, d = self.X.shape
         out = np.dot(self.X, beta[:-1]) + beta[-1]
         loss = self.q * np.maximum(self.y - out, 0) + (1 - self.q) * np.maximum(out - self.y, 0)
-        reg = self.lam1 * np.sum(abs(beta)) + self.lam2 * np.sum(beta**2) / 2
+        reg = self.lam1 * np.sum(np.abs(beta)) + self.lam2 * np.sum(beta**2) / 2
         return np.mean(loss) + reg
 
     def get_objective(self):
