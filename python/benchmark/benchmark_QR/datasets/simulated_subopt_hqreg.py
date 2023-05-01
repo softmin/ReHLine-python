@@ -1,3 +1,10 @@
+'''
+This example shows that `hqreg` provides a suboptimal solution in terms of regularized QR. 
+The simulated case is not one that has been specially constructed for the purpose of analysis, 
+but rather has been chosen to more aptly reflect the underlying issue. 
+Noted that `hqreg` is a approximation algorithm to QR, and does not provide an assurance with regards to optimality (under the authors' choice of tuning parameters).
+'''
+
 from benchopt import BaseDataset, safe_import_context
 
 with safe_import_context() as import_ctx:
@@ -11,9 +18,6 @@ class Dataset(BaseDataset):
     parameters = {
         'n_samples, n_features': [
             (500, 100),
-            (5000, 100),
-            (50000, 100),
-            (500000, 100),
         ]
     }
 
@@ -27,9 +31,9 @@ class Dataset(BaseDataset):
         n, d = self.n_samples, self.n_features
         q = np.random.rand()
         X = np.random.randn(n, d)
-        beta0 = np.random.randn(d)
+        beta0 = 10*np.random.randn(d)
         out = X@beta0
-        y = out + 0.1*np.random.randn(n)
+        y = out + np.random.randn(n)
 
         data = dict(X=X, y=y, q=q)
 

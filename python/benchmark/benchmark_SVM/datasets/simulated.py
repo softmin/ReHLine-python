@@ -26,9 +26,6 @@ class Dataset(BaseDataset):
         n, d = self.n_samples, self.n_features
         X, y = make_classification(n_samples=n, n_features=d, n_informative=d-2, random_state=self.random_state)
         y = 2*y - 1.0
-        x_sensitive = X[:,np.random.randint(d)]
-        x_sensitive = x_sensitive - np.mean(x_sensitive)
-
-        data = dict(X=X, y=y, Z=x_sensitive)
+        data = dict(X=X, y=y)
 
         return self.n_features, data

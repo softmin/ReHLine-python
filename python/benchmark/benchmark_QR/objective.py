@@ -6,8 +6,8 @@ class Objective(BaseObjective):
     name = "ElasticQR"
 
     parameters = {
-        'lam1': [.1],
-        'lam2': [.1]
+        'lam1': [.001],
+        'lam2': [.001]
     }
 
     def __init__(self, lam1, lam2):
