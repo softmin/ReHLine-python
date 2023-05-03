@@ -127,12 +127,12 @@ class ReHLine(BaseEstimator):
         elif (self.loss['name'] == 'huber'):
             self.S = np.ones((2, n))
             self.T = np.ones((2, n))
-            self.Tau = self.tau * np.ones((2, n))
+            self.Tau = np.sqrt(self.C) * loss['tau'] * np.ones((2, n))
 
             self.S[0] = - np.sqrt(self.C)
             self.S[1] =   np.sqrt(self.C)
-            self.T[0] = y
-            self.T[1] = -y
+            self.T[0] = np.sqrt(self.C)*y
+            self.T[1] = -np.sqrt(self.C)*y
         elif (self.loss['name'] == 'custom'):
             pass
         else:
@@ -146,11 +146,25 @@ class ReHLine(BaseEstimator):
         U_new = np.zeros((self.L+2, n+d))
         V_new = np.zeros((self.L+2, n+d))
         ## Block 1
-        U_new[:self.L, :n] = self.U
-        V_new[:self.L, :n] = self.V
+        if len(self.U):
+            U_new[:self.L, :n] = self.U
+            V_new[:self.L, :n] = self.V
         ## Block 2
         U_new[-2,n:] = l1_pen
         U_new[-1,n:] = -l1_pen
+
+        if len(self.S):
+            S_new = np.zeros((self.H, n+d))
+            T_new = np.zeros((self.H, n+d))
+            Tau_new = np.zeros((self.H, n+d))
+
+            S_new[:,:n] = self.S
+            T_new[:,:n] = self.T
+            Tau_new[:,:n] = self.Tau
+
+            self.S = S_new
+            self.T = T_new
+            self.Tau = Tau_new
 
         ## fake X
         X_fake = np.zeros((n+d, d))

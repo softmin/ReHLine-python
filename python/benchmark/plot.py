@@ -16,7 +16,7 @@ if __name__=='__main__':
 
     # df = df[df['objective_value'] < 1.0]
     # df = df[df['objective_name'] == 'FairSVM: objective']
-    df = df[df['data_name'] != 'Simulated[n_features=100,n_samples=500000]']
+    # df = df[df['data_name'] != 'Simulated[n_features=100,n_samples=500000]']
 
     solvers = list(set(df['solver_name']) - set(['rehline']))
     # f, ax = plt.subplots(figsize=(7, 7))

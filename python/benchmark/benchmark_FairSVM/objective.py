@@ -22,10 +22,12 @@ class Objective(BaseObjective):
     def compute(self, beta):
         n,d = self.X.shape
         s = np.dot(self.X, beta)
+        constrain = max(abs(np.dot(self.Z, s) / len(self.X)) - self.rho, 1e-6)
+
+        # return self.C * np.mean(np.maximum(1.0 - self.y * s, 0.)) + 0.5 * np.dot(beta, beta) + 1000*constrain
         if self.obj:
-            return self.C * np.sum(np.maximum(1.0 - self.y * s, 0.)) / len(self.X) + 0.5 * np.dot(beta, beta)
+            return self.C * np.mean(np.maximum(1.0 - self.y * s, 0.)) + 0.5 * np.dot(beta, beta)
         else:
-            constrain = abs(np.dot(self.Z, s) / len(self.X)) - self.rho
             return max(constrain, 1e-6)
 
     def get_objective(self):

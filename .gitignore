@@ -15,6 +15,7 @@
 python/benchmark/benchmark_FairSVM/__cache__/
 python/benchmark/benchmark_SVM/__cache__/
 python/benchmark/benchmark_QR/__cache__/
+python/benchmark/benchmark_Huber/__cache__/
 
 __pycache__/
 python/build/

@@ -20,6 +20,5 @@ class Objective(BaseObjective):
         s = np.dot(self.X, beta)
         return self.C * np.sum(np.maximum(1.0 - self.y * s, 0.)) / len(self.X) + 0.5 * np.dot(beta, beta)
 
-
     def get_objective(self):
         return dict(X=self.X, y=self.y, C=self.C)

@@ -1,6 +1,4 @@
 from benchopt import BaseDataset, safe_import_context
-from sklearn.datasets import make_classification
-import numpy as np
 
 with safe_import_context() as import_ctx:
     import numpy as np
@@ -14,8 +12,8 @@ class Dataset(BaseDataset):
         'n_samples, n_features': [
             (500, 100),
             (5000, 100),
-            (50000, 100),
-            ]
+            # (50000, 100),
+        ]
     }
 
     def __init__(self, n_samples=10, n_features=50, random_state=42):
@@ -24,12 +22,13 @@ class Dataset(BaseDataset):
         self.random_state = random_state
 
     def get_data(self):
+        np.random.seed(self.random_state)
         n, d = self.n_samples, self.n_features
-        X, y = make_classification(n_samples=n, n_features=d, n_informative=d-2, random_state=self.random_state)
-        y = 2*y - 1.0
-        x_sensitive = X[:,np.random.randint(d)]
-        x_sensitive = x_sensitive - np.mean(x_sensitive)
+        X = np.random.randn(n, d)
+        beta0 = np.random.randn(d)
+        out = X@beta0
+        y = out + np.random.randn(n)
 
-        data = dict(X=X, y=y, Z=x_sensitive)
+        data = dict(X=X, y=y)
 
         return self.n_features, data

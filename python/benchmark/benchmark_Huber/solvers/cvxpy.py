@@ -19,21 +19,17 @@ class Solver(BaseSolver):
 
     parameter_template = "solver={solver}"
 
-    def set_objective(self, X, y, Z, C, rho):
-        self.X, self.y, self.Z, self.C, self.rho = X, y, Z, C, rho
+    def set_objective(self, X, y, tau, lam1, lam2):
+        self.X, self.y, self.tau, self.lam1, self.lam2 = X, y, tau, lam1, lam2
         self.n, self.d = X.shape
-        ## SVM parameters
-
+        ## Huber parameters
         self.w = cp.Variable(self.d)
-        self.xi = cp.Variable(self.n)
-
-        A = np.repeat([self.Z @ self.X], repeats=[2], axis=0) / self.n
-        A[1] = -A[1]
-        b = np.array([self.rho, self.rho])
-
-        objective = cp.Minimize(1/2*cp.square(cp.norm(self.w))+ C * cp.sum(self.xi) / self.n)
-        constraints = [cp.multiply(y, X @ self.w) + self.xi >=1, self.xi>=0, A@self.w + b >=0]
-        self.prob = cp.Problem(objective, constraints)
+        res = y - X @ self.w
+        loss = cp.huber(res, tau)
+        reg = lam1*cp.sum(cp.abs(self.w)) + 1/2*lam2*cp.square(cp.norm(self.w))
+        
+        objective = cp.Minimize(cp.sum(loss) / self.n + reg)
+        self.prob = cp.Problem(objective)
         
 
     def run(self, tol):
@@ -54,11 +50,18 @@ class Solver(BaseSolver):
                         'feastol': 1e-2}
         elif solver in ['SCS']:
             algo_tol = {'eps': 1e-2}
+        elif solver in ['MOSEK']:
+            algo_tol={'MSK_DPAR_INTPNT_QO_TOL_DFEAS': 1e-3,
+                      'MSK_DPAR_INTPNT_QO_TOL_INFEAS': 1e-3,
+                      'MSK_DPAR_INTPNT_QO_TOL_MU_RED': 1e-3,
+                      'MSK_DPAR_INTPNT_QO_TOL_PFEAS': 1e-3,
+                      'MSK_DPAR_INTPNT_QO_TOL_REL_GAP': 1e-3,
+                      'MSK_DPAR_QCQO_REFORMULATE_REL_DROP_TOL': 1e-3
+                      }
         else:
-            algo_tol={}
+            algo_tol={ }
 
         for key in algo_tol.keys():
-            # algo_tol[key] = algo_tol[key]* 2 **(-n_iter)
             algo_tol[key] = min(tol,1e-3)
         
         if solver in ['OSQP']:
@@ -66,7 +69,7 @@ class Solver(BaseSolver):
         elif solver in ['ECOS', 'CVXOPT', 'SCS']:
             result = self.prob.solve(solver=solver, max_iters=10000, **algo_tol)
         elif solver in ['MOSEK']:
-            result = self.prob.solve(solver=solver, mosek_params={'MSK_DPAR_OPTIMIZER_MAX_TIME':2**n_iter})
+            result = self.prob.solve(solver=solver, mosek_params=algo_tol)
         else:
             result = self.prob.solve(solver=solver)
 

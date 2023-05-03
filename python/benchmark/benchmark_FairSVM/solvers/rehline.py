@@ -9,7 +9,7 @@ with safe_import_context() as import_ctx:
 
 class Solver(BaseSolver):
     name = 'rehline'
-
+    stopping_strategy = "iteration"
     install_cmd = 'pip'
     requirements = ['scikit-learn']
 
@@ -21,12 +21,13 @@ class Solver(BaseSolver):
         A[1] = -A[1]
         b = np.array([self.rho, self.rho])
 
-        self.clf = ReHLine(C=self.C/n, verbose=False, tol=1e-12)
+        self.clf = ReHLine(C=self.C/n, verbose=False, tol=1e-15)
         self.clf.make_ReLHLoss(X=X, y=y, loss={'name':'SVM'})
         self.clf.A = A
-        self.clf.b = b
+        self.clf.b = b        
 
     def run(self, n_iter):
+        # print('num of max iteration is: %d' %n_iter)
         self.clf.max_iter = n_iter
         self.clf.fit(self.X)
 
