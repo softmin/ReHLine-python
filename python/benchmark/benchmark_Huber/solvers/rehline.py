@@ -19,9 +19,13 @@ class Solver(BaseSolver):
 
         self.clf = ReHLine(C=1./n/lam2, verbose=False, tol=1e-6)
         self.clf.make_ReLHLoss(X=X, y=y, loss={'name':'huber', 'tau':tau})
-        self.X_fake=self.clf.append_l1(X, l1_pen=lam1/lam2)
+        if lam1 > 0:
+            self.X_fake=self.clf.append_l1(X, l1_pen=lam1/lam2)
+        else:
+            self.X_fake = X
 
     def run(self, n_iter):
+        # print('num of iterations is %d' % n_iter)
         self.clf.max_iter = n_iter
         self.clf.fit(self.X_fake)
 

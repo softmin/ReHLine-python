@@ -14,7 +14,8 @@ class Solver(BaseSolver):
     requirements = ['cvxpy']
 
     parameters = {
-        'solver': ['ECOS', 'OSQP', 'CVXOPT', 'MOSEK', 'SCS'],
+        # 'solver': ['ECOS', 'OSQP', 'CVXOPT', 'MOSEK', 'SCS'],
+        'solver': ['ECOS', 'OSQP', 'MOSEK', 'SCS'],
     }
 
     parameter_template = "solver={solver}"
@@ -26,7 +27,10 @@ class Solver(BaseSolver):
         self.w = cp.Variable(self.d)
         res = y - X @ self.w
         loss = cp.huber(res, tau)
-        reg = lam1*cp.sum(cp.abs(self.w)) + 1/2*lam2*cp.square(cp.norm(self.w))
+        if lam1 > 0:
+            reg = lam1*cp.sum(cp.abs(self.w)) + 1/2*lam2*cp.square(cp.norm(self.w))
+        else:
+            reg = 1/2*lam2*cp.square(cp.norm(self.w))
         
         objective = cp.Minimize(cp.sum(loss) / self.n + reg)
         self.prob = cp.Problem(objective)
@@ -62,7 +66,7 @@ class Solver(BaseSolver):
             algo_tol={ }
 
         for key in algo_tol.keys():
-            algo_tol[key] = min(tol,1e-3)
+            algo_tol[key] = min(tol,1e-2)
         
         if solver in ['OSQP']:
             result = self.prob.solve(solver=solver,  **algo_tol)

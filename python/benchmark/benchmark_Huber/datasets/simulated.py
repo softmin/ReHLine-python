@@ -1,4 +1,5 @@
 from benchopt import BaseDataset, safe_import_context
+from sklearn.datasets import fetch_openml
 
 with safe_import_context() as import_ctx:
     import numpy as np

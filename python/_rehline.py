@@ -219,8 +219,12 @@ class ReHLine(BaseEstimator):
         if sample_weight is None:
             sample_weight = np.ones(X.shape[0])
 
-        U_weight = self.U * sample_weight
-        V_weight = self.V * sample_weight
+        if self.L > 0:
+            U_weight = self.U * sample_weight
+            V_weight = self.V * sample_weight
+        else:
+            U_weight = self.U
+            V_weight = self.V
 
         if self.H > 0:
             sqrt_sample_weight = np.sqrt(sample_weight)

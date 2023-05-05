@@ -6,7 +6,7 @@ class Objective(BaseObjective):
     name = "ElasticHuber"
 
     parameters = {
-        'lam1': [1.],
+        'lam1': [0.],
         'lam2': [1.],
         'tau': [1.0]
     }

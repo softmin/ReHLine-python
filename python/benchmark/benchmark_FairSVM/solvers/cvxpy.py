@@ -14,7 +14,8 @@ class Solver(BaseSolver):
     requirements = ['cvxpy']
 
     parameters = {
-        'solver': ['ECOS', 'OSQP', 'CVXOPT', 'MOSEK', 'SCS'],
+        # 'solver': ['ECOS', 'OSQP', 'CVXOPT', 'MOSEK', 'SCS'],
+        'solver': ['ECOS', 'OSQP', 'MOSEK', 'SCS'],
     }
 
     parameter_template = "solver={solver}"
