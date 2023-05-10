@@ -1,5 +1,6 @@
 from benchopt import BaseDataset, safe_import_context
 from sklearn.datasets import fetch_openml
+from sklearn.preprocessing import StandardScaler
 
 with safe_import_context() as import_ctx:
     import numpy as np
@@ -24,8 +25,19 @@ class Dataset(BaseDataset):
     def get_data(self):
         np.random.seed(self.random_state)
         dataset = fetch_openml(name=self.dataset_name)
-        X = dataset.data
-        y = dataset.target
+        X = dataset.data.values
+        if self.dataset_name == 'steel-plates-fault':
+            y = dataset.target.values.map({'1':-1., '2':1.})
+        elif self.dataset_name in ['philippine', 'creditcard']:
+            y = dataset.target.values.map({'0':-1., '1':1.})
+        else:
+            y = dataset.target.values
+
+        y = np.array(y, dtype=float)
+        scaler = StandardScaler()
+        X = scaler.fit_transform(X)
+
+        n, d = X.shape
         data = dict(X=X, y=y)
 
         return self.dataset_name, data
