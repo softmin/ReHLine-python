@@ -8,33 +8,37 @@ where $\rho_\kappa(u) = u\cdot(\kappa - \mathbf{1}(u < 0))$ is the check loss,
 $x_i \in \mathbb{R}^d$ is a feature vector, $y_i \in \mathbb{R}$ is the response variable,
 and $\lambda_1, \lambda_2>0$ are weights of lasso and ridge penalties, respectively.
 
-### Installation
-
-Assuming the current working directory is the `benchmark_QR`
-folder, some preliminary steps need to be done before
-running R solvers. First, enter the Conda environment
-and install R:
-
-```bash
-conda install r-base rpy2 -c conda-forge
-```
-
-Then open R inside this Conda environment, and install necessary packages:
-
-```r
-# Install CRAN packages
-install.packages(c("hqreg", "Rcpp", "RcppEigen"))
-
-# Install rehline R package
-# "../../.." is the relative path to the root folder of ReHLine
-# Change this to absolute path if needed
-install.packages("../../..", repos = NULL, type = "source")
-```
+Then, the ElasticQR can be rewritten as a ReHLine optimization of \eqref{opt:form} with
+$$
+\mathbf{U} \leftarrow
+\begin{pmatrix}
+-\frac{\kappa}{n\lambda_2} \mathbf{1}^\intercal_n & \mathbf{0}^\intercal_{d+1} \\
+ \frac{1-\kappa}{n\lambda_2} \mathbf{1}^\intercal_n & \mathbf{0}^\intercal_{d+1} \\
+ \mathbf{0}^\intercal_n & \frac{\lambda_1}{\lambda_2} \mathbf{1}^\intercal_{d+1} \\
+ \mathbf{0}^\intercal_n & -\frac{\lambda_1}{\lambda_2} \mathbf{1}^\intercal_{d+1}
+\end{pmatrix}, \quad
+\mathbf{V} \leftarrow
+\begin{pmatrix}
+   \frac{\kappa}{n\lambda_2} \mathbf{y}^\intercal & \mathbf{0}^\intercal_{d+1} \\
+   -\frac{1-\kappa}{n\lambda_2} \mathbf{y}^\intercal & \mathbf{0}^\intercal_{d+1} \\
+   \mathbf{0}^\intercal_n & \mathbf{0}_{d+1}^\intercal \\
+   \mathbf{0}^\intercal_n & \mathbf{0}_{d+1}^\intercal
+  \end{pmatrix}, \quad
+\mathbf{X} \leftarrow
+\begin{pmatrix}
+    \begin{matrix}
+      \mathbf{X} & \mathbf{1}_n
+    \end{matrix}
+    \\
+    \mathbf{I}_{d+1}
+  \end{pmatrix},
+$$
+where $\mathbf{I}_{d+1}$ is an identity matrix.
 
 ### Benchmarking solvers
 
 The solvers can be benchmarked using the command below:
 
 ```bash
-benchopt run . -s rehline -s rehline-r -s hqreg-r -d simulated
+benchopt run . -d reg_data
 ```

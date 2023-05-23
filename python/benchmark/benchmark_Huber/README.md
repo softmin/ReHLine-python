@@ -1,16 +1,58 @@
-## Benchmark repository for elastic net regularized quantile regression
+## Benchmark repository for ridge regularized Huber minimization
 
-The elastic net regularized quantile regression (ElasticQR) solves the following optimization problem:
+The ridge regularized Huber minimization (RidgeHuber) solves the following optimization problem:
 
-$$\min_{\beta \in \mathbb{R}^{d+1}} \frac{1}{n} \sum_{i=1}^n \rho_\kappa ( y_i - x^\intercal_i \beta_{1:d} - \beta_{d+1} ) + \lambda_1 \Vert \beta \Vert_1 + \frac{\lambda_2}{2} \Vert \beta \Vert_2^2,$$
+$$\min_{\mathbf{\beta}} \frac{1}{n} \sum_{i=1}^n H_\kappa( y_i - \mathbf{x}_i^\intercal \mathbf{\beta} ) + \lambda_1 \| \mathbf{\beta} \|_1 + \frac{\lambda_2}{2} \| \mathbf{\beta} \|_2^2,$$
 
-where $\rho_\kappa(u) = u\cdot(\kappa - \mathbf{1}(u < 0))$ is the check loss,
-$x_i \in \mathbb{R}^d$ is a feature vector, $y_i \in \mathbb{R}$ is the response variable,
-and $\lambda_1, \lambda_2>0$ are weights of lasso and ridge penalties, respectively.
+where $H_\kappa(\cdot)$ is the Huber loss with a given parameter $\kappa$:
+$$
+\begin{equation*}
+  H_\kappa(z) =
+  \begin{cases}
+  \ z^2/2,                  & 0 < |z| \leq \kappa, \\
+  \ \kappa ( |z| - \kappa/2 ),   & |z| > \kappa.
+  \end{cases}
+\end{equation*}
+$$
+In this case, the RidgeHuber can be rewritten as a ReHLine optimization with
+$$
+\mathbf{S} \leftarrow
+\begin{pmatrix}
+-\sqrt{\frac{2}{n\lambda_2}} \mathbf{1}^\intercal_n & \mathbf{0}^\intercal_d \\
+\sqrt{\frac{2}{n\lambda_2}} \mathbf{1}^\intercal_n & \mathbf{0}^\intercal_d \\
+\end{pmatrix}, \quad
+\mathbf{T} \leftarrow
+\begin{pmatrix}
+  \sqrt{\frac{2}{n\lambda_2}} \mathbf{y}^\intercal & \mathbf{0}^\intercal_d \\
+   -\sqrt{\frac{2}{n\lambda_2}} \mathbf{y}^\intercal & \mathbf{0}^\intercal_d \\
+  \end{pmatrix}, \quad
+\mathbf{\Tau} \leftarrow
+\begin{pmatrix}
+  \kappa \mathbf{1}^\intercal_n & \mathbf{0}^\intercal_d \\
+  \\
+  \kappa \mathbf{1}^\intercal_n  & \mathbf{0}^\intercal_d \\
+  \end{pmatrix},
+$$
 
+$$ \mathbf{U} \leftarrow
+\begin{pmatrix}
+\mathbf{0}^\intercal_n & \frac{\lambda_1}{\lambda_2} \mathbf{1}_d^\intercal \\
+\\
+\mathbf{0}^\intercal_n & - \frac{\lambda_1}{\lambda_2} \mathbf{1}_d^\intercal \\
+\end{pmatrix}, \quad
+\mathbf{V} \leftarrow \mathbf{0}, \quad
+\mathbf{X} \leftarrow
+\begin{pmatrix}
+    \begin{matrix}
+      \mathbf{X}
+    \end{matrix}
+    \\
+    \mathbf{I}_{d}
+  \end{pmatrix}.
+$$
 ### Installation
 
-Assuming the current working directory is the `benchmark_QR`
+Assuming the current working directory is the `benchmark_Huber`
 folder, some preliminary steps need to be done before
 running R solvers. First, enter the Conda environment
 and install R:
@@ -36,5 +78,5 @@ install.packages("../../..", repos = NULL, type = "source")
 The solvers can be benchmarked using the command below:
 
 ```bash
-benchopt run . -s rehline -s rehline-r -s hqreg-r -d simulated
+benchopt run . -d reg_data
 ```
