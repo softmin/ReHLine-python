@@ -26,7 +26,7 @@ Some existing problems of recent interest in statistics and machine learning can
 |[FairSVM](./python/benchmark/benchmark_FairSVM/README.md) | [Result](./python/benchmark/benchmark_FairSVM/outputs/benchmark_FairSVM.html)|
 |[ElasticQR](./python/benchmark/benchmark_QR/README.md) | [Result](./python/benchmark/benchmark_QR/outputs/benchmark_QR.html)|
 |[RidgeHuber](./python/benchmark/benchmark_Huber/README.md) | [Result](./python/benchmark/benchmark_Huber/outputs/benchmark_Huber.html)|
-|[FairSVM](./python/benchmark/benchmark_SVM/README.md) | [Result](./python/benchmark/benchmark_SVM/outputs/benchmark_SVM.html)|
+|[SVM](./python/benchmark/benchmark_SVM/README.md) | [Result](./python/benchmark/benchmark_SVM/outputs/benchmark_SVM.html)|
 
 ## 🧾 **Overview of Results**
 
