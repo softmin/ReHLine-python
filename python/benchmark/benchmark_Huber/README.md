@@ -28,7 +28,7 @@ In this case, the RidgeHuber can be rewritten as a ReHLine optimization with
   \sqrt{\frac{2}{n\lambda_2}} \mathbf{y}^\intercal & \mathbf{0}^\intercal_d \\
    -\sqrt{\frac{2}{n\lambda_2}} \mathbf{y}^\intercal & \mathbf{0}^\intercal_d \\
   \end{pmatrix}, \quad
-\mathbf{\Tau} \leftarrow
+\mathbf{\tau} \leftarrow
 \begin{pmatrix}
   \kappa \mathbf{1}^\intercal_n & \mathbf{0}^\intercal_d \\
   \\
