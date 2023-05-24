@@ -5,7 +5,7 @@ The ridge regularized Huber minimization (RidgeHuber) solves the following optim
 $$\min_{\mathbf{\beta}} \frac{1}{n} \sum_{i=1}^n H_\kappa( y_i - \mathbf{x}_i^\intercal \mathbf{\beta} ) + \lambda_1 \| \mathbf{\beta} \|_1 + \frac{\lambda_2}{2} \| \mathbf{\beta} \|_2^2,$$
 
 where $H_\kappa(\cdot)$ is the Huber loss with a given parameter $\kappa$:
-$$
+math```
 \begin{equation*}
   H_\kappa(z) =
   \begin{cases}
@@ -13,9 +13,9 @@ $$
   \ \kappa ( |z| - \kappa/2 ),   & |z| > \kappa.
   \end{cases}
 \end{equation*}
-$$
+```
 In this case, the RidgeHuber can be rewritten as a ReHLine optimization with
-$$
+```math
 \mathbf{S} \leftarrow
 \begin{pmatrix}
 -\sqrt{\frac{2}{n\lambda_2}} \mathbf{1}^\intercal_n & \mathbf{0}^\intercal_d \\
@@ -32,9 +32,10 @@ $$
   \\
   \kappa \mathbf{1}^\intercal_n  & \mathbf{0}^\intercal_d \\
   \end{pmatrix},
-$$
+```
 
-$$ \mathbf{U} \leftarrow
+math```
+\mathbf{U} \leftarrow
 \begin{pmatrix}
 \mathbf{0}^\intercal_n & \frac{\lambda_1}{\lambda_2} \mathbf{1}_d^\intercal \\
 \\
@@ -49,7 +50,8 @@ $$ \mathbf{U} \leftarrow
     \\
     \mathbf{I}_{d}
   \end{pmatrix}.
-$$
+```
+
 ### Installation
 
 Assuming the current working directory is the `benchmark_Huber`
