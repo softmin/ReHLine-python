@@ -32,31 +32,9 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// rehline_old
-List rehline_old(NumericMatrix Xmat, NumericMatrix Amat, NumericVector bvec, NumericMatrix Umat, NumericMatrix Vmat, NumericMatrix Smat, NumericMatrix Tmat, NumericMatrix TauMat, int max_iter, double tol, bool verbose);
-RcppExport SEXP _rehline_rehline_old(SEXP XmatSEXP, SEXP AmatSEXP, SEXP bvecSEXP, SEXP UmatSEXP, SEXP VmatSEXP, SEXP SmatSEXP, SEXP TmatSEXP, SEXP TauMatSEXP, SEXP max_iterSEXP, SEXP tolSEXP, SEXP verboseSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< NumericMatrix >::type Xmat(XmatSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type Amat(AmatSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type bvec(bvecSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type Umat(UmatSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type Vmat(VmatSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type Smat(SmatSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type Tmat(TmatSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type TauMat(TauMatSEXP);
-    Rcpp::traits::input_parameter< int >::type max_iter(max_iterSEXP);
-    Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
-    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
-    rcpp_result_gen = Rcpp::wrap(rehline_old(Xmat, Amat, bvec, Umat, Vmat, Smat, Tmat, TauMat, max_iter, tol, verbose));
-    return rcpp_result_gen;
-END_RCPP
-}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_rehline_rehline", (DL_FUNC) &_rehline_rehline, 11},
-    {"_rehline_rehline_old", (DL_FUNC) &_rehline_rehline_old, 11},
     {NULL, NULL, 0}
 };
 
