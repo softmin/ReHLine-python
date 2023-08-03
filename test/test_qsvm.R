@@ -31,6 +31,7 @@ print(dim(X))
 print(dim(Smat))
 print(dim(Tmat))
 
+# Algorithm with shrinking
 set.seed(123)
 res = rehline(
     X, Umat = NULL, V = NULL, Smat = Smat, Tmat = Tmat, Tau = tau,
@@ -41,12 +42,28 @@ print(res$beta)
 # [11]  0.480970710  0.166156756 -0.073218441 -0.007768079  0.213031604
 # [16]  0.038335470  0.180552815  0.141290067  0.192858360 -0.300795854
 
+# Vanilla algorithm without shrinking
+set.seed(123)
+res = rehline(
+    X, Umat = NULL, V = NULL, Smat = Smat, Tmat = Tmat, Tau = tau,
+    max_iter = 1000, tol = 1e-6, shrink = FALSE, verbose = 1)
+print(res$beta)
+
 # Add constraints
 set.seed(123)
 K = 5
 d = ncol(X)
 A = matrix(rnorm(K * d), K)
 b = rnorm(K)
+res = rehline(
+    X, Umat = NULL, V = NULL, Smat = Smat, Tmat = Tmat, Tau = tau,
+    Amat = A, bvec = b,
+    max_iter = 1000, tol = 1e-6, verbose = 1
+)
+# Test whether A * beta + b >= 0
+print(c(A %*% res$beta) + b)
+
+# Vanilla algorithm without shrinking
 res = rehline(
     X, Umat = NULL, V = NULL, Smat = Smat, Tmat = Tmat, Tau = tau,
     Amat = A, bvec = b,

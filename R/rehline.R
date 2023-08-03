@@ -1,7 +1,7 @@
 rehline = function(
     Xmat, Umat, Vmat, Smat = NULL, Tmat = NULL, Tau = Inf,
     Amat = NULL, bvec = NULL,
-    max_iter = 1000, tol = 1e-5, verbose = 0)
+    max_iter = 1000, tol = 1e-5, shrink = TRUE, verbose = 0)
 {
     n = nrow(Xmat)
     d = ncol(Xmat)
@@ -26,6 +26,6 @@ rehline = function(
 
     rehline_(
         Xmat, Amat, bvec, Umat, Vmat, Smat, Tmat, Tau,
-        max_iter, tol, verbose
+        max_iter, tol, shrink, verbose
     )
 }
