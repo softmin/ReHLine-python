@@ -13,11 +13,16 @@ class Solver(BaseSolver):
     install_cmd = 'pip'
     requirements = ['scikit-learn']
 
+    parameters = {
+        'shrink': [True, False],
+    }
+    parameter_template = "shrink={shrink}"
+
     def set_objective(self, X, y, C):
         self.X, self.y, self.C = X, y, C
         n, d = X.shape
 
-        self.clf = ReHLine(C=self.C/n, verbose=False, tol=1e-12)
+        self.clf = ReHLine(C=self.C/n, tol=1e-12, shrink=self.shrink, verbose=False)
         self.clf.make_ReLHLoss(X=X, y=y, loss={'name':'SVM'})
 
     def run(self, n_iter):
