@@ -15,7 +15,7 @@ class Solver(BaseSolver):
 
     parameters = {
         # 'solver': ['ECOS', 'OSQP', 'CVXOPT', 'MOSEK', 'SCS'],
-        'solver': ['ECOS', 'OSQP', 'MOSEK', 'SCS'],
+        'solver': ['ECOS', 'MOSEK', 'SCS', 'CPLEX', 'GUROBI'],
     }
 
     parameter_template = "solver={solver}"
@@ -67,7 +67,7 @@ class Solver(BaseSolver):
         elif solver in ['ECOS', 'CVXOPT', 'SCS']:
             result = self.prob.solve(solver=solver, max_iters=10000, **algo_tol)
         elif solver in ['MOSEK']:
-            result = self.prob.solve(solver=solver, mosek_params={'MSK_DPAR_OPTIMIZER_MAX_TIME':2**n_iter})
+            result = self.prob.solve(solver=solver, mosek_params={'MSK_DPAR_BASIS_TOL_X':tol})
         else:
             result = self.prob.solve(solver=solver)
 

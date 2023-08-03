@@ -24,13 +24,13 @@ res = {'objective_name': [],
 
 for file_name in ['fairsvm_out.csv', 'qr_out.csv', 'huber_out.csv', 'svm_out.csv']:
 
+    df = pd.read_csv(file_name)
+    # df = pd.read_parquet
     perf = {'objective_name': [], 
         'data_name': [], 
         'solver': [], 
         'if_solve': [],
         'time': []}
-
-    df = pd.read_csv(file_name)
 
     dataset_lst = set(df['data_name'])
 

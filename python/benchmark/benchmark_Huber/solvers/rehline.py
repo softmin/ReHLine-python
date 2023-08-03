@@ -22,7 +22,7 @@ class Solver(BaseSolver):
         self.X, self.y, self.tau, self.lam1, self.lam2 = X, y, tau, lam1, lam2
         n, d = X.shape
 
-        self.clf = ReHLine(C=1./n/lam2, tol=1e-6, shrink=self.shrink, verbose=False)
+        self.clf = ReHLine(C=1./n/lam2, tol=1e-10, shrink=self.shrink, verbose=False)
         self.clf.make_ReLHLoss(X=X, y=y, loss={'name':'huber', 'tau':tau})
         if lam1 > 0:
             self.X_fake=self.clf.append_l1(X, l1_pen=lam1/lam2)

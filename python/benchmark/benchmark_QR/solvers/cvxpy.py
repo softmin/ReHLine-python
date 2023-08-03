@@ -14,7 +14,7 @@ class Solver(BaseSolver):
 
     parameters = {
         # 'solver': ['ECOS', 'OSQP', 'CVXOPT', 'MOSEK', 'SCS'],
-        'solver': ['ECOS', 'OSQP', 'MOSEK', 'SCS'],
+        'solver': ['ECOS', 'MOSEK', 'SCS', 'CPLEX', 'GUROBI'],
     }
 
     parameter_template = "solver={solver}"

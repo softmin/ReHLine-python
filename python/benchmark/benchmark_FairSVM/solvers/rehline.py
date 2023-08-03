@@ -22,7 +22,7 @@ class Solver(BaseSolver):
     def set_objective(self, X, y, Z, C, rho):
         self.X, self.y, self.Z, self.C, self.rho = X, y, Z, C, rho
         n, d = X.shape
-
+        
         A = np.repeat([self.Z @ self.X], repeats=[2], axis=0) / n
         A[1] = -A[1]
         b = np.array([self.rho, self.rho])
