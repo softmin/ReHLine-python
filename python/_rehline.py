@@ -15,9 +15,9 @@ def ReHLine_solver(X, U, V,
         Tau=np.empty(shape=(0, 0)),
         S=np.empty(shape=(0, 0)), T=np.empty(shape=(0, 0)),
         A=np.empty(shape=(0, 0)), b=np.empty(shape=(0)),
-        max_iter=1000, tol=1e-4, verbose=True):
+        max_iter=1000, tol=1e-4, shrink=True, verbose=True):
     result = rehline.rehline_result()
-    rehline.rehline_internal(result, X, A, b, U, V, S, T, Tau, max_iter, tol, verbose)
+    rehline.rehline_internal(result, X, A, b, U, V, S, T, Tau, max_iter, tol, shrink, verbose)
     return result
 
 class ReHLine(BaseEstimator):
@@ -54,7 +54,7 @@ class ReHLine(BaseEstimator):
                        Tau=np.empty(shape=(0,0)),
                        S=np.empty(shape=(0,0)), T=np.empty(shape=(0,0)),
                        A=np.empty(shape=(0,0)), b=np.empty(shape=(0)),
-                       max_iter=1000, tol=1e-4, verbose=False):
+                       max_iter=1000, tol=1e-4, shrink=True, verbose=False):
         self.loss = loss
         self.C = C
         self.U = U
@@ -66,6 +66,7 @@ class ReHLine(BaseEstimator):
         self.b = b
         self.max_iter = max_iter
         self.tol = tol
+        self.shrink = shrink
         self.verbose = verbose
         self.L = U.shape[0]
         self.n = U.shape[1]
@@ -93,7 +94,7 @@ class ReHLine(BaseEstimator):
             self.U = np.ones((2, n*n_qt))
             self.V = np.ones((2, n*n_qt))
             X_fake = np.zeros((n*n_qt, d+n_qt))
-            
+
             for l,qt_tmp in enumerate(loss['qt']):
                 self.U[0,l*n:(l+1)*n] = - (self.C*qt_tmp*self.U[0,l*n:(l+1)*n])
                 self.U[1,l*n:(l+1)*n] = (self.C*(1.-qt_tmp)*self.U[1,l*n:(l+1)*n])
@@ -103,10 +104,10 @@ class ReHLine(BaseEstimator):
 
                 X_fake[l*n:(l+1)*n,:d] = X
                 X_fake[l*n:(l+1)*n,d+l] = 1.
-            
-            self.auto_shape()    
+
+            self.auto_shape()
             return X_fake
-    
+
         elif (self.loss['name'] == 'sSVM') \
                 or (self.loss['name'] == 'smooth SVM') \
                 or (self.loss['name'] == 'smooth hinge'):
@@ -121,7 +122,7 @@ class ReHLine(BaseEstimator):
             self.U = np.ones((2, n))*self.C
             self.V = np.ones((2, n))*self.C
             self.U[1] = -self.U[1]
-            
+
             self.V[0] = - X.dot(y)*self.C
             self.V[1] = X.dot(y)*self.C
         elif (self.loss['name'] == 'huber'):
@@ -241,7 +242,8 @@ class ReHLine(BaseEstimator):
                                 Tau=Tau_weight,
                                 S=S_weight, T=T_weight,
                                 A=self.A, b=self.b,
-                                max_iter=self.max_iter, tol=self.tol, verbose=self.verbose)
+                                max_iter=self.max_iter, tol=self.tol,
+                                shrink=self.shrink, verbose=self.verbose)
 
         self.coef_ = result.beta
         self.opt_result_ = result
@@ -266,6 +268,3 @@ class ReHLine(BaseEstimator):
 
         X = check_array(X)
         return np.dot(X, self.coef_)
-
-
-

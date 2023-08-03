@@ -531,6 +531,44 @@ public:
         set_primal();
     }
 
+    inline int solve_vanilla(std::vector<double>& dual_objfns, int max_iter, double tol,
+                             int verbose = 0, std::ostream& cout = std::cout)
+    {
+        // Main iterations
+        int i = 0;
+        Vector old_xi(m_K), old_beta(m_d);
+        for(; i < max_iter; i++)
+        {
+            old_xi.noalias() = m_xi;
+            old_beta.noalias() = m_beta;
+
+            update_xi_beta();
+            update_Lambda_beta();
+            update_Gamma_beta();
+
+            // Compute difference of xi and beta
+            const double xi_diff = (m_K > 0) ? (m_xi - old_xi).norm() : 0.0;
+            const double beta_diff = (m_beta - old_beta).norm();
+
+            // Print progress
+            if (verbose && (i % 50 == 0))
+            {
+                double obj = dual_objfn();
+                dual_objfns.push_back(obj);
+                cout << "Iter " << i << ", dual_objfn = " << obj <<
+                    ", xi_diff = " << xi_diff <<
+                    ", beta_diff = " << beta_diff << std::endl;
+            }
+
+            // Convergence test based on change of variable values
+            const bool vars_conv = (xi_diff < tol) && (beta_diff < tol);
+            if (vars_conv)
+                break;
+        }
+
+        return i;
+    }
+
     inline int solve(std::vector<double>& dual_objfns, int max_iter, double tol,
                      int verbose = 0, std::ostream& cout = std::cout)
     {
@@ -642,7 +680,7 @@ void rehline_internal(
     const MapMat& X, const MapMat& A, const MapVec& b,
     const MapMat& U, const MapMat& V,
     const MapMat& S, const MapMat& T, const MapMat& Tau,
-    int max_iter, double tol, int verbose = 0
+    int max_iter, double tol, bool shrink = true, int verbose = 0
     // std::ostream& cout = std::cout
 )
 {
@@ -654,7 +692,11 @@ void rehline_internal(
 
     // Main iterations
     std::vector<double> dual_objfns;
-    int niter = solver.solve(dual_objfns, max_iter, tol, verbose, std::cout);
+    int niter;
+    if (shrink)
+        niter = solver.solve(dual_objfns, max_iter, tol, verbose, std::cout);
+    else
+        niter = solver.solve_vanilla(dual_objfns, max_iter, tol, verbose, std::cout);
 
     // Save result
     result.beta.swap(solver.get_beta_ref());
