@@ -9,7 +9,8 @@ def clean_res(res):
     res['objective_name'] = res['objective_name'].replace('FairSVM[C=1.0,obj=0,rho=0.01]', 'FairSVM-C')
     res = res.replace({'objective_name': r'\[.*.\]'}, {'objective_name': ''}, regex=True)
 
-    for col_tmp in ['data_name', 'solver']:
+    # for col_tmp in ['data_name', 'solver']:
+    for col_tmp in ['data_name']:
         res = res.replace({col_tmp: r'.*.*\='}, {col_tmp: ''}, regex=True)
         res = res.replace({col_tmp: r'\]'}, {col_tmp: ''}, regex=True)
     return res
@@ -74,7 +75,7 @@ for file_name in ['fairsvm_out.csv', 'qr_out.csv', 'huber_out.csv', 'svm_out.csv
     print(perf.to_markdown(floatfmt='10.3E'))
     print('\n')
     for col_tmp in perf.columns:
-        print('speed-up of rehline/%s: min: %.1f - max: %.1f' %(col_tmp, np.nanmin(perf[col_tmp]/perf['rehline']), np.nanmax(perf[col_tmp]/perf['rehline'])))
+        print('speed-up of rehline/%s: min: %.1f - max: %.1f' %(col_tmp, np.nanmin(perf[col_tmp]/perf['rehline[shrink=True]']), np.nanmax(perf[col_tmp]/perf['rehline[shrink=True]'])))
     print('\n')
 
 
