@@ -7,7 +7,11 @@ The SVM with fairness constraints (FairSVM) solves the following optimization pr
   \text{subj. to } & \quad \frac{1}{n} \sum_{i=1}^n \mathbf{z}_i \mathbf{\beta}^\intercal \mathbf{x}_i \leq \mathbf{\rho}, \quad \frac{1}{n} \sum_{i=1}^n \mathbf{z}_i \mathbf{\beta}^\intercal \mathbf{x}_i \geq -\mathbf{\rho},
 \end{align}
 ```
-where $\mathbf{x}_i \in \mathbb{R}^d$ is a feature vector, and $y_i \in \{-1, 1\}$ is a binary label, $\mathbf{z}_i$ is a collection of centered sensitive features $(\sum_{i=1}^n z_{ij} = 0 )$, such as gender and/or race. The constraints limit the correlation between the $d_0$-length sensitive features $\mathbf{z}_i \in \mathbb{R}^{d_0}$ and the decision function $\mathbf{\beta}^\intercal \mathbf{x}$, and the constants $\mathbf{\rho} \in \mathbb{R}_+^{d_0}$ trade-offs predictive accuracy and fairness. Note that the FairSVM can be rewritten as a ReHLine optimization with
+where $\mathbf{x}_i \in \mathbb{R}^d$ is a feature vector, and $y_i \in \{-1, 1\}$ is a binary label, $\mathbf{z}_i$ is a collection of centered sensitive features
+
+$$\sum_{i=1}^n z_{ij} = 0,$$
+
+such as gender and/or race. The constraints limit the correlation between the $d_0$-length sensitive features $\mathbf{z}_ i \in \mathbb{R}^{d_0}$ and the decision function $\mathbf{\beta}^\intercal \mathbf{x}$, and the constants $\mathbf{\rho} \in \mathbb{R}_+^{d_0}$ trade-offs predictive accuracy and fairness. Note that the FairSVM can be rewritten as a ReHLine optimization with
 ```math
 \mathbf{U} \leftarrow -C \mathbf{y}/n, \quad
 \mathbf{V} \leftarrow C \mathbf{1}_n/n, \quad
@@ -20,7 +24,7 @@ where $\mathbf{x}_i \in \mathbb{R}^d$ is a feature vector, and $y_i \in \{-1, 1\
 \begin{pmatrix}
   \mathbf{\rho} \\
   \mathbf{\rho}
-  \end{pmatrix},
+  \end{pmatrix}
 ```
 
 ### Benchmarking solvers
