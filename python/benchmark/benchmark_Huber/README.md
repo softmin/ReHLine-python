@@ -1,6 +1,6 @@
-## Benchmark repository for ridge regularized Huber minimization
+## Benchmark repository for elastic net regularized Huber minimization
 
-The ridge regularized Huber minimization (RidgeHuber) solves the following optimization problem:
+The elastic net regularized Huber minimization (ElasticHuber) solves the following optimization problem:
 
 ```math
 \min_{\mathbf{\beta}} \frac{1}{n} \sum_{i=1}^n H_\kappa( y_i - \mathbf{x}_i^\intercal \mathbf{\beta} ) + \lambda_1 \| \mathbf{\beta} \|_1 + \frac{\lambda_2}{2} \| \mathbf{\beta} \|_2^2,
@@ -16,7 +16,7 @@ where $H_\kappa(\cdot)$ is the Huber loss with a given parameter $\kappa$:
   \end{cases}
 \end{equation*}
 ```
-In this case, the RidgeHuber can be rewritten as a ReHLine optimization with
+In this case, the ElasticHuber can be rewritten as a ReHLine optimization with
 ```math
 \mathbf{S} \leftarrow
 \begin{pmatrix}
