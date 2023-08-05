@@ -1,10 +1,10 @@
-## Benchmark repository for SVMs
+## Benchmark repository for smoothed SVMs
 
-SVMs solve the following optimization problem:
+Smoothed SVMs solve the following optimization problem:
 ```math
-  \min_{\mathbf{\beta} \in \mathbb{R}^d} \frac{C}{n} \sum_{i=1}^n V( y_i \mathbf{\beta}^\intercal \mathbf{x}_i )_+ + \frac{1}{2} \| \mathbf{\beta} \|_2^2
+  \min_{\mathbf{\beta} \in \mathbb{R}^d} \frac{C}{n} \sum_{i=1}^n V( y_i \mathbf{\beta}^\intercal \mathbf{x}_i ) + \frac{1}{2} \| \mathbf{\beta} \|_2^2
 ```
-where $V(\cdot)$ is the smooth hinge loss, $\mathbf{x}_i \in \mathbb{R}^d$ is a feature vector, and $y_i \in \{-1, 1\}$ is a binary label. Note that the SVM can be rewritten as a ReHLine optimization with
+where $V(\cdot)$ is the smoothed hinge loss, $\mathbf{x}_i \in \mathbb{R}^d$ is a feature vector, and $y_i \in \{-1, 1\}$ is a binary label. Smoothed SVM can be rewritten as a ReHLine optimization with
 ```math
 \mathbf{S} \leftarrow -\sqrt{C} \mathbf{y}/n, \quad
 \mathbf{T} \leftarrow \sqrt{C} \mathbf{1}_n/n, \quad
