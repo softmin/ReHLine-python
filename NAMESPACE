@@ -1,4 +1,4 @@
 importFrom(Rcpp, evalCpp)
 useDynLib(rehline, .registration = TRUE)
 
-export(rehline, elastic_qr, elastic_huber)
+export(rehline, elastic_huber, elastic_qr, svm)

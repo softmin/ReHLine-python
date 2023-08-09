@@ -1,4 +1,5 @@
 library(rehline)
+library(LiblineaR)
 library(reticulate)
 
 py_config()
@@ -23,12 +24,20 @@ read_npz = function(npz_file)
 
 dat = read_npz("./dataset/sim/exp_svm.npz")
 X = dat[["X"]]
+y = dat[["y"]]
 U = dat[["U"]]
 V = dat[["V"]]
+C = 0.5
 
 print(dim(X))
 print(dim(U))
 print(dim(V))
+
+# LibLinear
+set.seed(123)
+y = matrix(y, ncol = 1)
+res = LiblineaR(X, y, type = 3, cost = C, epsilon = 1e-6, bias = 0, verbose = TRUE)
+print(as.numeric(res$W))
 
 # Algorithm with shrinking
 set.seed(123)
@@ -41,6 +50,11 @@ print(res$beta)
 # Vanilla algorithm without shrinking
 set.seed(123)
 res = rehline(X, U, V, max_iter = 1000, tol = 1e-6, shrink = FALSE, verbose = 1)
+print(res$beta)
+
+# Directly call svm()
+set.seed(123)
+res = svm(X, y, C = C * nrow(X), max_iter = 1000, tol = 1e-6, verbose = 1)
 print(res$beta)
 
 # Add constraints
