@@ -20,19 +20,19 @@ In this case, the ElasticHuber can be rewritten as a ReHLine optimization with
 ```math
 \mathbf{S} \leftarrow
 \begin{pmatrix}
--\sqrt{\frac{2}{n\lambda_2}} \mathbf{1}^\intercal_n & \mathbf{0}^\intercal_d \\
-\sqrt{\frac{2}{n\lambda_2}} \mathbf{1}^\intercal_n & \mathbf{0}^\intercal_d \\
+-\sqrt{\frac{1}{n\lambda_2}} \mathbf{1}^\intercal_n & \mathbf{0}^\intercal_d \\
+\sqrt{\frac{1}{n\lambda_2}} \mathbf{1}^\intercal_n & \mathbf{0}^\intercal_d \\
 \end{pmatrix}, \quad
 \mathbf{T} \leftarrow
 \begin{pmatrix}
-  \sqrt{\frac{2}{n\lambda_2}} \mathbf{y}^\intercal & \mathbf{0}^\intercal_d \\
-   -\sqrt{\frac{2}{n\lambda_2}} \mathbf{y}^\intercal & \mathbf{0}^\intercal_d \\
+  \sqrt{\frac{1}{n\lambda_2}} \mathbf{y}^\intercal & \mathbf{0}^\intercal_d \\
+   -\sqrt{\frac{1}{n\lambda_2}} \mathbf{y}^\intercal & \mathbf{0}^\intercal_d \\
   \end{pmatrix}, \quad
 \mathbf{\tau} \leftarrow
 \begin{pmatrix}
-  \kappa \mathbf{1}^\intercal_n & \mathbf{0}^\intercal_d \\
+  \kappa \sqrt{\frac{1}{n\lambda_2}} \mathbf{1}^\intercal_n & \mathbf{0}^\intercal_d \\
   \\
-  \kappa \mathbf{1}^\intercal_n  & \mathbf{0}^\intercal_d \\
+  \kappa \sqrt{\frac{1}{n\lambda_2}} \mathbf{1}^\intercal_n  & \mathbf{0}^\intercal_d \\
   \end{pmatrix},
 ```
 
