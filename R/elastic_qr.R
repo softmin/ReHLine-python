@@ -35,7 +35,7 @@
 ##'
 ##'         Ben Dai \url{https://bendai.org}
 ##'
-elasticqr = function(x, y, kappa = 0.5, lam1 = 0.1, lam2 = 0.1,
+elastic_qr = function(x, y, kappa = 0.5, lam1 = 0.1, lam2 = 0.1,
     max_iter = 1000, tol = 1e-5, shrink = TRUE, verbose = 0)
 {
     n = nrow(x)

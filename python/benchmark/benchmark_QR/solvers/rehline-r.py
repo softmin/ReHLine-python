@@ -25,10 +25,10 @@ class Solver(BaseSolver):
 
     def set_objective(self, X, y, q, lam1, lam2):
         self.X, self.y, self.q, self.lam1, self.lam2 = X, y, q, lam1, lam2
-        self.elasticqr_r = robjects.r['elasticqr']
+        self.elastic_qr_r = robjects.r['elastic_qr']
 
     def run(self, n_iter):
-        beta = self.elasticqr_r(
+        beta = self.elastic_qr_r(
             self.X, self.y, kappa=self.q,
             lam1=self.lam1, lam2=self.lam2,
             max_iter=n_iter, tol=1e-8, verbose=0)

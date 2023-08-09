@@ -1,3 +1,3 @@
 library(rehline)
 
-elasticqr = rehline::elasticqr
+elastic_qr = rehline::elastic_qr

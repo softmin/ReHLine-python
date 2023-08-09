@@ -39,8 +39,8 @@ bhat1 = as.numeric(res1$beta[, 2])
 objfn(bhat1, x, y, kappa, lam1, lam2)
 
 # ReHLine
-bhat2 = elasticqr(x, y, kappa = kappa, lam1 = lam1, lam2 = lam2,
-                  max_iter = 1000, tol = 1e-5)
+bhat2 = elastic_qr(x, y, kappa = kappa, lam1 = lam1, lam2 = lam2,
+                   max_iter = 1000, tol = 1e-5)
 objfn(bhat2, x, y, kappa, lam1, lam2)
 
 # Compare estimates
