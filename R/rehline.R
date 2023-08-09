@@ -51,6 +51,16 @@
 ##' @param shrink               Whether to use the shrinkage algorithm.
 ##' @param verbose              Level of verbosity.
 ##'
+##' @return A list of the following components:
+##' \item{beta}{Optimized value of the \eqn{\beta} vector.}
+##' \item{xi,Lambda,Gamma}{Values of dual variables.}
+##' \item{niter}{Number of iterations used.}
+##' \item{dual_objfns}{Dual objective function values during the optimization process.}
+##'
+##' @author Yixuan Qiu \url{https://statr.me}
+##'
+##'         Ben Dai \url{https://bendai.org}
+##'
 rehline = function(
     Xmat, Umat, Vmat, Smat = NULL, Tmat = NULL, Tau = Inf,
     Amat = NULL, bvec = NULL,
