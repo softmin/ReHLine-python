@@ -12,3 +12,4 @@ LazyData: true
 Imports: Rcpp (>= 1.0.9)
 LinkingTo: Rcpp, RcppEigen
 SystemRequirements: C++11
+RoxygenNote: 7.2.3
