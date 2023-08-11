@@ -13,8 +13,8 @@ $$\sum_{i=1}^n z_{ij} = 0,$$
 
 such as gender and/or race. The constraints limit the correlation between the $d_0$-length sensitive features $\mathbf{z}_ i \in \mathbb{R}^{d_0}$ and the decision function $\mathbf{\beta}^\intercal \mathbf{x}$, and the constants $\mathbf{\rho} \in \mathbb{R}_+^{d_0}$ trade-offs predictive accuracy and fairness. Note that the FairSVM can be rewritten as a ReHLine optimization with
 ```math
-\mathbf{U} \leftarrow -C \mathbf{y}/n, \quad
-\mathbf{V} \leftarrow C \mathbf{1}_n/n, \quad
+\mathbf{U} \leftarrow -C \mathbf{y}^\intercal/n, \quad
+\mathbf{V} \leftarrow C \mathbf{1}^\intercal_n/n, \quad
 \mathbf{A} \leftarrow
 \begin{pmatrix}
   \mathbf{Z}^\intercal \mathbf{X} / n \\
