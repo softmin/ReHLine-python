@@ -1,1 +1,0 @@
-{"duration": 0.1312553882598877, "input_args": {"objective": "smooth-SVM[C=1.0]", "solver": "rehline[shrink=True]", "meta": "{'objective_name': 'smooth-SVM[C=1.0]', 'solver_name': 'rehline[shrink=True]', 'data_name': 'classification_data[dataset_name=sylva_prior]', 'idx_rep': 0}", "stop_val": "6"}}

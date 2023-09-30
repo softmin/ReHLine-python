@@ -1,1 +1,0 @@
-{"duration": 0.1194143295288086, "input_args": {"objective": "SVM[C=1.0]", "solver": "lightning-SDCA[solver=liblinear]", "meta": "{'objective_name': 'SVM[C=1.0]', 'solver_name': 'lightning-SDCA[solver=liblinear]', 'data_name': 'classification_data[dataset_name=steel-plates-fault]', 'idx_rep': 0}", "stop_val": "42"}}

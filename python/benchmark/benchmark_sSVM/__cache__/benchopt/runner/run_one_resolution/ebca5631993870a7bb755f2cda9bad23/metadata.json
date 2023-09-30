@@ -1,1 +1,0 @@
-{"duration": 0.21133875846862793, "input_args": {"objective": "smooth-SVM[C=1.0]", "solver": "lightning[algo=SDCA]", "meta": "{'objective_name': 'smooth-SVM[C=1.0]', 'solver_name': 'lightning[algo=SDCA]', 'data_name': 'classification_data[dataset_name=philippine]', 'idx_rep': 0}", "stop_val": "19"}}

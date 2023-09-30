@@ -1,1 +1,0 @@
-{"duration": 0.7255487442016602, "input_args": {"objective": "SVM[C=1.0]", "solver": "lightning[algo=SAGA]", "meta": "{'objective_name': 'SVM[C=1.0]', 'solver_name': 'lightning[algo=SAGA]', 'data_name': 'classification_data[dataset_name=sylva_prior]', 'idx_rep': 0}", "stop_val": "94"}}

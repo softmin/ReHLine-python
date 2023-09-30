@@ -1,1 +1,0 @@
-{"duration": 0.32184648513793945, "input_args": {"objective": "smooth-SVM[C=1.0]", "solver": "lightning[algo=SAG]", "meta": "{'objective_name': 'smooth-SVM[C=1.0]', 'solver_name': 'lightning[algo=SAG]', 'data_name': 'classification_data[dataset_name=sylva_prior]', 'idx_rep': 0}", "stop_val": "711"}}

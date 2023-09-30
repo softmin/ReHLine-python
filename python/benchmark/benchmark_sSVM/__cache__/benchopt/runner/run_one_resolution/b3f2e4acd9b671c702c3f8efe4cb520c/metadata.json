@@ -1,1 +1,0 @@
-{"duration": 0.15993738174438477, "input_args": {"objective": "smooth-SVM[C=1.0]", "solver": "lightning[algo=SDCA]", "meta": "{'objective_name': 'smooth-SVM[C=1.0]', 'solver_name': 'lightning[algo=SDCA]', 'data_name': 'classification_data[dataset_name=sylva_prior]', 'idx_rep': 0}", "stop_val": "6"}}

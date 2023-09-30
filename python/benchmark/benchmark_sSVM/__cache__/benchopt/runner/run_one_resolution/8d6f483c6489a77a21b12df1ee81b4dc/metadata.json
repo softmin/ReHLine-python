@@ -1,1 +1,0 @@
-{"duration": 1.035010576248169, "input_args": {"objective": "SVM[C=1.0]", "solver": "rehline[shrink=False]", "meta": "{'objective_name': 'SVM[C=1.0]', 'solver_name': 'rehline[shrink=False]', 'data_name': 'classification_data[dataset_name=philippine]', 'idx_rep': 0}", "stop_val": "18207"}}

@@ -1,1 +1,0 @@
-{"duration": 0.2542388439178467, "input_args": {"objective": "smooth-SVM[C=1.0]", "solver": "rehline[shrink=False]", "meta": "{'objective_name': 'smooth-SVM[C=1.0]', 'solver_name': 'rehline[shrink=False]', 'data_name': 'classification_data[dataset_name=creditcard]', 'idx_rep': 0}", "stop_val": "13"}}

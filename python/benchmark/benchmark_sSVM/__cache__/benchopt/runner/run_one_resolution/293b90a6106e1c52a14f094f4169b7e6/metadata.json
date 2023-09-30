@@ -1,1 +1,0 @@
-{"duration": 0.42131996154785156, "input_args": {"objective": "SVM[C=1.0]", "solver": "lightning[algo=SAG]", "meta": "{'objective_name': 'SVM[C=1.0]', 'solver_name': 'lightning[algo=SAG]', 'data_name': 'classification_data[dataset_name=creditcard]', 'idx_rep': 0}", "stop_val": "4"}}

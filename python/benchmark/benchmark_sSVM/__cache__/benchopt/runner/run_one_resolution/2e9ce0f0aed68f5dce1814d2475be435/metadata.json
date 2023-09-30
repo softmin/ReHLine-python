@@ -1,1 +1,0 @@
-{"duration": 2.046208620071411, "input_args": {"objective": "smooth-SVM[C=1.0]", "solver": "lightning[algo=SVRG]", "meta": "{'objective_name': 'smooth-SVM[C=1.0]', 'solver_name': 'lightning[algo=SVRG]', 'data_name': 'classification_data[dataset_name=philippine]', 'idx_rep': 0}", "stop_val": "316"}}
