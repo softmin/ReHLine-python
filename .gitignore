@@ -1,8 +1,4 @@
-# R/RStudio config files
-.Rproj.user
-.Rhistory
-.RData
-.Ruserdata
+# Config files
 
 # Binary files
 *.o
@@ -12,12 +8,12 @@
 *.csv
 
 # Python cache and build files
-python/benchmark/benchmark_FairSVM/__cache__/
-python/benchmark/benchmark_SVM/__cache__/
-python/benchmark/benchmark_QR/__cache__/
-python/benchmark/benchmark_Huber/__cache__/
-
-__pycache__/
-python/build/
-python/ReHLine.egg-info/
+**/__pycache__/
+build/
+rehline.egg-info/
 *.log
+
+# Files during package building
+eigen-3.4.0/
+eigen3.zip
+
