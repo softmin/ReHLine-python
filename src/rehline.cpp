@@ -707,7 +707,7 @@ void rehline_internal(
     result.dual_objfns.swap(dual_objfns);
 }
 
-PYBIND11_MODULE(rehline, m) {
+PYBIND11_MODULE(_internal, m) {
     py::class_<OptResult>(m, "rehline_result")
         .def(py::init<>())
         .def_readwrite("beta", &OptResult::beta)
@@ -717,6 +717,8 @@ PYBIND11_MODULE(rehline, m) {
         .def_readwrite("niter", &OptResult::niter)
         .def_readwrite("dual_objfns", &OptResult::dual_objfns);
 
+    // https://hopstorawpointers.blogspot.com/2018/06/pybind11-and-python-sub-modules.html
+    m.attr("__name__") = "rehline._internal";
     m.doc() = "rehline";
     m.def("rehline_internal", &rehline_internal);
 }
