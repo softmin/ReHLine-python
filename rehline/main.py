@@ -1,23 +1,23 @@
-""" ReHLine: Regularized Composite ReHU/ReLU Loss Minimization """
+""" ReHLine: Regularized Composite ReLU-ReHU Loss Minimization with Linear Computation and Linear Convergence """
 
 # Authors: Ben Dai <bendai@cuhk.edu.hk>
-#          C++ support by Yixuan Qiu <yixuanq@gmail.com>
+#          C++ support by Yixuan Qiu <qiuyixuan@sufe.edu.cn>
 
 # License: MIT License
 
 import numpy as np
 from sklearn.base import BaseEstimator
-import rehline
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
-import base
+from .base import relu, rehu
+from ._internal import rehline_internal, rehline_result
 
 def ReHLine_solver(X, U, V,
         Tau=np.empty(shape=(0, 0)),
         S=np.empty(shape=(0, 0)), T=np.empty(shape=(0, 0)),
         A=np.empty(shape=(0, 0)), b=np.empty(shape=(0)),
         max_iter=1000, tol=1e-4, shrink=True, verbose=True):
-    result = rehline.rehline_result()
-    rehline.rehline_internal(result, X, A, b, U, V, S, T, Tau, max_iter, tol, shrink, verbose)
+    result = rehline_result()
+    rehline_internal(result, X, A, b, U, V, S, T, Tau, max_iter, tol, shrink, verbose)
     return result
 
 class ReHLine(BaseEstimator):
@@ -193,7 +193,7 @@ class ReHLine(BaseEstimator):
             relu_input = (self.U.T * input[:,np.newaxis]).T + self.V
         if self.H > 0:
             rehu_input = (self.S.T * input[:,np.newaxis]).T + self.T
-        return np.sum(base.relu(relu_input), 0) + np.sum(base.rehu(rehu_input), 0)
+        return np.sum(relu(relu_input), 0) + np.sum(rehu(rehu_input), 0)
 
 
     def fit(self, X, sample_weight=None):

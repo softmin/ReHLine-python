@@ -1,13 +1,13 @@
 """ ReHLoss: Convert a piecewise quadratic loss function to a ReHLoss. """
 
 # Authors: Ben Dai <bendai@cuhk.edu.hk>
-#          Yixuan Qiu <yixuanq@gmail.com>
+#          Yixuan Qiu <qiuyixuan@sufe.edu.cn>
 
 # License: MIT License
 
 
 import numpy as np
-import base
+from .base import relu, rehu, _check_relu
 
 class ReHLoss(object):
     """
@@ -68,14 +68,14 @@ class ReHLoss(object):
         if (self.L > 0) and (self.H > 0):
             assert self.relu_coef.shape[1] == self.rehu_coef.shape[1], "n_samples for `relu_coef` and `rehu_coef` should be the same shape!"
 
-        base._check_relu(self.relu_coef, self.relu_intercept)
-        base._check_rehu(self.rehu_coef, self.rehu_intercept, self.rehu_cut)
+        _check_relu(self.relu_coef, self.relu_intercept)
+        _check_rehu(self.rehu_coef, self.rehu_intercept, self.rehu_cut)
 
         self.L, self.H, self.n = self.relu_coef.shape[0], self.rehu_coef.shape[0], self.relu_coef.shape[1]
         relu_input = (self.relu_coef.T * x[:,np.newaxis]).T + self.relu_intercept
         rehu_input = (self.rehu_coef.T * x[:,np.newaxis]).T + self.rehu_intercept
 
-        return np.sum(base.relu(relu_input), 0) + np.sum(base.rehu(rehu_input), 0)
+        return np.sum(relu(relu_input), 0) + np.sum(rehu(rehu_input), 0)
 
 
 class PQLoss(object):
