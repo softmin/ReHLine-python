@@ -7,7 +7,7 @@
 
 
 import numpy as np
-from .base import relu, rehu, _check_relu
+from ._base import relu, rehu, _check_relu
 
 class ReHLoss(object):
     """

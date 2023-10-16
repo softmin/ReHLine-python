@@ -8,7 +8,7 @@
 import numpy as np
 from sklearn.base import BaseEstimator
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
-from .base import relu, rehu
+from ._base import relu, rehu
 from ._internal import rehline_internal, rehline_result
 
 def ReHLine_solver(X, U, V,
