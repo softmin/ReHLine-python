@@ -47,6 +47,45 @@ class ReHLine(BaseEstimator):
 
     n_iter_: int
         Maximum number of iterations run across all classes.
+
+    Examples
+    --------
+
+    ## test SVM on simulated dataset
+    
+    import numpy as np
+    from rehline import ReHLine 
+
+    # simulate classification dataset
+    >>> n, d, C = 1000, 3, 0.5
+    >>> np.random.seed(1024)
+    >>> X = np.random.randn(1000, 3)
+    >>> beta0 = np.random.randn(3)
+    >>> y = np.sign(X.dot(beta0) + np.random.randn(n))
+
+    ## solution provided by ReHLine
+    # build-in loss
+    >>> clf = ReHLine(loss={'name': 'svm'}, C=C)
+    >>> clf.make_ReLHLoss(X=X, y=y, loss={'name': 'svm'})
+    >>> clf.fit(X=X)
+    >>> print('sol privided by rehline: %s' %clf.coef_)
+    >>> sol privided by rehline: [ 0.74104604 -0.00622664  2.66991198]
+    >>> print(clf.decision_function([[1,2,3]]))
+    >>> [0.87383287]
+
+    # manually specify params
+    >>> n, d = X.shape
+    >>> U = -(C*y).reshape(1,-1)
+    >>> L = U.shape[0]
+    >>> V = (C*np.array(np.ones(n))).reshape(1,-1)
+
+    >>> clf = ReHLine(loss={'name': 'svm'}, C=C)
+    >>> clf.U, clf.V = U, V
+    >>> clf.fit(X=X)
+    >>> print('sol privided by rehline: %s' %clf.coef_)
+    >>> sol privided by rehline: [ 0.7410154  -0.00615574  2.66990408]
+    >>> print(clf.decision_function([[1,2,3]]))
+    >>> [0.87384162]
     """
 
     def __init__(self, loss={'name':'QR', 'qt':[.25, .75]}, C=1.,
@@ -73,11 +112,15 @@ class ReHLine(BaseEstimator):
         self.H = S.shape[0]
         self.K = A.shape[0]
 
-    def make_ReLHLoss(self, X, y, loss={'name':'QR', 'qt':[.25, .75]}):
+    def make_ReLHLoss(self, X, y, loss={}):
         """Generate ReLoss params based on the given training data.
 
         """
-        self.loss.update(loss)
+        if (loss=={}) or (loss==self.loss):
+            pass
+        else:
+            print('Loss has been updated!')
+            self.loss.update(loss)
 
         n, d = X.shape
 
