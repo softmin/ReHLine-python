@@ -11,8 +11,8 @@ from ._base import relu, rehu, _check_relu
 
 class ReHLoss(object):
     """
-    A series of ReHLoss
-
+    A ReHLine loss function composed of one or multiple ReLU and ReHU components.
+    
     Parameters
     ----------
 

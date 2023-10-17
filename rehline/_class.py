@@ -21,14 +21,24 @@ def ReHLine_solver(X, U, V,
     return result
 
 class ReHLine(BaseEstimator):
-    """Regularized ReLU/ReHU Minimization. (draft version v1.0)
+    r"""**(main class)** ReHLine Minimization. (draft version v1.0)
 
+    .. math::
+
+        \min_{\mathbf{\beta} \in \mathbb{R}^d} \sum_{i=1}^n \sum_{l=1}^L \text{ReLU}( u_{li} \mathbf{x}_i^\intercal \mathbf{\beta} + v_{li}) + \sum_{i=1}^n \sum_{h=1}^H {\text{ReHU}}_{\tau_{hi}}( s_{hi} \mathbf{x}_i^\intercal \mathbf{\beta} + t_{hi}) + \frac{1}{2} \| \mathbf{\beta} \|_2^2, \\ \text{ s.t. } 
+        \mathbf{A} \mathbf{\beta} + \mathbf{b} \geq \mathbf{0},
+        
+    where :math:`\mathbf{U} = (u_{li}),\mathbf{V} = (v_{li}) \in \mathbb{R}^{L \times n}` 
+    and :math:`\mathbf{S} = (s_{hi}),\mathbf{T} = (t_{hi}),\mathbf{\tau} = (\tau_{hi}) \in \mathbb{R}^{H \times n}` 
+    are the ReLU-ReHU loss parameters, and :math:`(\mathbf{A},\mathbf{b})` are the constraint parameters.
+    
     Parameters
     ----------
 
     C : float, default=1.0
         Regularization parameter. The strength of the regularization is
-        inversely proportional to C. Must be strictly positive.
+        inversely proportional to C. Must be strictly positive. 
+        `C` will be absorbed by the ReHLine parameters when `self.make_ReLHLoss` is conducted.
 
     verbose : int, default=0
         Enable verbose output. Note that this setting takes advantage of a
@@ -37,6 +47,19 @@ class ReHLine(BaseEstimator):
 
     max_iter : int, default=1000
         The maximum number of iterations to be run.
+
+    U, V: array of shape (L, n_samples), default=np.empty(shape=(0, 0))
+        The parameters pertaining to the ReLU part in the loss function.
+
+    Tau, S, T: array of shape (H, n_samples), default=np.empty(shape=(0, 0))
+        The parameters pertaining to the ReHU part in the loss function.
+    
+    A: array of shape (K, n_features), default=np.empty(shape=(0, 0))
+        The coefficient matrix in the linear constraint.
+
+    b: array of shape (K, ), default=np.empty(shape=0)
+        The intercept vector in the linear constraint.
+    
 
     Attributes
     ----------
@@ -48,43 +71,45 @@ class ReHLine(BaseEstimator):
     n_iter_: int
         Maximum number of iterations run across all classes.
 
+    References
+    ----------
+    .. [1] `Dai, B., Qiu, Y,. (2023). ReHLine: Regularized Composite ReLU-ReHU Loss Minimization with Linear Computation and Linear Convergence 
+        <https://openreview.net/pdf?id=3pEBW2UPAD>`_
+
     Examples
     --------
 
-    ## test SVM on simulated dataset
-    
-    import numpy as np
-    from rehline import ReHLine 
+    >>> ## test SVM on simulated dataset
+    >>> import numpy as np
+    >>> from rehline import ReHLine 
 
-    # simulate classification dataset
+    >>> # simulate classification dataset
     >>> n, d, C = 1000, 3, 0.5
     >>> np.random.seed(1024)
     >>> X = np.random.randn(1000, 3)
     >>> beta0 = np.random.randn(3)
     >>> y = np.sign(X.dot(beta0) + np.random.randn(n))
 
-    ## solution provided by ReHLine
-    # build-in loss
+    >>> # Usage 1: build-in loss
     >>> clf = ReHLine(loss={'name': 'svm'}, C=C)
     >>> clf.make_ReLHLoss(X=X, y=y, loss={'name': 'svm'})
     >>> clf.fit(X=X)
     >>> print('sol privided by rehline: %s' %clf.coef_)
     >>> sol privided by rehline: [ 0.74104604 -0.00622664  2.66991198]
-    >>> print(clf.decision_function([[1,2,3]]))
+    >>> print(clf.decision_function([[.1,.2,.3]]))
     >>> [0.87383287]
 
-    # manually specify params
+    >>> # Usage 2: manually specify params
     >>> n, d = X.shape
     >>> U = -(C*y).reshape(1,-1)
     >>> L = U.shape[0]
     >>> V = (C*np.array(np.ones(n))).reshape(1,-1)
-
     >>> clf = ReHLine(loss={'name': 'svm'}, C=C)
     >>> clf.U, clf.V = U, V
     >>> clf.fit(X=X)
     >>> print('sol privided by rehline: %s' %clf.coef_)
     >>> sol privided by rehline: [ 0.7410154  -0.00615574  2.66990408]
-    >>> print(clf.decision_function([[1,2,3]]))
+    >>> print(clf.decision_function([[.1,.2,.3]]))
     >>> [0.87384162]
     """
 
@@ -113,9 +138,25 @@ class ReHLine(BaseEstimator):
         self.K = A.shape[0]
 
     def make_ReLHLoss(self, X, y, loss={}):
-        """Generate ReLoss params based on the given training data.
+        """The `make_ReLHLoss` function generates parameters for the ReLoss, based on the provided training data.
 
+        The function matches the specific ReLoss (self.loss) with loss functions 
+        like 'hinge', 'svm', 'SVM', 'check', 'quantile', 'quantile regression', 
+        'QR', 'sSVM', 'smooth SVM', 'smooth hinge', 'TV', 'huber', and 'custom'.
+
+        Parameters
+        ----------
+
+        X : ndarray of shape (n_samples, n_features)
+            The generated samples.
+
+        y : ndarray of shape (n_samples,)
+            The +/- labels for class membership of each sample.
+
+        loss: dictionary
+            A dictionary that provides the loss function type and properties (optional).
         """
+        
         if (loss=={}) or (loss==self.loss):
             pass
         else:
@@ -185,6 +226,57 @@ class ReHLine(BaseEstimator):
         self.auto_shape()
 
     def append_l1(self, X, l1_pen=1.0):
+        r"""
+        This function appends the l1 penalty to the ReHLine problem. The formulation becomes:
+
+        .. math::
+
+            \min_{\mathbf{\beta} \in \mathbb{R}^d} \sum_{i=1}^n \sum_{l=1}^L \text{ReLU}( u_{li} \mathbf{x}_i^\intercal \mathbf{\beta} + v_{li}) + \sum_{i=1}^n \sum_{h=1}^H {\text{ReHU}}_{\tau_{hi}}( s_{hi} \mathbf{x}_i^\intercal \mathbf{\beta} + t_{hi}) + \frac{1}{2} \| \mathbf{\beta} \|_2^2 + \lambda_1 \| \mathbf{\beta} \|_1, \\ \text{ s.t. } 
+            \mathbf{A} \mathbf{\beta} + \mathbf{b} \geq \mathbf{0},
+
+        where :math:`\lambda_1` is associated with `l1_pen`.
+
+        Parameters
+        ----------
+
+        X : ndarray of shape (n_samples, n_features)
+            The generated samples.
+
+        l1_pen : float, default=1.0
+            The l1 penalty level, which controls the complexity or sparsity of the resulting model.
+
+        Returns
+        -------
+
+        X_fake: ndarray of shape (n_samples+n_features, n_features)
+            The manipulated data matrix. It has been padded with 
+            identity matrix, allowing the correctly structured data to be input 
+            into `self.fit` or other modelling processes.
+
+        Examples
+        --------
+
+        >>> import numpy as np
+        >>> from rehline import ReHLine
+
+        >>> # simulate classification dataset
+        >>> n, d, C, lam1 = 1000, 3, 0.5, 1.0
+        >>> np.random.seed(1024)
+        >>> X = np.random.randn(1000, 3)
+        >>> beta0 = np.random.randn(3)
+        >>> y = np.sign(X.dot(beta0) + np.random.randn(n))
+
+        >>> clf = ReHLine(loss={'name': 'svm'}, C=C)
+        >>> clf.make_ReLHLoss(X=X, y=y, loss={'name': 'svm'})
+        >>> # save and fit with the manipulated data matrix
+        >>> X_fake = clf.append_l1(X, l1_pen=lam1)
+        >>> clf.fit(X=X_fake)
+        >>> print('sol privided by rehline: %s' %clf.coef_)
+        >>> sol privided by rehline: [ 7.17796629e-01 -1.87075728e-06  2.61965622e+00] #sparse sol
+        >>> print(clf.decision_function([[.1,.2,.3]]))
+        >>> [0.85767616]
+        """
+
         n, d = X.shape
         l1_pen = l1_pen*np.ones(d)
         U_new = np.zeros((self.L+2, n+d))
@@ -222,20 +314,34 @@ class ReHLine(BaseEstimator):
 
     def auto_shape(self):
         """
-        Automatically generate the shape of the parameters of ReHLine loss functions.
+        Automatically generate the shape of the parameters of the ReHLine loss function.
         """
         self.L = self.U.shape[0]
         self.n = self.U.shape[1]
         self.H = self.S.shape[0]
         self.K = self.A.shape[0]
 
-    def call_ReLHLoss(self, input):
+    def call_ReLHLoss(self, score):
+        """
+        Return the value of the ReHLine loss of the `score`.
+
+        Parameters
+        ----------
+        score : ndarray of shape (n_samples, )
+            The input score that will be evaluated through the ReHLine loss.
+
+        Returns
+        -------
+        float
+            ReHLine loss evaluation of the given score.
+        """
+
         relu_input = np.zeros((self.L, self.n))
         rehu_input = np.zeros((self.H, self.n))
         if self.L > 0:
-            relu_input = (self.U.T * input[:,np.newaxis]).T + self.V
+            relu_input = (self.U.T * score[:,np.newaxis]).T + self.V
         if self.H > 0:
-            rehu_input = (self.S.T * input[:,np.newaxis]).T + self.T
+            rehu_input = (self.S.T * score[:,np.newaxis]).T + self.T
         return np.sum(relu(relu_input), 0) + np.sum(rehu(rehu_input), 0)
 
 
@@ -257,8 +363,8 @@ class ReHLine(BaseEstimator):
         -------
         self : object
             An instance of the estimator.
-
         """
+
         # X = check_array(X)
         if sample_weight is None:
             sample_weight = np.ones(X.shape[0])
@@ -303,7 +409,7 @@ class ReHLine(BaseEstimator):
 
         Returns
         -------
-        dec : ndarray of shape (n_samples,)
+        ndarray of shape (n_samples, )
             Returns the decision function of the samples.
         """
         # Check if fit has been called

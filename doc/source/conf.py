@@ -25,8 +25,10 @@ author = 'Ben Dai, Yixuan Qiu'
 # release = '0.10'
 
 import sys, os
-# sys.path.append('.')
-# sys.path.append('..')
+sys.path.append('.')
+sys.path.insert(0, os.path.abspath('../..'))
+sys.path.insert(0, os.path.abspath('../rehline'))
+# sys.path.append('../..')
 # sys.path.insert(0, os.path.abspath('.'))
 # sys.path.insert(0, os.path.abspath('../'))
 # sys.path.insert(0, os.path.abspath('../..'))
@@ -39,6 +41,7 @@ import sys, os
 master_doc = 'index'
 extensions = [
 	'sphinx.ext.autodoc',
+    'autoapi.extension',
     # "sphinx.ext.linkcode",
     # "sphinx.ext.intersphinx",
     "sphinx_autodoc_typehints",
@@ -46,6 +49,7 @@ extensions = [
 	'numpydoc',
 	'nbsphinx'
 	]
+autoapi_dirs = ['../../rehline']
 
 autosummary_generate = True
 numpydoc_show_class_members = False
@@ -102,3 +106,15 @@ html_logo = "logo.png"
 # html_css_files = [
 #     'css/custom.css',
 # ]
+
+def skip_submodules(app, what, name, obj, skip, options):
+    if what == "module":
+        skip = True
+    return skip
+
+
+def setup(sphinx):
+    sphinx.connect("autoapi-skip-member", skip_submodules)
+
+autoapi_template_dir = "_templates/autoapi"
+# autoapi_add_toctree_entry = False

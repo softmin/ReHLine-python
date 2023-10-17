@@ -12,7 +12,7 @@ from sklearn.preprocessing import StandardScaler
 
 def relu(x):
     """
-    Evaluation of ReLU given a vector
+    Evaluation of ReLU given a vector.
 
     Parameters
     ----------
@@ -20,13 +20,19 @@ def relu(x):
     x: {array-like} of shape (n_samples, )
     Training vector, where `n_samples` is the number of samples
 
+
+    Returns
+    -------
+    array of shape (n_samples, )
+        An array with ReLU applied, i.e., all negative values are replaced with 0.
+
     """
     return np.maximum(x, 0)
 
 
 def rehu(x, cut=1):
     """
-    Evaluation of ReHU given a vector
+    Evaluation of ReHU given a vector.
 
     Parameters
     ----------
@@ -36,6 +42,11 @@ def rehu(x, cut=1):
 
     cut: {array-like} of shape (n_samples, )
         Cutpoints of ReHU, where `n_samples` is the number of samples
+
+    Returns
+    -------
+    array of shape (n_samples, ) 
+        The result of the ReHU function.
 
     """
     n_samples = x.shape[0]

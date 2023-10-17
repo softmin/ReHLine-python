@@ -7,9 +7,11 @@ API Reference
 rehline.ReHLine
 ###############
 
-ReHLine
-*******
+.. toctree::
 
-.. autoclass:: rehline._class.ReHLine
-   :members:
-   :show-inheritance:
+    autoapi/rehline/index
+
+.. .. autoclass:: rehline._class.ReHLine
+..    :members:
+..    :show-inheritance:
+         
