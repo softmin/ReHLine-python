@@ -75,7 +75,7 @@ SecretStorage==3.3.3
 six==1.16.0
 snowballstemmer==2.2.0
 soupsieve==2.5
-Sphinx==7.2.6
+Sphinx<7
 sphinx-autoapi==3.0.0
 sphinx-autodoc-typehints==1.24.0
 sphinxcontrib-applehelp==1.0.7
