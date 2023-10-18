@@ -79,25 +79,27 @@ and ridge regularized Huber minimization (RidgeHuber).
 
 To generate benchmark results in our paper, please check `ReHLine-benchmark <https://github.com/softmin/ReHLine-benchmark>`_.
 
-+-------------+------------------------------------------------+
-| Problem     | Results                                        |
-+=============+================================================+
-| FairSVM_    | `Result <./benchmark/benchmark_FairSVM.html>`_ |
-+-------------+------------------------------------------------+
-| ElasticQR_  | `Result <./benchmark/benchmark_QR.html>`_      |
-+-------------+------------------------------------------------+
-| RidgeHuber_ | `Result <./benchmark/benchmark_Huber.html>`_   |
-+-------------+------------------------------------------------+
-| SVM_        | `Result <./benchmark/benchmark_SVM.html>`_     |
-+-------------+------------------------------------------------+
-| sSVM_       | `Result <./benchmark/benchmark_sSVM.html>`_    |
-+-------------+------------------------------------------------+
++-------------+--------------------------------------------------------+
+| Problem     | Results                                                |
++=============+========================================================+
+| FairSVM_    | `Result <./_static/benchmark/benchmark_FairSVM.html>`_ |
++-------------+--------------------------------------------------------+
+| ElasticQR_  | `Result <./_static/benchmark/benchmark_QR.html>`_      |
++-------------+--------------------------------------------------------+
+| RidgeHuber_ | `Result <./_static/benchmark/benchmark_Huber.html>`_   |
++-------------+--------------------------------------------------------+
+| SVM_        | `Result <./_static/benchmark/benchmark_SVM.html>`_     |
++-------------+--------------------------------------------------------+
+| sSVM_       | `Result <./_static/benchmark/benchmark_sSVM.html>`_    |
++-------------+--------------------------------------------------------+
 
 .. _FairSVM: https://github.com/softmin/ReHLine-benchmark/tree/main/benchmark_FairSVM
 .. _ElasticQR: https://github.com/softmin/ReHLine-benchmark/tree/main/benchmark_QR
 .. _RidgeHuber: https://github.com/softmin/ReHLine-benchmark/tree/main/benchmark_Huber
 .. _SVM: https://github.com/softmin/ReHLine-benchmark/tree/main/benchmark_SVM
 .. _sSVM: https://github.com/softmin/ReHLine-benchmark/tree/main/benchmark_sSVM
+
+*Note*: You may select the "log-log scale" option in the left sidebar, as this will significantly improve the readability of the results.
 
 🧾 Overview of Results
 ----------------------

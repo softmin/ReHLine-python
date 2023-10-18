@@ -1,0 +1,3995 @@
+
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📈</text></svg>">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300&display=swap" rel="stylesheet">
+
+        <title>Result on SVM benchmark</title>
+
+        <style>
+            /*
+! tailwindcss v3.1.2 | MIT License | https://tailwindcss.com
+*/
+
+/*
+1. Prevent padding and border from affecting element width. (https://github.com/mozdevs/cssremedy/issues/4)
+2. Allow adding a border to an element by just adding a border-width. (https://github.com/tailwindcss/tailwindcss/pull/116)
+*/
+
+*,
+::before,
+::after {
+  box-sizing: border-box;
+  /* 1 */
+  border-width: 0;
+  /* 2 */
+  border-style: solid;
+  /* 2 */
+  border-color: #e5e7eb;
+  /* 2 */
+}
+
+::before,
+::after {
+  --tw-content: '';
+}
+
+/*
+1. Use a consistent sensible line-height in all browsers.
+2. Prevent adjustments of font size after orientation changes in iOS.
+3. Use a more readable tab size.
+4. Use the user's configured `sans` font-family by default.
+*/
+
+html {
+  line-height: 1.5;
+  /* 1 */
+  -webkit-text-size-adjust: 100%;
+  /* 2 */
+  -moz-tab-size: 4;
+  /* 3 */
+  -o-tab-size: 4;
+     tab-size: 4;
+  /* 3 */
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  /* 4 */
+}
+
+/*
+1. Remove the margin in all browsers.
+2. Inherit line-height from `html` so users can set them as a class directly on the `html` element.
+*/
+
+body {
+  margin: 0;
+  /* 1 */
+  line-height: inherit;
+  /* 2 */
+}
+
+/*
+1. Add the correct height in Firefox.
+2. Correct the inheritance of border color in Firefox. (https://bugzilla.mozilla.org/show_bug.cgi?id=190655)
+3. Ensure horizontal rules are visible by default.
+*/
+
+hr {
+  height: 0;
+  /* 1 */
+  color: inherit;
+  /* 2 */
+  border-top-width: 1px;
+  /* 3 */
+}
+
+/*
+Add the correct text decoration in Chrome, Edge, and Safari.
+*/
+
+abbr:where([title]) {
+  -webkit-text-decoration: underline dotted;
+          text-decoration: underline dotted;
+}
+
+/*
+Remove the default font size and weight for headings.
+*/
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+/*
+Reset links to optimize for opt-in styling instead of opt-out.
+*/
+
+a {
+  color: inherit;
+  text-decoration: inherit;
+}
+
+/*
+Add the correct font weight in Edge and Safari.
+*/
+
+b,
+strong {
+  font-weight: bolder;
+}
+
+/*
+1. Use the user's configured `mono` font family by default.
+2. Correct the odd `em` font sizing in all browsers.
+*/
+
+code,
+kbd,
+samp,
+pre {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  /* 1 */
+  font-size: 1em;
+  /* 2 */
+}
+
+/*
+Add the correct font size in all browsers.
+*/
+
+small {
+  font-size: 80%;
+}
+
+/*
+Prevent `sub` and `sup` elements from affecting the line height in all browsers.
+*/
+
+sub,
+sup {
+  font-size: 75%;
+  line-height: 0;
+  position: relative;
+  vertical-align: baseline;
+}
+
+sub {
+  bottom: -0.25em;
+}
+
+sup {
+  top: -0.5em;
+}
+
+/*
+1. Remove text indentation from table contents in Chrome and Safari. (https://bugs.chromium.org/p/chromium/issues/detail?id=999088, https://bugs.webkit.org/show_bug.cgi?id=201297)
+2. Correct table border color inheritance in all Chrome and Safari. (https://bugs.chromium.org/p/chromium/issues/detail?id=935729, https://bugs.webkit.org/show_bug.cgi?id=195016)
+3. Remove gaps between table borders by default.
+*/
+
+table {
+  text-indent: 0;
+  /* 1 */
+  border-color: inherit;
+  /* 2 */
+  border-collapse: collapse;
+  /* 3 */
+}
+
+/*
+1. Change the font styles in all browsers.
+2. Remove the margin in Firefox and Safari.
+3. Remove default padding in all browsers.
+*/
+
+button,
+input,
+optgroup,
+select,
+textarea {
+  font-family: inherit;
+  /* 1 */
+  font-size: 100%;
+  /* 1 */
+  font-weight: inherit;
+  /* 1 */
+  line-height: inherit;
+  /* 1 */
+  color: inherit;
+  /* 1 */
+  margin: 0;
+  /* 2 */
+  padding: 0;
+  /* 3 */
+}
+
+/*
+Remove the inheritance of text transform in Edge and Firefox.
+*/
+
+button,
+select {
+  text-transform: none;
+}
+
+/*
+1. Correct the inability to style clickable types in iOS and Safari.
+2. Remove default button styles.
+*/
+
+button,
+[type='button'],
+[type='reset'],
+[type='submit'] {
+  -webkit-appearance: button;
+  /* 1 */
+  background-color: transparent;
+  /* 2 */
+  background-image: none;
+  /* 2 */
+}
+
+/*
+Use the modern Firefox focus style for all focusable elements.
+*/
+
+:-moz-focusring {
+  outline: auto;
+}
+
+/*
+Remove the additional `:invalid` styles in Firefox. (https://github.com/mozilla/gecko-dev/blob/2f9eacd9d3d995c937b4251a5557d95d494c9be1/layout/style/res/forms.css#L728-L737)
+*/
+
+:-moz-ui-invalid {
+  box-shadow: none;
+}
+
+/*
+Add the correct vertical alignment in Chrome and Firefox.
+*/
+
+progress {
+  vertical-align: baseline;
+}
+
+/*
+Correct the cursor style of increment and decrement buttons in Safari.
+*/
+
+::-webkit-inner-spin-button,
+::-webkit-outer-spin-button {
+  height: auto;
+}
+
+/*
+1. Correct the odd appearance in Chrome and Safari.
+2. Correct the outline style in Safari.
+*/
+
+[type='search'] {
+  -webkit-appearance: textfield;
+  /* 1 */
+  outline-offset: -2px;
+  /* 2 */
+}
+
+/*
+Remove the inner padding in Chrome and Safari on macOS.
+*/
+
+::-webkit-search-decoration {
+  -webkit-appearance: none;
+}
+
+/*
+1. Correct the inability to style clickable types in iOS and Safari.
+2. Change font properties to `inherit` in Safari.
+*/
+
+::-webkit-file-upload-button {
+  -webkit-appearance: button;
+  /* 1 */
+  font: inherit;
+  /* 2 */
+}
+
+/*
+Add the correct display in Chrome and Safari.
+*/
+
+summary {
+  display: list-item;
+}
+
+/*
+Removes the default spacing and border for appropriate elements.
+*/
+
+blockquote,
+dl,
+dd,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+hr,
+figure,
+p,
+pre {
+  margin: 0;
+}
+
+fieldset {
+  margin: 0;
+  padding: 0;
+}
+
+legend {
+  padding: 0;
+}
+
+ol,
+ul,
+menu {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/*
+Prevent resizing textareas horizontally by default.
+*/
+
+textarea {
+  resize: vertical;
+}
+
+/*
+1. Reset the default placeholder opacity in Firefox. (https://github.com/tailwindlabs/tailwindcss/issues/3300)
+2. Set the default placeholder color to the user's configured gray 400 color.
+*/
+
+input::-moz-placeholder, textarea::-moz-placeholder {
+  opacity: 1;
+  /* 1 */
+  color: #9ca3af;
+  /* 2 */
+}
+
+input:-ms-input-placeholder, textarea:-ms-input-placeholder {
+  opacity: 1;
+  /* 1 */
+  color: #9ca3af;
+  /* 2 */
+}
+
+input::placeholder,
+textarea::placeholder {
+  opacity: 1;
+  /* 1 */
+  color: #9ca3af;
+  /* 2 */
+}
+
+/*
+Set the default cursor for buttons.
+*/
+
+button,
+[role="button"] {
+  cursor: pointer;
+}
+
+/*
+Make sure disabled buttons don't get the pointer cursor.
+*/
+
+:disabled {
+  cursor: default;
+}
+
+/*
+1. Make replaced elements `display: block` by default. (https://github.com/mozdevs/cssremedy/issues/14)
+2. Add `vertical-align: middle` to align replaced elements more sensibly by default. (https://github.com/jensimmons/cssremedy/issues/14#issuecomment-634934210)
+   This can trigger a poorly considered lint error in some tools but is included by design.
+*/
+
+img,
+svg,
+video,
+canvas,
+audio,
+iframe,
+embed,
+object {
+  display: block;
+  /* 1 */
+  vertical-align: middle;
+  /* 2 */
+}
+
+/*
+Constrain images and videos to the parent width and preserve their intrinsic aspect ratio. (https://github.com/mozdevs/cssremedy/issues/14)
+*/
+
+img,
+video {
+  max-width: 100%;
+  height: auto;
+}
+
+*, ::before, ::after {
+  --tw-border-spacing-x: 0;
+  --tw-border-spacing-y: 0;
+  --tw-translate-x: 0;
+  --tw-translate-y: 0;
+  --tw-rotate: 0;
+  --tw-skew-x: 0;
+  --tw-skew-y: 0;
+  --tw-scale-x: 1;
+  --tw-scale-y: 1;
+  --tw-pan-x:  ;
+  --tw-pan-y:  ;
+  --tw-pinch-zoom:  ;
+  --tw-scroll-snap-strictness: proximity;
+  --tw-ordinal:  ;
+  --tw-slashed-zero:  ;
+  --tw-numeric-figure:  ;
+  --tw-numeric-spacing:  ;
+  --tw-numeric-fraction:  ;
+  --tw-ring-inset:  ;
+  --tw-ring-offset-width: 0px;
+  --tw-ring-offset-color: #fff;
+  --tw-ring-color: rgb(59 130 246 / 0.5);
+  --tw-ring-offset-shadow: 0 0 #0000;
+  --tw-ring-shadow: 0 0 #0000;
+  --tw-shadow: 0 0 #0000;
+  --tw-shadow-colored: 0 0 #0000;
+  --tw-blur:  ;
+  --tw-brightness:  ;
+  --tw-contrast:  ;
+  --tw-grayscale:  ;
+  --tw-hue-rotate:  ;
+  --tw-invert:  ;
+  --tw-saturate:  ;
+  --tw-sepia:  ;
+  --tw-drop-shadow:  ;
+  --tw-backdrop-blur:  ;
+  --tw-backdrop-brightness:  ;
+  --tw-backdrop-contrast:  ;
+  --tw-backdrop-grayscale:  ;
+  --tw-backdrop-hue-rotate:  ;
+  --tw-backdrop-invert:  ;
+  --tw-backdrop-opacity:  ;
+  --tw-backdrop-saturate:  ;
+  --tw-backdrop-sepia:  ;
+}
+
+::-webkit-backdrop {
+  --tw-border-spacing-x: 0;
+  --tw-border-spacing-y: 0;
+  --tw-translate-x: 0;
+  --tw-translate-y: 0;
+  --tw-rotate: 0;
+  --tw-skew-x: 0;
+  --tw-skew-y: 0;
+  --tw-scale-x: 1;
+  --tw-scale-y: 1;
+  --tw-pan-x:  ;
+  --tw-pan-y:  ;
+  --tw-pinch-zoom:  ;
+  --tw-scroll-snap-strictness: proximity;
+  --tw-ordinal:  ;
+  --tw-slashed-zero:  ;
+  --tw-numeric-figure:  ;
+  --tw-numeric-spacing:  ;
+  --tw-numeric-fraction:  ;
+  --tw-ring-inset:  ;
+  --tw-ring-offset-width: 0px;
+  --tw-ring-offset-color: #fff;
+  --tw-ring-color: rgb(59 130 246 / 0.5);
+  --tw-ring-offset-shadow: 0 0 #0000;
+  --tw-ring-shadow: 0 0 #0000;
+  --tw-shadow: 0 0 #0000;
+  --tw-shadow-colored: 0 0 #0000;
+  --tw-blur:  ;
+  --tw-brightness:  ;
+  --tw-contrast:  ;
+  --tw-grayscale:  ;
+  --tw-hue-rotate:  ;
+  --tw-invert:  ;
+  --tw-saturate:  ;
+  --tw-sepia:  ;
+  --tw-drop-shadow:  ;
+  --tw-backdrop-blur:  ;
+  --tw-backdrop-brightness:  ;
+  --tw-backdrop-contrast:  ;
+  --tw-backdrop-grayscale:  ;
+  --tw-backdrop-hue-rotate:  ;
+  --tw-backdrop-invert:  ;
+  --tw-backdrop-opacity:  ;
+  --tw-backdrop-saturate:  ;
+  --tw-backdrop-sepia:  ;
+}
+
+::backdrop {
+  --tw-border-spacing-x: 0;
+  --tw-border-spacing-y: 0;
+  --tw-translate-x: 0;
+  --tw-translate-y: 0;
+  --tw-rotate: 0;
+  --tw-skew-x: 0;
+  --tw-skew-y: 0;
+  --tw-scale-x: 1;
+  --tw-scale-y: 1;
+  --tw-pan-x:  ;
+  --tw-pan-y:  ;
+  --tw-pinch-zoom:  ;
+  --tw-scroll-snap-strictness: proximity;
+  --tw-ordinal:  ;
+  --tw-slashed-zero:  ;
+  --tw-numeric-figure:  ;
+  --tw-numeric-spacing:  ;
+  --tw-numeric-fraction:  ;
+  --tw-ring-inset:  ;
+  --tw-ring-offset-width: 0px;
+  --tw-ring-offset-color: #fff;
+  --tw-ring-color: rgb(59 130 246 / 0.5);
+  --tw-ring-offset-shadow: 0 0 #0000;
+  --tw-ring-shadow: 0 0 #0000;
+  --tw-shadow: 0 0 #0000;
+  --tw-shadow-colored: 0 0 #0000;
+  --tw-blur:  ;
+  --tw-brightness:  ;
+  --tw-contrast:  ;
+  --tw-grayscale:  ;
+  --tw-hue-rotate:  ;
+  --tw-invert:  ;
+  --tw-saturate:  ;
+  --tw-sepia:  ;
+  --tw-drop-shadow:  ;
+  --tw-backdrop-blur:  ;
+  --tw-backdrop-brightness:  ;
+  --tw-backdrop-contrast:  ;
+  --tw-backdrop-grayscale:  ;
+  --tw-backdrop-hue-rotate:  ;
+  --tw-backdrop-invert:  ;
+  --tw-backdrop-opacity:  ;
+  --tw-backdrop-saturate:  ;
+  --tw-backdrop-sepia:  ;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.fixed {
+  position: fixed;
+}
+
+.absolute {
+  position: absolute;
+}
+
+.relative {
+  position: relative;
+}
+
+.inset-0 {
+  top: 0px;
+  right: 0px;
+  bottom: 0px;
+  left: 0px;
+}
+
+.left-0 {
+  left: 0;
+}
+
+.bottom-0 {
+  bottom: 0;
+}
+
+.z-10 {
+  z-index: 10;
+}
+
+.mx-auto {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.mt-10 {
+  margin-top: 2.5rem;
+}
+
+.mt-1 {
+  margin-top: 0.25rem;
+}
+
+.mt-8 {
+  margin-top: 2rem;
+}
+
+.mt-2 {
+  margin-top: 0.5rem;
+}
+
+.mt-5 {
+  margin-top: 1.25rem;
+}
+
+.mt-3 {
+  margin-top: 0.75rem;
+}
+
+.block {
+  display: block;
+}
+
+.inline {
+  display: inline;
+}
+
+.flex {
+  display: flex;
+}
+
+.inline-flex {
+  display: inline-flex;
+}
+
+.table {
+  display: table;
+}
+
+.grid {
+  display: grid;
+}
+
+.hidden {
+  display: none;
+}
+
+.h-screen {
+  height: 100vh;
+}
+
+.h-16 {
+  height: 4rem;
+}
+
+.h-10 {
+  height: 2.5rem;
+}
+
+.h-8 {
+  height: 2rem;
+}
+
+.h-6 {
+  height: 1.5rem;
+}
+
+.h-5 {
+  height: 1.25rem;
+}
+
+.h-4 {
+  height: 1rem;
+}
+
+.h-12 {
+  height: 3rem;
+}
+
+.min-h-full {
+  min-height: 100%;
+}
+
+.w-96 {
+  width: 24rem;
+}
+
+.w-full {
+  width: 100%;
+}
+
+.w-6 {
+  width: 1.5rem;
+}
+
+.w-5 {
+  width: 1.25rem;
+}
+
+.w-4 {
+  width: 1rem;
+}
+
+.w-12 {
+  width: 3rem;
+}
+
+.min-w-0 {
+  min-width: 0px;
+}
+
+.flex-1 {
+  flex: 1 1 0%;
+}
+
+.flex-shrink-0 {
+  flex-shrink: 0;
+}
+
+.transform {
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.flex-wrap {
+  flex-wrap: wrap;
+}
+
+.items-end {
+  align-items: flex-end;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.space-x-4 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 0;
+  margin-right: calc(1rem * var(--tw-space-x-reverse));
+  margin-left: calc(1rem * calc(1 - var(--tw-space-x-reverse)));
+}
+
+.space-x-3 > * + * {
+  margin-left: 0.75rem; /* 12px */
+}
+
+.space-y-1 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-y-reverse: 0;
+  margin-top: calc(0.25rem * calc(1 - var(--tw-space-y-reverse)));
+  margin-bottom: calc(0.25rem * var(--tw-space-y-reverse));
+}
+
+.space-y-4 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-y-reverse: 0;
+  margin-top: calc(1rem * calc(1 - var(--tw-space-y-reverse)));
+  margin-bottom: calc(1rem * var(--tw-space-y-reverse));
+}
+
+.space-x-2 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 0;
+  margin-right: calc(0.5rem * var(--tw-space-x-reverse));
+  margin-left: calc(0.5rem * calc(1 - var(--tw-space-x-reverse)));
+}
+
+.overflow-hidden {
+  overflow: hidden;
+}
+
+.overflow-y-auto {
+  overflow-y: auto;
+}
+
+.rounded-md {
+  border-radius: 0.375rem;
+}
+
+.rounded-lg {
+  border-radius: 0.5rem;
+}
+
+.rounded-full {
+  border-radius: 9999px;
+}
+
+.border {
+  border-width: 1px;
+}
+
+.border-gray-300 {
+  --tw-border-opacity: 1;
+  border-color: rgb(209 213 219 / var(--tw-border-opacity));
+}
+
+.border-blue-600 {
+  border-color: rgb(37 99 235);
+}
+
+.border-gray-800 {
+  --tw-border-opacity: 1;
+  border-color: rgb(31 41 55 / var(--tw-border-opacity));
+}
+
+.hover\:border-gray-300:hover	{
+  --tw-border-opacity: 1;
+  border-color: rgb(209 213 219 / var(--tw-border-opacity));
+}
+
+.hover\:border-gray-700:hover	{
+  border-color: rgb(55 65 81);
+}
+
+.border-transparent {
+  border-color: transparent;
+}
+
+.border-t {
+  border-top-width: 1px;
+}
+
+.border-t-2 {
+  border-top-width: 2px;
+}
+
+.border-b {
+  border-bottom-width: 1px;
+}
+
+.border-b-2 {
+  border-bottom-width: 2px;
+}
+
+.bg-gray-700 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(55 65 81 / var(--tw-bg-opacity));
+}
+
+.bg-gray-800 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(31 41 55 / var(--tw-bg-opacity));
+}
+
+.bg-blue-600 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(37 99 235 / var(--tw-bg-opacity));
+}
+
+.bg-white {
+  --tw-bg-opacity: 1;
+  background-color: rgb(255 255 255 / var(--tw-bg-opacity));
+}
+
+.bg-gray-500 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(107 114 128 / var(--tw-bg-opacity));
+}
+
+.bg-slate-200 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(241 245 249 / var(--tw-bg-opacity));
+}
+
+.bg-blue-100 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(219 234 254 / var(--tw-bg-opacity));
+}
+
+.bg-gray-50 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(249 250 251 / var(--tw-bg-opacity));
+}
+
+.bg-opacity-75 {
+  --tw-bg-opacity: 0.75;
+}
+
+.p-1 {
+  padding: 0.25rem;
+}
+
+.p-2 {
+  padding: 0.5rem;
+}
+
+.p-4 {
+  padding: 1rem;
+}
+
+.px-8 {
+  padding-left: 2rem;
+  padding-right: 2rem;
+}
+
+.px-4 {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.px-3 {
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+}
+
+.py-2 {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.px-2 {
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+.py-4 {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+
+.py-1 {
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+
+.py-3 {
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+.pt-2 {
+  padding-top: 0.5rem;
+}
+
+.pt-4 {
+  padding-top: 1rem;
+}
+
+.pb-0 {
+  padding-bottom: 0;
+}
+
+.pb-1 {
+  padding-bottom: 0.25rem;
+}
+
+.pb-3 {
+  padding-bottom: 0.75rem;
+}
+
+.pt-5 {
+  padding-top: 1.25rem;
+}
+
+.pb-4 {
+  padding-bottom: 1rem;
+}
+
+.pb-10 {
+  padding-bottom: 2.5rem; /* 40px */
+}
+
+.text-left {
+  text-align: left;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-2xl {
+  font-size: 1.5rem;
+  line-height: 2rem;
+}
+
+.text-sm {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.text-xl {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+}
+
+.text-base {
+  font-size: 1rem;
+  line-height: 1.5rem;
+}
+
+.text-lg {
+  font-size: 1.125rem;
+  line-height: 1.75rem;
+}
+
+.font-medium {
+  font-weight: 500;
+}
+
+.font-semibold {
+  font-weight: 600;
+}
+
+.hover\:font-semibold:hover {
+  font-weight: 600;
+}
+
+.font-bold {
+  font-weight: 700;
+}
+
+.capitalize {
+  text-transform: capitalize;
+}
+
+.leading-5 {
+  line-height: 1.25rem;
+}
+
+.leading-7 {
+  line-height: 1.75rem;
+}
+
+.leading-6 {
+  line-height: 1.5rem;
+}
+
+.text-white {
+  --tw-text-opacity: 1;
+  color: rgb(255 255 255 / var(--tw-text-opacity));
+}
+
+.text-gray-100 {
+  --tw-text-opacity: 1;
+  color: rgb(243 244 246 / var(--tw-text-opacity));
+}
+
+.text-gray-400 {
+  color: rgb(156 163 175);
+}
+
+.text-gray-500 {
+  --tw-text-opacity: 1;
+  color: rgb(107 114 128 / var(--tw-text-opacity));
+}
+
+.hover\:text-gray-500:hover {
+  --tw-text-opacity: 1;
+  color: rgb(107 114 128 / var(--tw-text-opacity));
+}
+
+.text-gray-900 {
+  --tw-text-opacity: 1;
+  color: rgb(17 24 39 / var(--tw-text-opacity));
+}
+
+.text-black {
+  --tw-text-opacity: 1;
+  color: rgb(0 0 0 / var(--tw-text-opacity));
+}
+
+.text-blue-600 {
+  --tw-text-opacity: 1;
+  color: rgb(37 99 235 / var(--tw-text-opacity));
+}
+
+.text-gray-700 {
+  --tw-text-opacity: 1;
+  color: rgb(55 65 81 / var(--tw-text-opacity));
+}
+
+.hover\:text-gray-700:hover {
+  --tw-text-opacity: 1;
+  color: rgb(55 65 81 / var(--tw-text-opacity));
+}
+
+.shadow-sm {
+  --tw-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --tw-shadow-colored: 0 1px 2px 0 var(--tw-shadow-color);
+  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+}
+
+.shadow-xl {
+  --tw-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --tw-shadow-colored: 0 20px 25px -5px var(--tw-shadow-color), 0 8px 10px -6px var(--tw-shadow-color);
+  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+}
+
+.transition-opacity {
+  transition-property: opacity;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+.transition-all {
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+.hover\:bg-blue-800:hover {
+  --tw-bg-opacity: 1;
+  background-color: rgb(30 64 175 / var(--tw-bg-opacity));
+}
+
+.hover\:bg-gray-100:hover {
+  --tw-bg-opacity: 1;
+  background-color: rgb(243 244 246 / var(--tw-bg-opacity));
+}
+
+.hover\:bg-blue-700:hover {
+  --tw-bg-opacity: 1;
+  background-color: rgb(29 78 216 / var(--tw-bg-opacity));
+}
+
+.hover\:bg-gray-50:hover {
+  --tw-bg-opacity: 1;
+  background-color: rgb(249 250 251 / var(--tw-bg-opacity));
+}
+
+.hover\:text-white:hover {
+  --tw-text-opacity: 1;
+  color: rgb(255 255 255 / var(--tw-text-opacity));
+}
+
+.focus\:border-blue-500:focus {
+  --tw-border-opacity: 1;
+  border-color: rgb(59 130 246 / var(--tw-border-opacity));
+}
+
+.focus\:outline-none:focus {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.focus\:ring-2:focus {
+  --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+  --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+  box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+}
+
+.focus\:ring-inset:focus {
+  --tw-ring-inset: inset;
+}
+
+.focus\:ring-blue-500:focus {
+  --tw-ring-opacity: 1;
+  --tw-ring-color: rgb(59 130 246 / var(--tw-ring-opacity));
+}
+
+.focus\:ring-white:focus {
+  --tw-ring-opacity: 1;
+  --tw-ring-color: rgb(255 255 255 / var(--tw-ring-opacity));
+}
+
+.focus\:ring-gray-500:focus {
+  --tw-ring-opacity: 1;
+  --tw-ring-color: rgb(107 114 128 / var(--tw-ring-opacity));
+}
+
+.focus\:ring-offset-2:focus {
+  --tw-ring-offset-width: 2px;
+}
+
+@media (min-width: 640px) {
+  .sm\:my-8 {
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+  }
+
+  .sm\:mx-0 {
+    margin-left: 0px;
+    margin-right: 0px;
+  }
+
+  .sm\:mt-0 {
+    margin-top: 0px;
+  }
+
+  .sm\:ml-3 {
+    margin-left: 0.75rem;
+  }
+
+  .sm\:ml-4 {
+    margin-left: 1rem;
+  }
+
+  .sm\:block {
+    display: block;
+  }
+
+  .sm\:flex {
+    display: flex;
+  }
+
+  .sm\:hidden {
+    display: none;
+  }
+
+  .sm\:h-10 {
+    height: 2.5rem;
+  }
+
+  .sm\:w-full {
+    width: 100%;
+  }
+
+  .sm\:w-10 {
+    width: 2.5rem;
+  }
+
+  .sm\:w-auto {
+    width: auto;
+  }
+
+  .sm\:max-w-lg {
+    max-width: 32rem;
+  }
+
+  .sm\:flex-row-reverse {
+    flex-direction: row-reverse;
+  }
+
+  .sm\:items-start {
+    align-items: flex-start;
+  }
+
+  .sm\:items-center {
+    align-items: center;
+  }
+
+  .sm\:items-stretch {
+    align-items: stretch;
+  }
+
+  .sm\:justify-start {
+    justify-content: flex-start;
+  }
+
+  .sm\:space-x-6 > :not([hidden]) ~ :not([hidden]) {
+    --tw-space-x-reverse: 0;
+    margin-right: calc(1.5rem * var(--tw-space-x-reverse));
+    margin-left: calc(1.5rem * calc(1 - var(--tw-space-x-reverse)));
+  }
+
+  .sm\:truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sm\:p-0 {
+    padding: 0px;
+  }
+
+  .sm\:p-6 {
+    padding: 1.5rem;
+  }
+
+  .sm\:px-6 {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+
+  .sm\:pb-4 {
+    padding-bottom: 1rem;
+  }
+
+  .sm\:text-left {
+    text-align: left;
+  }
+
+  .sm\:text-sm {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+
+  .sm\:text-3xl {
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+  }
+
+  .sm\:mr-6 {
+    margin-right: 1.5rem; /* 24px */
+  }
+}
+
+@media (min-width: 768px) {
+  .md\:inline {
+    display: inline;
+  }
+
+  .md\:flex {
+    display: flex;
+  }
+
+  .md\:hidden {
+    display: none;
+  }
+
+  .md\:justify-start {
+    justify-content: flex-start;
+  }
+
+  .md\:text-left {
+    text-align: left;
+  }
+
+  .md\:block {
+    display: block;
+  }
+
+  .md\:inline-block {
+    display: inline-block;
+  }
+}
+
+@media (min-width: 1024px) {
+  .lg\:mt-0 {
+    margin-top: 0px;
+  }
+
+  .lg\:ml-4 {
+    margin-left: 1rem;
+  }
+
+  .lg\:flex {
+    display: flex;
+  }
+
+  .lg\:items-center {
+    align-items: center;
+  }
+
+  .lg\:justify-between {
+    justify-content: space-between;
+  }
+
+  .lg\:inline {
+    display: inline;
+  }
+
+  .lg\:hidden {
+    display: none;
+  }
+
+  .lg\:justify-start {
+    justify-content: flex-start;
+  }
+
+  .lg\:text-left {
+    text-align: left;
+  }
+
+  .lg\:block {
+    display:block;
+  }
+}
+
+.overflow-scroll {
+  overflow: scroll;
+}
+
+.overflow-x-auto {
+  overflow-x: auto;
+}
+
+.absolute {
+  position: absolute;
+}
+
+.px-1 {
+  padding-left: 0.25rem; /* 4px */
+  padding-right: 0.25rem; /* 4px */
+}
+
+.px-10 {
+  padding-left: 2.5rem; /* 40px */
+  padding-right: 2.5rem; /* 40px */
+}
+
+.py-10 {
+  padding-top: 2.5rem; /* 40px */
+  padding-bottom: 2.5rem; /* 40px */
+}
+
+.mb-4 {
+  margin-bottom: 1rem; /* 16px */
+}
+
+.-mb-px {
+  margin-bottom: 1px;
+}
+
+.mt-4 {
+  margin-top: 1rem; /* 16px */
+}
+
+.mr-6 {
+  margin-right: 1.5rem; /* 24px */
+}
+
+.mr-4 {
+  margin-right: 1rem; /* 24px */
+}
+
+.rounded {
+  border-radius: 0.25rem; /* 4px */
+}
+
+.whitespace-nowrap	{
+  white-space: nowrap;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+            /*----------------------------------------*/
+/***** Stylesheet for the hover index *****/
+/*----------------------------------------*/
+
+/* Place rectangles in a grid */
+.grid {
+  position: relative;
+  /* each rectangle is dependant of others */
+  margin: 0 auto;
+  padding: 1em 0 4em;
+  /* padding top horizontal bottom */
+  display: grid;
+  /* type of boxes generated */
+  max-width: 1000px;
+  list-style: none;
+  /* no item */
+  text-align: center;
+  column-gap: 2em;
+  /* space between columns */
+}
+
+/* Figure inside grid */
+.grid figure {
+  position: relative;
+  float: left;
+  overflow: hidden;
+  /* overflow not taken into account */
+  margin: 10px 1%;
+  width: 100%;
+  /* 100% of the column */
+  background: #3085a3;
+  text-align: center;
+  cursor: pointer;
+  /* change shape cursor */
+  border-radius: 30px;
+  /* rounded corners */
+}
+
+/* Each figure contains an img */
+.grid figure img {
+  position: relative;
+  display: block;
+  max-height: 100%;
+  max-width: 100%;
+  opacity: 1;
+  /* over a dummy image */
+}
+
+/* Style caption (title of benchmarks) */
+.grid figure figcaption {
+  padding: 0.1em;
+  /* add space */
+  color: #fff;
+  /* writing color */
+  text-transform: uppercase;
+  /* title in uppercase */
+  font-size: 1.25em;
+}
+
+/* Small sized screens */
+@media (min-width: 600px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* split in 2 columns */
+}
+
+/* Larger sized screens */
+@media (min-width: 900px) {
+  .grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  /* split in 3 columns */
+}
+
+/* Position and style of <a> elements (the View more) */
+.grid figure figcaption,
+.grid figure figcaption>a {
+  position: absolute;
+  top: 0em;
+  /* no space offset top */
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* only to figcaption <a> tag */
+.grid figure figcaption>a {
+  z-index: 1000;
+  /* top level */
+  text-indent: 0%;
+  white-space: nowrap;
+  font-size: 0;
+  /* do not display the View more */
+  opacity: 1;
+}
+
+/* h2: Problem name (LASSO, ...) */
+.grid figure h2 {
+  word-spacing: 0em;
+  font-weight: 300;
+}
+
+.grid figure h2 span {
+  font-weight: 800;
+}
+
+.grid figure h2,
+.grid figure p {
+  margin: 0;
+}
+
+/* p: number of files */
+.grid figure p {
+  letter-spacing: 1px;
+  font-size: 70%;
+}
+
+/* Default color */
+figure.effect-ruby {
+  background-color: #2c3e50;
+}
+
+/* Color when hovering */
+figure.effect-ruby:hover {
+  background-color: DodgerBlue;
+}
+
+/* Define transformation */
+figure.effect-ruby img {
+  opacity: 0;
+  transition: opacity 0.35s, transform 0.35s;
+  /* transition time */
+  transform: scale(1.15);
+  /* size transformation -> bigger */
+}
+
+/* transformation with hovering */
+figure.effect-ruby:hover img {
+  opacity: 0;
+  transform: scale(1);
+  /* size -> smaller */
+}
+
+/* Apply effect to problem name */
+figure.effect-ruby h2 {
+  margin-top: 0;
+  transition: transform 0.35s;
+  /* transition time */
+  transform: translate3d(0, calc((150px - 100%)/2), 0);
+  font-size: 1.25em;
+  /* default font */
+}
+
+figure.effect-ruby p {
+  margin: 2em -1em 2em -1em;
+  padding: 1em 0em 1em 0em;
+  border: 1px solid #fff;
+  /* create sort of white frame */
+  opacity: 0;
+  transition: opacity 0.35s, transform 0.35s;
+  transform: translate3d(0, 20px, 0) scale(1.1);
+  /* size transform */
+}
+
+/* Transform title on hover */
+figure.effect-ruby:hover h2 {
+  -webkit-transform: translate3d(0, 0, 0);
+  transform: translate3d(0px, 10px, 0) scale(0.8);
+  /* smaller */
+  margin-top: 0em;
+  /* move up */
+}
+
+figure.effect-ruby:hover p {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1.2);
+  /* placement in box */
+}
+
+/* Button for inside the table with system informations */
+.buttoncent {
+  border: none;
+  background-color: transparent;
+  outline: none;
+  text-align: center;
+}
+
+/* button for inside text
+ in benchmark page above graph for system informations */
+.buttonleft {
+  border: none;
+  background-color: transparent;
+  outline: none;
+  text-align: center;
+  margin-left: 1px;
+  /* add margin */
+}
+
+
+/* switch slider with an adaptable height.
+Change switch-height and switch-padding, and all the dimensions are adjusted.
+See https://stackoverflow.com/questions/70590125/how-to-change-the-size-of-a-css-toggle-switch */
+* {
+  --switch-height: 20px;
+  --switch-padding: 2px;
+  --switch-width: calc((var(--switch-height) * 2) - var(--switch-padding));
+  --slider-height: calc(var(--switch-height) - var(--switch-padding));
+  --slider-on: calc(var(--switch-height) - var(--switch-padding));
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: var(--switch-width);
+  height: var(--switch-height);
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+
+.slider:before {
+  content: "";
+  position: absolute;
+  height: var(--slider-height);
+  width: var(--slider-height);
+  left: calc(var(--switch-padding) / 2);
+  bottom: calc(var(--switch-padding) / 2);
+  background-color: white;
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+
+input:checked+.slider {
+  background-color: #2196F3;
+}
+
+input:focus+.slider {
+  box-shadow: 0 0 1px #2196F3;
+}
+
+input:checked+.slider:before {
+  -webkit-transform: translateX(var(--slider-on));
+  -ms-transform: translateX(var(--slider-on));
+  transform: translateX(var(--slider-on));
+}
+
+.slider.round {
+  border-radius: var(--slider-height);
+}
+
+.slider.round:before {
+  border-radius: 50%;
+}
+
+/*----------------------------------------*/
+/***** Brand text animated *****/
+/*----------------------------------------*/
+
+
+.ml11 .text-wrapper {
+  position: relative;
+  display: inline-block;
+  padding-top: 0.1em;
+  padding-right: 0.05em;
+  padding-bottom: 0.15em;
+}
+
+.ml11 .line {
+  opacity: 0;
+  position: absolute;
+  left: 0;
+  height: 100%;
+  width: 3px;
+  background-color: #fff;
+  transform-origin: 0 50%;
+}
+
+.ml11 .line1 {
+  top: 0;
+  left: 0;
+}
+
+.ml11 .letter {
+  display: inline-block;
+  line-height: 1em;
+  font-family: 'Kanit', sans-serif;
+}
+
+/*----------------------------------------*/
+/***** Plot *****/
+/*----------------------------------------*/
+
+@media (min-width: 768px) {
+  #unique_plot {
+    flex: 1 1 0%;
+  }
+}
+
+@media (max-width: 767px) {
+  #unique_plot {
+    flex: initial;
+    flex-shrink: 0;
+  }
+}
+
+.js-plotly-plot .plotly .modebar {
+  transform: translateX(-30px);
+}
+
+/*----------------------------------------*/
+/***** Custom legend *****/
+/*----------------------------------------*/
+
+#plot_legend {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+#legend_title {
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+#legend_help {
+  font-size: 0.75rem;
+  color: #475569;
+}
+
+.space-r-2>* {
+  margin-right: 0.5rem;
+}
+
+
+.objective-description-content {
+  visibility: hidden;
+
+  background-color: rgb(55 65 81);
+  color: #fff;
+  border-radius: 6px;
+  margin-top: 1.5em;
+  padding-right: 0.5em;
+  padding-left: 0.5em;
+  padding-top: 1em;
+  padding-bottom: 1em;
+  opacity: 90%;
+  max-width: 80ch;
+  max-height: 200px;
+
+  overflow-y: auto;
+  white-space: pre-wrap;
+  position: absolute;
+  z-index: 99999;
+}
+
+.objective-description-trigger {
+  display: flex;
+  flex-direction: row;
+}
+
+.objective-description-icon {
+  width: 1.25rem;
+  align-self: center;
+
+  border-radius: 50%;
+}
+
+.objective-description-trigger:hover .objective-description-content {
+  visibility: visible;
+}
+
+/* Description solver when hovered */
+.solver-description-container {
+  position: relative;
+  display: inline-flex;
+}
+
+.solver-description-content {
+  display: flex;
+  flex-direction: column;
+  visibility: hidden;
+  background-color: rgb(55 65 81);
+  color: #fff;
+  border-radius: 6px;
+  padding-top: 0.5em;
+  padding-bottom: 0.6em;
+  padding-left: 0.5em;
+  padding-right: 0.5rem;
+  opacity: 90%;
+
+  width: max-content;
+  max-width: 80ch;
+  max-height: 500px;
+  white-space: pre-wrap;
+
+  /* position description with respect to container and put it top-center */
+  position: absolute;
+  transform: translate(0, -100%);
+  z-index: 99999;
+}
+
+/* Show description when hovered */
+.solver-description-container:hover .solver-description-content {
+  visibility: visible;
+}
+
+/*Arrow at the bottom of the description*/
+.solver-description-container .solver-description-content::after {
+  content: " ";
+  position: absolute;
+  top: 100%;
+  left: 20px;
+  margin-left: -5px;
+  border-width: 7px;
+  border-style: solid;
+  border-color: rgb(55 65 81) transparent transparent transparent;
+}
+
+.solver-description-title {
+  margin-bottom: 1em;
+  font-weight: bolder;
+}
+
+.solver-description-body {
+  max-height: 450px;
+  overflow-y: auto;
+}
+
+/*Plot config styling as a bag of tags*/
+#plot_config_title {
+  font-weight: bold;
+}
+
+.config-item, .config-ctrl {
+  border-radius: 9999px;
+  padding-left: 1em;
+  padding-right: 1em;
+  color: white;
+  margin-left: 2ex;
+
+  cursor: pointer;
+
+  /* font styles*/
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 400;
+}
+
+.config-item {
+  background-color: rgb(91, 78, 255);
+  border-color: rgb(55 65 81);
+}
+.config-ctrl {
+  font-size: medium;
+  font-weight: bold;
+  background-color: rgb(34, 30, 94);
+  border-color: rgb(23, 37, 59);
+}
+
+.view_selector_label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.view_selector_select {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.5rem center;
+  background-repeat: no-repeat;
+  background-size: 1.5em 1.5em;
+  padding-right: 2.5rem;
+  -webkit-print-color-adjust: exact;
+  color-adjust: exact;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-color: #fff;
+  border-width: 1px;
+  font-size: 1rem;
+  line-height: 1.5rem;
+  --tw-shadow: 0 0 #0000;
+  --tw-border-opacity: 1;
+  border-color: rgb(209 213 219 / var(--tw-border-opacity));
+}
+
+.view.active {
+  border-color: rgb(37 99 235);!important;
+  color: rgb(37 99 235);!important;
+}
+        </style>
+    </head>
+    <body>
+        <!-- Two main columns container -->
+        <div class="flex">
+            <!-- Left column on big screen (plot selectors) -->
+            <div class="hidden lg:flex flex-col w-96 bg-gray-700">
+                <div class="h-screen" onchange="setAllViewsToNonActive()">
+                    <div class="px-8 h-16 flex items-center bg-gray-800">
+                        <h1 class="ml11">
+                            <span class="text-wrapper">
+                                <span class="line line1"></span>
+                                <span id="brand" class="hidden letters text-2xl text-white">Benchopt</span>
+                            </span>
+                        </h1>
+                    </div>
+                    <div class="flex-1 flex flex-col">
+                        <div class="mt-10 px-8">
+                            <label for="dataset_selector" class="block text-sm font-medium text-white">Dataset:</label>
+                            <div class="mt-1 rounded-md shadow-sm">
+                                <select id="dataset_selector" class="focus:ring-blue-500 focus:border-blue-500 block w-full h-8 px-4 sm:text-sm border-gray-300 rounded-md" onchange="setState({dataset: this.value})">
+                                    <option value="classification_data[dataset_name=steel-plates-fault]">classification_data[dataset_name=steel-plates-fault]</option>
+                                    <option value="classification_data[dataset_name=philippine]">classification_data[dataset_name=philippine]</option>
+                                    <option value="classification_data[dataset_name=sylva_prior]">classification_data[dataset_name=sylva_prior]</option>
+                                    <option value="classification_data[dataset_name=creditcard]">classification_data[dataset_name=creditcard]</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mt-8 px-8">
+                            <label for="objective_selector" class="block text-sm font-medium text-white">Objective:</label>
+                            <div class="mt-1 rounded-md shadow-sm">
+                                <select id="objective_selector" class="focus:ring-blue-500 focus:border-blue-500 block w-full h-8 px-4 sm:text-sm border-gray-300 rounded-md" onchange="setState({objective: this.value})">
+                                    <option value="SVM[C=1.0]">SVM[C=1.0]</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mt-8 px-8">
+                            <div class="flex flex-row items-center justify-between text-sm font-medium text-white">
+                                <label for="objective_column" class="block">Objective metrics</label>
+                                <!--don't show description unless it is provided -->
+                            </div>
+                            <div class="mt-1 rounded-md shadow-sm">
+                                <select id="objective_column" class="focus:ring-blue-500 focus:border-blue-500 block w-full h-8 px-4 sm:text-sm border-gray-300 rounded-md" onchange="setState({objective_column: this.value})">
+                                    <option value="objective_value">objective_value</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mt-8 px-8">
+                            <label for="plot_kind" class="block text-sm font-medium text-white">Chart type</label>
+                            <div class="mt-1 rounded-md shadow-sm">
+                                <select id="plot_kind" class="focus:ring-blue-500 focus:border-blue-500 block w-full h-8 px-4 sm:text-sm border-gray-300 rounded-md" onchange="setState({plot_kind: this.value})">
+                                    <option value="objective_curve">objective_curve</option>
+                                    <option value="suboptimality_curve">suboptimality_curve</option>
+                                    <option value="relative_suboptimality_curve">relative_suboptimality_curve</option>
+                                    <option value="bar_chart">bar_chart</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="scale-form-group" class="mt-8 px-8">
+                            <label for="change_scaling" class="block text-sm font-medium text-white">Scale</label>
+                            <div class="mt-1 rounded-md shadow-sm">
+                                <select id="change_scaling" class="focus:ring-blue-500 focus:border-blue-500 block w-full h-8 px-4 sm:text-sm border-gray-300 rounded-md" onchange="setState({scale: this.value})">
+                                    <option value="semilog-y">semilog-y</option>
+                                    <option value="semilog-x">semilog-x</option>
+                                    <option value="loglog">loglog</option>
+                                    <option value="linear">linear</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="xaxis-type-form-group" class="mt-8 px-8">
+                            <label for="change_xaxis_type" class="block text-sm font-medium text-white">X-axis</label>
+                            <div class="mt-1 rounded-md shadow-sm">
+                                <select id="change_xaxis_type" class="focus:ring-blue-500 focus:border-blue-500 block w-full h-8 px-4 sm:text-sm border-gray-300 rounded-md" onchange="setState({xaxis_type: this.value})">
+                                   <!-- options will be added dynamically -->
+                                </select>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between mt-8 px-8">
+                            <div class="block text-sm font-medium text-white">Quantiles</div>
+                            <label class="block switch">
+                                <input id="change_shades" type="checkbox" checked onchange="setState({with_quantiles: this.checked})">
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                        <div class="flex items-center justify-between mt-8 px-8">
+                            <a href="#" class="w-full inline-flex items-center px-4 py-2 space-x-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" onclick="return saveView()">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 6.878V6a2.25 2.25 0 012.25-2.25h7.5A2.25 2.25 0 0118 6v.878m-12 0c.235-.083.487-.128.75-.128h10.5c.263 0 .515.045.75.128m-12 0A2.25 2.25 0 004.5 9v.878m13.5-3A2.25 2.25 0 0119.5 9v.878m0 0a2.246 2.246 0 00-.75-.128H5.25c-.263 0-.515.045-.75.128m15 0A2.25 2.25 0 0121 12v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6c0-.98.626-1.813 1.5-2.122" />
+                                </svg>
+                                <span class="hidden lg:inline">Save as view</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Right column on big screen and main column on mobile -->
+            <div class="w-full flex flex-col overflow-scroll">
+                <!-- Main menu -->
+                <nav class="bg-blue-600">
+                    <div class="px-4">
+                        <div class="relative flex items-center justify-between h-16">
+                            <!-- mobile navbar -->
+                            <div class="absolute inset-0 flex items-center justify-between lg:hidden">
+                                <!-- Mobile menu brand text -->
+                                <span class="text-white text-xl">
+                                    Benchopt
+                                </span>
+                                <!-- Mobile menu button-->
+                                <button type="button" id="btn-main-menu" class="inline-flex items-center justify-center p-2 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white" aria-controls="mobile-menu" aria-expanded="false">
+                                    <span class="sr-only">Open main menu</span>
+                                    <svg class="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                                    </svg>
+                                    <svg class="hidden h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <!-- big screen navbar-->
+                            <div class="flex-1 flex items-center justify-center lg:items-stretch lg:justify-start">
+                                <div class="hidden lg:block">
+                                    <div class="flex space-x-4">
+                                        <a href="benchmark_SVM.html" class="text-gray-100 hover:bg-blue-800 hover:text-white px-3 py-2 rounded-md text-sm font-medium" aria-current="page">Home</a>
+                                        <a href="https://benchopt.github.io" class="text-gray-100 hover:bg-blue-800 hover:text-white px-3 py-2 rounded-md text-sm font-medium" target="_blank">Website</a>
+                                        <a href="https://github.com/benchopt/benchopt" class="text-gray-100 hover:bg-blue-800 hover:text-white px-3 py-2 rounded-md text-sm font-medium" target="_blank">Github</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Mobile menu, show/hide based on menu state. -->
+                    <div class="hidden" id="mobile-menu">
+                        <div class="px-2 pt-2 pb-3 space-y-1">
+                            <a href="benchmark_SVM.html" class="text-white block px-3 py-2 rounded-md text-base font-medium" aria-current="page">Home</a>
+                            <a href="https://benchopt.github.io" class="text-white block px-3 py-2 rounded-md text-base font-medium">Website</a>
+                            <a href="https://github.com/benchopt/benchopt" class="text-white block px-3 py-2 rounded-md text-base font-medium">Github</a>
+                            <a href="#" class="text-white block px-3 py-2 rounded-md text-base font-medium" onclick="return exportConfigs()">Download config</a>
+                            <a href="#" class="text-white block px-3 py-2 rounded-md text-base font-medium" onclick="return exportHTML()">Download HTML</a>
+                            <a href="benchopt_run_2023-10-10_20h12m15.parquet" class="text-white block px-3 py-2 rounded-md text-base font-medium">Download data</a>
+                        </div>
+                    </div>
+                </nav>
+
+                <!-- Plot menu for mobiles -->
+                <nav class="lg:hidden bg-gray-700">
+                    <div class="px-4" id="btn-plot-config">
+                        <div class="relative flex items-center justify-between h-10">
+                            <div class="absolute inset-0 flex items-center justify-between lg:hidden">
+                                <!-- Mobile menu button-->
+                                <span class="flex items-center space-x-2 text-white">
+                                    <span>Change plot</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                                    </svg>
+                                </span>
+                                <button type="button" class="inline-flex items-center justify-center p-2 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white" aria-controls="mobile-menu" aria-expanded="false">
+                                    <span class="sr-only">Open main menu</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Mobile menu, show/hide based on menu state. -->
+                    <div class="hidden" id="mobile-plot-form">
+                        <div class="px-2 pt-2 pb-3 space-y-4" onchange="setAllViewsToNonActive()">
+                            <div class="px-8">
+                                <label for="dataset_selector" class="block text-sm font-medium text-white">Dataset:</label>
+                                <div class="mt-1 rounded-md shadow-sm">
+                                    <select id="dataset_selector" class="focus:ring-blue-500 focus:border-blue-500 block w-full h-8 px-4 sm:text-sm border-gray-300 rounded-md" onchange="setState({dataset: this.value})">
+                                        <option value="classification_data[dataset_name=steel-plates-fault]">classification_data[dataset_name=steel-plates-fault]</option>
+                                        <option value="classification_data[dataset_name=philippine]">classification_data[dataset_name=philippine]</option>
+                                        <option value="classification_data[dataset_name=sylva_prior]">classification_data[dataset_name=sylva_prior]</option>
+                                        <option value="classification_data[dataset_name=creditcard]">classification_data[dataset_name=creditcard]</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="px-8">
+                                <label for="objective_selector" class="block text-sm font-medium text-white">Objective:</label>
+                                <div class="mt-1 rounded-md shadow-sm">
+                                    <select id="objective_selector" class="focus:ring-blue-500 focus:border-blue-500 block w-full h-8 px-4 sm:text-sm border-gray-300 rounded-md" onchange="setState({objective: this.value})">
+                                        <option value="SVM[C=1.0]">SVM[C=1.0]</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="px-8">
+                                <label for="objective_column" class="block text-sm font-medium text-white">Objective column</label>
+                                <div class="mt-1 rounded-md shadow-sm">
+                                    <select id="objective_column" class="focus:ring-blue-500 focus:border-blue-500 block w-full h-8 px-4 sm:text-sm border-gray-300 rounded-md" onchange="setState({objective_column: this.value})">
+                                        <option value="objective_value">objective_value</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="px-8">
+                                <label for="plot_kind" class="block text-sm font-medium text-white">Chart type</label>
+                                <div class="mt-1 rounded-md shadow-sm">
+                                    <select id="plot_kind" class="focus:ring-blue-500 focus:border-blue-500 block w-full h-8 px-4 sm:text-sm border-gray-300 rounded-md" onchange="setState({plot_kind: this.value})">
+                                        <option value="objective_curve">objective_curve</option>
+                                        <option value="suboptimality_curve">suboptimality_curve</option>
+                                        <option value="relative_suboptimality_curve">relative_suboptimality_curve</option>
+                                        <option value="bar_chart">bar_chart</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div id="scale-form-group" class="px-8">
+                                <label for="change_scaling" class="block text-sm font-medium text-white">Scale</label>
+                                <div class="mt-1 rounded-md shadow-sm">
+                                    <select id="change_scaling" class="focus:ring-blue-500 focus:border-blue-500 block w-full h-8 px-4 sm:text-sm border-gray-300 rounded-md" onchange="setState({scale: this.value})">
+                                        <option value="semilog-y">semilog-y</option>
+                                        <option value="semilog-x">semilog-x</option>
+                                        <option value="loglog">loglog</option>
+                                        <option value="linear">linear</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div id="xaxis-type-form-group" class="mt-8 px-8">
+                                <label for="change_xaxis_type_mobile" class="block text-sm font-medium text-white">X-axis</label>
+                                <div class="mt-1 rounded-md shadow-sm">
+                                    <select id="change_xaxis_type_mobile" class="focus:ring-blue-500 focus:border-blue-500 block w-full h-8 px-4 sm:text-sm border-gray-300 rounded-md" onchange="setState({xaxis_type: this.value})">
+                                       <!-- options will be added dynamically -->
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between mt-8 px-8">
+                                <div class="block text-sm font-medium text-white">Quantiles</div>
+                                <label class="block switch">
+                                    <input id="change_shades" type="checkbox" checked onchange="setState({with_quantiles: this.checked})">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+
+                            <div class="flex items-center justify-between mt-8 px-8">
+                                <a href="#"
+                                   class="w-full inline-flex items-center px-4 py-2 space-x-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                   onclick="saveView()">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 6.878V6a2.25 2.25 0 012.25-2.25h7.5A2.25 2.25 0 0118 6v.878m-12 0c.235-.083.487-.128.75-.128h10.5c.263 0 .515.045.75.128m-12 0A2.25 2.25 0 004.5 9v.878m13.5-3A2.25 2.25 0 0119.5 9v.878m0 0a2.246 2.246 0 00-.75-.128H5.25c-.263 0-.515.045-.75.128m15 0A2.25 2.25 0 0121 12v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6c0-.98.626-1.813 1.5-2.122"/>
+                                    </svg>
+                                    <span>Save as view</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </nav>
+
+                <!-- Page heading -->
+                <div class="px-4 pt-4 pb-1 md:py-4 lg:flex lg:items-center lg:justify-between">
+                    <div class="flex-1 min-w-0">
+                        <h2 class="w-full text-center lg:text-left text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">Result on SVM benchmark</h2>
+                        <div class="mt-1 flex flex-wrap justify-center lg:justify-start sm:mt-0">
+                            <div class="mt-2 sm:mr-6 hidden md:flex items-center text-sm text-gray-500">
+                                <span class="font-bold"></span>CPU : 4
+                            </div>
+                            <div class="mt-2 sm:mr-6 hidden md:flex items-center text-sm text-gray-500">
+                                <span class="font-bold"></span>RAM (GB) : 31
+                            </div>
+                            <div class="mt-2 sm:mr-6 hidden md:flex items-center text-sm text-gray-500">
+                                <span class="font-bold"></span>CUDA : NVIDIA GeForce RTX 4090: cuda_12.2
+                            </div>
+                            <div class="mt-2">
+                                <button class="inline-flex items-center px-2 py-1 space-x-2 border border-gray-500 rounded-md shadow-sm text-sm font-medium text-gray-500 bg-white hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500" onclick="document.getElementById('system-modal').style.display = 'block'">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <span class="hidden md:inline-block text-sm">Show more</span>
+                                    <span class="md:hidden text-sm">Show system information</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="hidden lg:flex mt-5 lg:mt-0 lg:ml-4 space-x-4 items-center">
+                        <span class="font-bold">Download :</span>
+                        <span>
+                            <a href="#" class="inline-flex items-center px-4 py-2 space-x-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" onclick="return exportConfigs()">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                <span class="hidden lg:inline">Configs</span>
+                            </a>
+                        </span>
+
+
+                        <span>
+                            <a href="#" class="inline-flex items-center px-4 py-2 space-x-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" onclick="return exportHTML()">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                </svg>
+                                <span class="hidden lg:inline">HTML</span>
+                            </a>
+                        </span>
+
+                        <span>
+                            <a href="benchopt_run_2023-10-10_20h12m15.parquet" class="inline-flex items-center px-4 py-2 space-x-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                </svg>
+                                <span class="hidden lg:inline">Data</span>
+                            </a>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Plot configuration -->
+                <div id="config_container" class="mt-8">
+                    <div>
+                        <div class="sm:hidden px-4">
+                            <label for="tabs" class="view_selector_label">Select a tab</label>
+                            <select id="tabs" name="tabs" class="block w-full rounded-md px-4 py-2 view_selector_select" onchange="setConfig(this)">
+                                <option value="no_selected_view" >No selected view</option>
+                            </select>
+                        </div>
+                        <div class="hidden sm:block">
+                            <div class="border-t border-b">
+                                <nav id="view-tabs" class="flex space-x-3 px-4 overflow-x-auto items-center" aria-label="Tabs">
+                                    <p class="view mr-6 py-4 px-1 text-sm font-medium border-b-2 border-transparent text-gray-700 whitespace-nowrap">Available plot views : </p>
+                                        <p id="no_view_available" class="text-sm text-gray-400 whitespace-nowrap border-b-2 border-transparent">No plot view available</p>
+                                </nav>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Plot -->
+                <div id="unique_plot"></div>
+                <div id="legend_container" class="pb-10 bg-slate-200">
+                    <div class="px-10 mb-4 mt-4 text-base font-medium text-gray-700">
+                        Solvers <span class="text-sm font-medium text-gray-400">(Click on a solver to hide it or double click to hide all the others)</span>
+                    </div>
+                    <div id="plot_legend" class="px-10 space-r-2"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- System information modal -->
+        <div id="system-modal" class="hidden relative z-10" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+            <div class="fixed z-10 inset-0 overflow-y-auto">
+                <div class="flex items-end sm:items-center justify-center min-h-full p-4 text-center sm:p-0">
+                    <div class="relative bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:max-w-lg sm:w-full">
+                        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                            <div class="sm:flex sm:items-start">
+                                <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                                    <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">System information</h3>
+                                    <div class="mt-2">
+                                        <ul class="text-sm text-gray-500">
+                                            <li> <b>CPU</b>: 4 </li>
+                                            <li> <b>RAM (GB)</b>: 31 </li>
+                                            <li> <b>CUDA</b>: NVIDIA GeForce RTX 4090: cuda_12.2 </li>
+                                            <li> <b>platform</b>: Linux6.2.0-34-generic-x86_64 </li>
+                                            <li> <b>processor</b>: 13th Gen Intel(R) Core(TM) i9-13900K </li>
+                                            
+                                            <li> <b>numpy</b>: 1.26.0  </li>
+                                            
+                                            <li> <b>scipy</b>: 1.11.3 </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                            <button type="button" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm" onclick="document.getElementById('system-modal').style.display = 'none'">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Text area to copy config from export -->
+        <textarea id="config_export" class="hidden"></textarea>
+
+        <script src="https://cdn.plot.ly/plotly-2.12.1.min.js"></script>
+        <!-- Used for the brand animation -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/2.0.2/anime.min.js"></script>
+        <!-- Define the brand animation -->
+        <script>
+            var textWrapper = document.querySelector('.ml11 .letters');
+            textWrapper.innerHTML = textWrapper.textContent.replace(/([^\x00-\x80]|\w)/g, "<span class='letter'>$&</span>");
+
+            window.addEventListener('load', () => {
+                document.getElementById('brand').style.display = 'inline';
+
+                anime.timeline({loop: false})
+                    .add({
+                        targets: '.ml11 .line',
+                        scaleY: [0,1],
+                        opacity: [0.5,1],
+                        easing: "easeOutExpo",
+                        duration: 700
+                    })
+                    .add({
+                        targets: '.ml11 .line',
+                        translateX: [0, document.querySelector('.ml11 .letters').getBoundingClientRect().width + 10],
+                        easing: "easeOutExpo",
+                        duration: 700,
+                        delay: 100
+                    }).add({
+                        targets: '.ml11 .letter',
+                        opacity: [0,1],
+                        easing: "easeOutExpo",
+                        duration: 600,
+                        offset: '-=775',
+                        delay: (el, i) => 34 * (i+1)
+                    }).add({
+                        targets: '.ml11 .line',
+                        scaleY: [1,0],
+                        opacity: [1,0.5],
+                        easing: "easeOutExpo",
+                        duration: 700,
+                        translateX: [document.querySelector('.ml11 .letters').getBoundingClientRect().width + 10, document.querySelector('.ml11 .letters').getBoundingClientRect().width + 10],
+                    });
+            });
+        </script>
+        <!-- Manage plot -->
+        <script>
+            window.data = {"classification_data[dataset_name=steel-plates-fault]": {"SVM[C=1.0]": {"objective_value": {"solvers": {"cvxpy[solver=MOSEK]": {"scatter": {"x": [0.04312500199011993, 0.043271823014947586, 0.0432952545088483, 0.048707449503126554], "y": [0.7133047717447891, 0.7133047717447891, 0.7133047717447891, 0.7133047717447891], "stop_val": [0, 1, 2, 4], "q1": [0.03716270218137652, 0.037350613297894596, 0.03729168349818792, 0.03723827399080619], "q9": [0.05196876441477797, 0.05022885821235832, 0.049759543102118185, 0.04926021040300839]}, "bar": {"y": 0.04312500199011993, "times": [0.07681469898670912, 0.037047521997010335, 0.037357937020715326, 0.049139181995997205, 0.04897047599661164, 0.04887323998264037, 0.04920810501789674, 0.03737676399759948, 0.0373263549990952, 0.037175499979639426], "text": ""}, "color": "rgba(31.0, 119.0, 180.0, 1.0)", "marker": 0, "sampling_strategy": "Iteration"}, "cvxpy[solver=SCS]": {"scatter": {"x": [0.018667682001250796, 0.01783642800000962, 0.015173343490459956, 0.01753834099508822, 0.0798580429982394, 0.11651817397796549, 0.12303517799591646, 0.10135666199494153, 0.10522910000872798, 0.18455914399237372, 1.8572120500029996, 2.4961471580027137], "y": [0.7133047653895883, 0.7133047653895874, 0.713304765389588, 0.7133047653895872, 0.7133395266789336, 0.7133058789118271, 0.7133047698126564, 0.7133047655369552, 0.7133047653974642, 0.7133047653895754, 0.7133047653895705, 0.7133047653895705], "stop_val": [0, 1, 2, 3, 4, 6, 9, 13, 19, 28, 42, 63], "q1": [0.014972979185404255, 0.014915289598866366, 0.01492225740221329, 0.014885900286026299, 0.0798580429982394, 0.11651817397796549, 0.12303517799591646, 0.10135666199494153, 0.10522910000872798, 0.18455914399237372, 1.8572120500029996, 2.4961471580027137], "q9": [0.023374611098552107, 0.021245257582631887, 0.021885194402420885, 0.021126452722819516, 0.0798580429982394, 0.11651817397796549, 0.12303517799591646, 0.10135666199494153, 0.10522910000872798, 0.18455914399237372, 1.8572120500029996, 2.4961471580027137]}, "bar": {"y": 0.12303517799591646, "times": [0.12303517799591646], "text": ""}, "color": "rgba(255.0, 127.0, 14.0, 1.0)", "marker": 1, "sampling_strategy": "Iteration"}, "rehline[shrink=True]": {"scatter": {"x": [0.0002768790000118315, 0.0003107925003860146, 0.00031141098588705063, 0.0004481530049815774, 0.0004698710108641535, 0.0005300415068631992, 0.0004139039956498891, 0.0004188190068816766, 0.0005255485011730343, 0.0005649954837281257, 0.0004837545129703358, 0.0004841305053560063, 0.0005899160023545846, 0.0006565689982380718, 0.0006626664981013164], "y": [0.8132511789412875, 0.715171962351338, 0.7134281652217176, 0.713340295459191, 0.7133164250055992, 0.713305795064811, 0.7133055136067632, 0.7133048948337739, 0.7133047686912622, 0.7133047653965259, 0.713304765389571, 0.713304765389571, 0.7133047653895709, 0.7133047653895708, 0.713304765389571], "stop_val": [0, 1, 2, 3, 4, 6, 9, 13, 19, 28, 42, 63, 94, 113, 141], "q1": [0.0001504645886598155, 0.00023615240934304893, 0.00029660859727300706, 0.0003634573076851666, 0.00038631689676549286, 0.0003889536106726155, 0.0003851691784802824, 0.000379173705005087, 0.00040072321135085074, 0.0004002570902230218, 0.00046852470841258765, 0.00045523279113695024, 0.00047693619853816926, 0.000655602611368522, 0.0006564740993781015], "q9": [0.00030559888400603084, 0.00035412401193752886, 0.00048498710384592414, 0.0005165637237951159, 0.0006062428903533144, 0.0005611241853330284, 0.0005650122795486823, 0.0005636916903313249, 0.0005717554973671213, 0.000590700696920976, 0.0006640721025178209, 0.0007059164054226129, 0.0007790015049977228, 0.0006575353851076216, 0.0006688588968245312]}, "bar": {"y": 0.0004188190068816766, "times": [0.0004254989908076823, 0.0005628989893011749, 0.00038796101580373943, 0.0005580790166277438, 0.00037933900603093207, 0.0004069579881615937, 0.0004136479983571917, 0.0005708259996026754, 0.00037768599577248096, 0.00042399001540616155], "text": ""}, "color": "rgba(44.0, 160.0, 44.0, 1.0)", "marker": 2, "sampling_strategy": "Iteration"}, "rehline[shrink=False]": {"scatter": {"x": [0.0001489020069129765, 0.00019720850104931742, 0.00023924148990772665, 0.00041212599899154156, 0.00045937750837765634, 0.0005547340115299448, 0.0006000674911774695, 0.0007590360037283972, 0.0009867874905467033, 0.001076526998076588, 0.0015839660045458004, 0.0025913184945238754, 0.002097605509334244, 0.002597200495074503], "y": [0.8132511789412875, 0.7355317686629534, 0.7178298606646915, 0.7182806555698148, 0.7187874412808335, 0.714567230885032, 0.713321597879067, 0.7133443401367667, 0.7133067949518415, 0.7133047743672355, 0.7133047653896814, 0.7133047653895712, 0.7133047653895712, 0.7133047653895712], "stop_val": [0, 1, 2, 3, 4, 6, 9, 13, 19, 28, 42, 63, 94, 169], "q1": [0.0001420766900992021, 0.0001903544209199026, 0.00022394480183720588, 0.00027295101317577065, 0.0002930540940724313, 0.0003778534126468003, 0.0004466268030228093, 0.0005786751920823008, 0.0007722968090092764, 0.0010680395760573446, 0.0015203012939309702, 0.0017759519192622974, 0.0017664075014181436, 0.0017641879850998521], "q9": [0.0002868113951990381, 0.00031340859713964165, 0.00036381239478942005, 0.00041510858573019506, 0.0004672035138355568, 0.0005642929871100932, 0.0007137553853681311, 0.0009019703953526914, 0.0011921148892724887, 0.0016183040017494932, 0.0024977499851956964, 0.004153992599458433, 0.004044595605228096, 0.003421865584095939]}, "bar": {"y": 0.001076526998076588, "times": [0.0010798409930430353, 0.0016171610041055828, 0.0016167149879038334, 0.0010932209843304008, 0.0016285909805446863, 0.0010681649728212506, 0.0010732130031101406, 0.0010686699824873358, 0.0010669110051821917, 0.0010686359892133623], "text": ""}, "color": "rgba(214.0, 39.0, 40.0, 1.0)", "marker": 3, "sampling_strategy": "Iteration"}, "sklearn[solver=liblinear]": {"scatter": {"x": [0.0013253794895717874, 0.0013125980185577646, 0.0011888699955306947, 0.0014593355008400977, 0.0016410790121881291, 0.0016620435053482652, 0.0016972574958344921, 0.0013682845019502565, 0.0016747695044614375, 0.001687846495769918, 0.0015455679967999458, 0.001526633495814167, 0.0013162809918867424, 0.0013176439970266074], "y": [1.0, 0.7209190417883399, 0.7138544597028145, 0.7133633423295334, 0.7133140027246719, 0.7133073812180153, 0.7133053749332021, 0.7133048616817861, 0.7133047701259927, 0.7133047653921228, 0.713304765389571, 0.7133047653895711, 0.7133047653895711, 0.7133047653895708], "stop_val": [0, 1, 2, 3, 4, 6, 9, 13, 19, 28, 42, 63, 94, 113], "q1": [0.000963194016367197, 0.00108517371409107, 0.0011569542111828923, 0.0012514402100350709, 0.0012468571949284524, 0.0012858293048338965, 0.0013020386832067743, 0.0012631711055291817, 0.0012730225978884846, 0.0012902539921924472, 0.0012759489211020992, 0.0012795770046068356, 0.0012655312923016027, 0.0013176439970266074], "q9": [0.0015547503106063231, 0.0016389081167289983, 0.0015500329987844451, 0.0018015866924542933, 0.0017437252041418104, 0.001795063700410537, 0.0017555539845488966, 0.0018238294200273227, 0.001950269911321811, 0.001806436586775817, 0.0017506410891655832, 0.0017725636891555042, 0.0016935885098064319, 0.0013176439970266074]}, "bar": {"y": 0.0013682845019502565, "times": [0.002997460018377751, 0.0012775920040439814, 0.0012935060076415539, 0.0016934260202106088, 0.0013581560051534325, 0.0016848600062076002, 0.0016887160018086433, 0.0012585279764607549, 0.0013784129987470806, 0.0012636870087590069], "text": ""}, "color": "rgba(148.0, 103.0, 189.0, 1.0)", "marker": 4, "sampling_strategy": "Iteration"}}, "transformers": {"c_star": 0.7133047652895705, "max_f_0": 0.7355317686629534}}}}, "classification_data[dataset_name=philippine]": {"SVM[C=1.0]": {"objective_value": {"solvers": {"cvxpy[solver=ECOS]": {"scatter": {"x": [33.48067118250765, 16.958067621511873, 26.111636868998175, 35.54939748099423], "y": [0.6771340503776117, 0.6771339854208508, 0.6771339854208508, 0.6771339854208508], "stop_val": [0, 1, 2, 3], "q1": [15.972097976502846, 16.68492546851048, 16.641735447593966, 34.94258384519198], "q9": [33.82422001900559, 34.88117417399481, 35.55042171191599, 35.691090897508545]}, "bar": {"y": 33.48067118250765, "times": [15.891302451986121, 33.806533288006904, 33.98340059799375, 16.25299399200594, 33.42210531901219, 15.981075257004704, 33.53923704600311, 16.237358213984407, 33.56976833200315, 33.546311282989336], "text": ""}, "color": "rgba(31.0, 119.0, 180.0, 1.0)", "marker": 0, "sampling_strategy": "Iteration"}, "cvxpy[solver=MOSEK]": {"scatter": {"x": [1.1631577774969628, 0.8693226670002332, 0.867421387010836, 1.167817990994081], "y": [0.6771340262078224, 0.6771340262078224, 0.6771340262078224, 0.6771340262078224], "stop_val": [0, 1, 2, 4], "q1": [0.8653370006883051, 0.8660696158854989, 0.8637599049921846, 0.8659600237064297], "q9": [1.1885525056073674, 1.1634536757919705, 1.1661512949038297, 1.1721253584109945]}, "bar": {"y": 1.1631577774969628, "times": [1.375715151982149, 1.1645140140026342, 0.8669285789947025, 0.8640991740103345, 1.1669295000028796, 1.1677566560101695, 1.1618015409912914, 0.871030009991955, 0.8654745369858574, 1.1652304889867082], "text": ""}, "color": "rgba(255.0, 127.0, 14.0, 1.0)", "marker": 1, "sampling_strategy": "Iteration"}, "cvxpy[solver=SCS]": {"scatter": {"x": [1.908368448013789, 1.0681816500000423, 1.066587642999366, 1.9102367445011623, 3.3535071299993433, 13.304278539988445, 5.6753236899967305, 5.963103563000914, 18.149273178976728, 17.891632978018606, 66.78468784599681], "y": [0.6771339771002427, 0.6771339771002436, 0.6771339771002429, 0.6771339771002433, 0.6771592009340835, 0.6771354242722438, 0.677133987257547, 0.6771339774101933, 0.6771339771053376, 0.6771339771002447, 0.6771339771002175], "stop_val": [0, 1, 2, 3, 4, 6, 9, 13, 19, 28, 42], "q1": [1.0626923039992107, 1.0653314976167167, 1.0635659032006515, 1.0649107924924466, 3.3535071299993433, 13.304278539988445, 5.6753236899967305, 5.963103563000914, 18.149273178976728, 17.891632978018606, 66.78468784599681], "q9": [2.423834179097319, 2.133135894595761, 2.165905282800667, 2.0179838474985443, 3.3535071299993433, 13.304278539988445, 5.6753236899967305, 5.963103563000914, 18.149273178976728, 17.891632978018606, 66.78468784599681]}, "bar": {"y": 5.6753236899967305, "times": [5.6753236899967305], "text": ""}, "color": "rgba(44.0, 160.0, 44.0, 1.0)", "marker": 2, "sampling_strategy": "Iteration"}, "rehline[shrink=True]": {"scatter": {"x": [0.003895472997101024, 0.005092757011880167, 0.006237778507056646, 0.007770511991111562, 0.007925672005512752, 0.008137159486068413, 0.008409764006501064, 0.009022782003739849, 0.009103859498281963, 0.00951217400142923, 0.010071954005979933, 0.010062485511298291, 0.010470298497239128, 0.01046363849309273, 0.010470288994838484], "y": [2.7518798973463015, 0.706632741391038, 0.678891205524373, 0.67753328733849, 0.6772567543815073, 0.6771602436835559, 0.6771413430946049, 0.6771366432793525, 0.6771344469989784, 0.6771340321746551, 0.6771339794454114, 0.6771339771204399, 0.6771339771002499, 0.6771339771002264, 0.6771339771002276], "stop_val": [0, 1, 2, 3, 4, 6, 9, 13, 19, 28, 42, 63, 94, 141, 211], "q1": [0.0035182018094928936, 0.004735561890993267, 0.005807942408137023, 0.006811823093448766, 0.007379118606331758, 0.007873673405265435, 0.0081115612963913, 0.008325240094563924, 0.00817885770520661, 0.008258456207113341, 0.008663698894088157, 0.008564255892997608, 0.009395348996622487, 0.009885266213677824, 0.010067179991165177], "q9": [0.004205600116983987, 0.005893978819949552, 0.007247815595474093, 0.009928417994524352, 0.009137661894783378, 0.009457187919178978, 0.009800526083563455, 0.009900084207765758, 0.009910603883326985, 0.009863307702471503, 0.010378682694863528, 0.010862049492425285, 0.010697800508933143, 0.012004686973523348, 0.011724810389569029]}, "bar": {"y": 0.009103859498281963, "times": [0.008212401997298002, 0.009808832022827119, 0.009687865996966138, 0.008075985009782016, 0.00869280900224112, 0.009514909994322807, 0.008190288004698232, 0.009901049983454868, 0.009996588982176036, 0.00823718699393794], "text": ""}, "color": "rgba(214.0, 39.0, 40.0, 1.0)", "marker": 3, "sampling_strategy": "Iteration"}, "rehline[shrink=False]": {"scatter": {"x": [0.0039600580057594925, 0.005152689496753737, 0.0058184020017506555, 0.006737048490322195, 0.006921176507603377], "y": [2.7518798973463015, 0.702646172792915, 0.7147846050172314, 0.7160598591470434, 0.7164520971638014], "stop_val": [0, 1, 2, 3, 4], "q1": [0.0034782358183292673, 0.004533550285850651, 0.005142060609068721, 0.006063942494802177, 0.006735315607511438], "q9": [0.004217539101955481, 0.005589324916945771, 0.006650162392179482, 0.007772601291071624, 0.00851533529930748]}, "bar": {"y": 66.78468784599681, "times": NaN, "text": "Did not converge"}, "color": "rgba(148.0, 103.0, 189.0, 1.0)", "marker": 4, "sampling_strategy": "Iteration"}, "sklearn[solver=liblinear]": {"scatter": {"x": [0.011507113988045603, 0.01399546698667109, 0.016820862496388145, 0.01836417950107716, 0.01906970549316611, 0.022141207999084145, 0.020246936997864395, 0.018229146997327916, 0.01878697899519466, 0.02335890449467115, 0.02136076899478212, 0.020455573991057463, 0.02546537749003619, 0.02146259500295855, 0.021727589002694003], "y": [1.0, 0.6837308009497495, 0.6781134788665981, 0.6773757577445104, 0.6772047729176566, 0.6771568148778071, 0.6771415686995548, 0.6771358107480215, 0.6771343502123376, 0.6771340199887748, 0.6771339791615244, 0.6771339771223023, 0.6771339771002547, 0.6771339771002197, 0.6771339771002198], "stop_val": [0, 1, 2, 3, 4, 6, 9, 13, 19, 28, 42, 63, 94, 141, 211], "q1": [0.01115188560797833, 0.013546595588559284, 0.014829122202354484, 0.016224030786543154, 0.01687078019604087, 0.017427390319062395, 0.017912657614215278, 0.017916850215988232, 0.018128789993352257, 0.01839481489150785, 0.01874268977844622, 0.019251903489930555, 0.020055626999237575, 0.020556221198057757, 0.021218003996182233], "q9": [0.013956009500543588, 0.017454326385632157, 0.019266559308744036, 0.020531477400800212, 0.021384096489055083, 0.02258250201412011, 0.022897311885026285, 0.022966938908211887, 0.023402945484849624, 0.023949833706137725, 0.02398699871264398, 0.025170145989977754, 0.026380551801412366, 0.026898509194143116, 0.027855309104779735]}, "bar": {"y": 0.01878697899519466, "times": [0.018999236985109746, 0.01857472100527957, 0.022867249994305894, 0.018178706988692284, 0.018158113991376013, 0.023395345982862636, 0.023359047016128898, 0.017864874011138454, 0.023471341002732515, 0.018253019981784746], "text": ""}, "color": "rgba(140.0, 86.0, 75.0, 1.0)", "marker": 5, "sampling_strategy": "Iteration"}}, "transformers": {"c_star": 0.6771339770002175, "max_f_0": 0.7095706547906089}}}}, "classification_data[dataset_name=sylva_prior]": {"SVM[C=1.0]": {"objective_value": {"solvers": {"cvxpy[solver=MOSEK]": {"scatter": {"x": [0.73342290148139, 0.7516433389973827, 0.9253374044928933, 0.8332203750032932], "y": [0.8658031515936802, 0.8658031515936802, 0.8658031515936802, 0.8658031515936802], "stop_val": [0, 1, 2, 4], "q1": [0.7312562588922447, 0.7307349363982212, 0.732444589221268, 0.7326165439008037], "q9": [0.975058487296337, 0.9297228299896233, 0.9272220390150323, 0.9283716729958542]}, "bar": {"y": 0.73342290148139, "times": [1.4080295450112317, 0.7338159130013082, 0.7333695549750701, 0.7321243879850954, 0.7313029069919139, 0.9269505919946823, 0.9241857870074455, 0.7318934570066631, 0.7334762479877099, 0.7308364259952214], "text": ""}, "color": "rgba(31.0, 119.0, 180.0, 1.0)", "marker": 0, "sampling_strategy": "Iteration"}, "cvxpy[solver=SCS]": {"scatter": {"x": [0.8810398354980862, 0.5270854755071923, 0.5247070985060418, 0.8747554519795813, 0.7029841374896932, 6.61720040201908, 11.506969163980102, 3.7086527210194618, 16.153598473989405, 41.739042175002396], "y": [0.8658031485772058, 0.865803148577206, 0.8658031485772058, 0.865803148577206, 0.8658086456488078, 0.8658084695525062, 0.8658031485874829, 0.8658031485793054, 0.8658031485773793, 0.8658031485772062], "stop_val": [0, 1, 2, 3, 4, 6, 9, 13, 19, 28], "q1": [0.8755794384924229, 0.5262605743046151, 0.5241018299013376, 0.5259355100221, 0.5628549618937541, 6.61720040201908, 11.506969163980102, 3.7086527210194618, 16.153598473989405, 41.739042175002396], "q9": [1.2608462345000575, 0.8799457198969322, 2.2913325366913293, 0.9485095444077161, 0.8431133130856324, 6.61720040201908, 11.506969163980102, 3.7086527210194618, 16.153598473989405, 41.739042175002396]}, "bar": {"y": 11.506969163980102, "times": [11.506969163980102], "text": ""}, "color": "rgba(255.0, 127.0, 14.0, 1.0)", "marker": 1, "sampling_strategy": "Iteration"}, "rehline[shrink=True]": {"scatter": {"x": [0.00236559149925597, 0.003585187514545396, 0.006522510506329127, 0.009060221491381526, 0.0057347204856341705, 0.00761813300778158, 0.01074234998668544, 0.010782029014080763, 0.01089153200155124, 0.010644294015946798, 0.009263885003747419, 0.008733767492230982, 0.006745345483068377], "y": [0.8658170332635189, 0.8658056761942239, 0.8658033646479596, 0.8658031552661316, 0.8658031494064107, 0.8658031485772056, 0.8658031485772056, 0.8658031485772056, 0.8658031485772058, 0.8658031485772056, 0.8658031485772056, 0.8658031485772056, 0.8658031485772056], "stop_val": [0, 1, 2, 3, 4, 6, 7, 9, 12, 13, 16, 19, 34], "q1": [0.002348716201959178, 0.003542890102835372, 0.00463206589629408, 0.0054814262024592605, 0.0056268425832968205, 0.005689627601532266, 0.01074234998668544, 0.006924957217415794, 0.01089153200155124, 0.007822701189434155, 0.007087789205252193, 0.007196937489788979, 0.006732778681907803], "q9": [0.005281122316955589, 0.007079843003884889, 0.008618041407316923, 0.009384565424988977, 0.009768010198604316, 0.010304009588435293, 0.01074234998668544, 0.011158381792483851, 0.01089153200155124, 0.010739260102855041, 0.010896352404961363, 0.010270597494672984, 0.006757912284228951]}, "bar": {"y": 0.006522510506329127, "times": [0.004621148022124544, 0.008437551994575188, 0.004633278993424028, 0.004714223992777988, 0.004739438008982688, 0.00860817200737074, 0.00870686600683257, 0.004701746976934373, 0.00833664700621739, 0.008305583003675565], "text": ""}, "color": "rgba(44.0, 160.0, 44.0, 1.0)", "marker": 2, "sampling_strategy": "Iteration"}, "rehline[shrink=False]": {"scatter": {"x": [0.003713792495545931, 0.002982963007525541, 0.005322673503542319, 0.006148500993731432, 0.007070595514960587, 0.00547612649097573, 0.007631750500877388, 0.009920980504830368], "y": [0.8658170332635189, 0.8658051691217881, 0.86580318365331, 0.8658031503846951, 0.8658031485772055, 0.8658031485772055, 0.8658031485772055, 0.8658031485772055], "stop_val": [0, 1, 2, 3, 4, 6, 10, 21], "q1": [0.002310389594640583, 0.0029328908043680713, 0.003561341599561274, 0.004169935089885257, 0.004757184602203779, 0.005388323706574738, 0.005373728400445543, 0.00551632450951729], "q9": [0.005180783019750379, 0.006250148909748532, 0.0076116099167848, 0.008363273405120709, 0.009122312592808157, 0.010325478078448214, 0.010184572386788205, 0.010179237413103693]}, "bar": {"y": 0.005322673503542319, "times": [0.0035632119979709387, 0.007457026018528268, 0.0035445080138742924, 0.0035863069933839142, 0.0036176420107949525, 0.0035824389779008925, 0.007027704996289685, 0.00716515802196227, 0.007120820984710008, 0.009002865001093596], "text": ""}, "color": "rgba(214.0, 39.0, 40.0, 1.0)", "marker": 3, "sampling_strategy": "Iteration"}, "sklearn[solver=liblinear]": {"scatter": {"x": [0.014352092504850589, 0.01296664250548929, 0.019856781014823355, 0.021489276507054456, 0.01617202149645891, 0.018922584495157935, 0.023670114504056983, 0.023695633019087836, 0.024049493978964165, 0.01761775149498135, 0.018113330006599426, 0.023760564014082775, 0.023923993983771652, 0.023884657974122092], "y": [1.0, 0.8706602066826794, 0.8658989138046356, 0.8658056710988948, 0.8658033033869177, 0.8658031485772055, 0.8658031485772056, 0.8658031485772056, 0.8658031485772058, 0.8658031485772058, 0.8658031485772056, 0.8658031485772058, 0.8658031485772058, 0.8658031485772056], "stop_val": [0, 1, 2, 3, 4, 6, 9, 13, 16, 19, 23, 28, 34, 49], "q1": [0.009368874787469395, 0.012658669499796816, 0.014355213101953267, 0.020865884909289888, 0.01580624029156752, 0.01586448089510668, 0.016361082380171865, 0.017543035792186856, 0.024049493978964165, 0.017414733505574986, 0.017569711594842375, 0.023760564014082775, 0.023923993983771652, 0.023884657974122092], "q9": [0.014580233101150952, 0.017782442894531413, 0.019997322605922817, 0.021600881099584513, 0.02192435921751894, 0.022105565696256234, 0.025286684691673146, 0.023816468188306315, 0.024049493978964165, 0.024594130503828637, 0.02245752599555999, 0.023760564014082775, 0.023923993983771652, 0.023884657974122092]}, "bar": {"y": 0.01617202149645891, "times": [0.021985101979225874, 0.015957413997966796, 0.021738737006671727, 0.021917610021773726, 0.015806757990503684, 0.021729953994508833, 0.016328227997291833, 0.016015814995625988, 0.015875162003794685, 0.01580158100114204], "text": ""}, "color": "rgba(148.0, 103.0, 189.0, 1.0)", "marker": 4, "sampling_strategy": "Iteration"}}, "transformers": {"c_star": 0.8658031484772054, "max_f_0": 0.8711468843119909}}}}, "classification_data[dataset_name=creditcard]": {"SVM[C=1.0]": {"objective_value": {"solvers": {"cvxpy[solver=ECOS]": {"scatter": {"x": [44.294220869996934, 18.63715510199836, 44.09107570249762, 46.46960686400416], "y": [0.9986076944547596, 0.9986076944547596, 0.9986076944547596, 0.9986076944242042], "stop_val": [0, 1, 2, 4], "q1": [18.5488232059055, 18.55165516771085, 18.531083439284703, 27.57840250991576], "q9": [45.03048854291846, 44.42069547679857, 44.33130318329495, 46.5915900613938]}, "bar": {"y": 44.294220869996934, "times": [49.43820661000791, 44.33700071799103, 44.54074209101964, 44.27367246799986, 44.31476927199401, 18.603588041005423, 44.47845851798775, 18.519712740991963, 18.552057702007005, 44.16082829097286], "text": ""}, "color": "rgba(31.0, 119.0, 180.0, 1.0)", "marker": 0, "sampling_strategy": "Iteration"}, "cvxpy[solver=SCS]": {"scatter": {"x": [5.02298704200075, 5.009079134993954, 3.0558570839930326, 3.0601621079840697, 5.999320929986425, 61.04117983201286, 189.10370237301686], "y": [0.9986083407004445, 0.9986083405199502, 0.9986083404605195, 0.998608340398612, 0.9986100539989743, 0.9986092920781107, 0.9986083413401725], "stop_val": [0, 1, 2, 3, 4, 6, 9], "q1": [4.998611638991861, 3.06178796440945, 3.0492775430146137, 3.056245401216438, 5.999320929986425, 61.04117983201286, 189.10370237301686], "q9": [19.128336515524957, 5.492839423991973, 5.032839891791809, 5.020342600619188, 5.999320929986425, 61.04117983201286, 189.10370237301686]}, "bar": {"y": 189.10370237301686, "times": [189.10370237301686], "text": ""}, "color": "rgba(255.0, 127.0, 14.0, 1.0)", "marker": 1, "sampling_strategy": "Iteration"}, "rehline[shrink=True]": {"scatter": {"x": [0.039741765504004434, 0.04215881349227857, 0.09366579400375485, 0.15040465600031894, 0.09469056098896544, 0.13098039999022149, 0.1919288290082477, 0.10772651201114058, 0.1613102485134732, 0.2319618184992578, 0.23242566450790036, 0.1068222589965444, 0.23246049400768243, 0.13077090500155464], "y": [0.9987165758760921, 0.9986107349070557, 0.9986079070097835, 0.9986076944232313, 0.9986076944232312, 0.9986076944232312, 0.9986076944232312, 0.9986076944232314, 0.9986076944232312, 0.9986076944232312, 0.9986076944232312, 0.9986076944232312, 0.9986076944232312, 0.9986076944232312], "stop_val": [0, 1, 2, 3, 4, 6, 7, 9, 10, 12, 15, 16, 18, 21], "q1": [0.017919975507538766, 0.041989831396494995, 0.06604255980346352, 0.08929044430842623, 0.08277137700933963, 0.1307462012162432, 0.13098638579249383, 0.10772651201114058, 0.11412245001411066, 0.23158029810874722, 0.23231172970554326, 0.1068222589965444, 0.23246049400768243, 0.13077090500155464], "q9": [0.04021665129694156, 0.080494538511266, 0.12147873350186274, 0.16115215660829563, 0.15063594071252737, 0.23176999821444041, 0.23188732701237313, 0.10772651201114058, 0.21963160159648398, 0.23234333888976835, 0.23253959931025747, 0.1068222589965444, 0.23246049400768243, 0.13077090500155464]}, "bar": {"y": 0.09366579400375485, "times": [0.0661462220014073, 0.12152222599252127, 0.06631911598378792, 0.06602889599162154, 0.1208751070080325, 0.11892032899777405, 0.06841125900973566, 0.12087634499766864, 0.12147390100290067, 0.0660440780047793], "text": ""}, "color": "rgba(44.0, 160.0, 44.0, 1.0)", "marker": 2, "sampling_strategy": "Iteration"}, "rehline[shrink=False]": {"scatter": {"x": [0.017019406499457546, 0.02213903948722873, 0.05496869850321673, 0.06356161199801136, 0.03656936400511768, 0.07145519398909528, 0.05403796299651731], "y": [0.9987165758760921, 0.9986152883527556, 0.9986080906441498, 0.9986076944232312, 0.9986076944232312, 0.9986076944232312, 0.9986076944232312], "stop_val": [0, 1, 2, 3, 4, 7, 15], "q1": [0.01693517901294399, 0.02193299889622722, 0.026804124799673444, 0.03190838927985169, 0.036268006017780866, 0.03651660079485737, 0.03617402311647311], "q9": [0.017080225885729307, 0.04821207609202247, 0.0559250305959722, 0.06412295619375072, 0.07165659250458703, 0.07188007881923113, 0.07158901241782586]}, "bar": {"y": 0.05496869850321673, "times": [0.026768375013489276, 0.05503292000503279, 0.05592501099454239, 0.02691810199758038, 0.02694748601061292, 0.055332369985990226, 0.054904477001400664, 0.055925207008840516, 0.026808096998138353, 0.05579727498115972], "text": ""}, "color": "rgba(214.0, 39.0, 40.0, 1.0)", "marker": 3, "sampling_strategy": "Iteration"}, "sklearn[solver=liblinear]": {"scatter": {"x": [0.14774889350519516, 0.16148392800823785, 0.2115930670115631, 0.2606574410019675, 0.2851340295164846, 0.3095959439961007, 0.33330623600340914, 0.46551144649856724, 0.4647603089979384, 0.5399734609818552, 0.4644180684990715, 0.46398289600620046], "y": [1.0, 0.9986539859560466, 0.9986084166810606, 0.99860773741539, 0.9986076944232315, 0.9986076944232316, 0.9986076944232314, 0.9986076944232314, 0.9986076944232314, 0.9986076944232316, 0.9986076944232314, 0.9986076944232314], "stop_val": [0, 1, 2, 3, 4, 6, 9, 10, 13, 16, 18, 23], "q1": [0.10144909758819268, 0.16094655990891624, 0.2107432674820302, 0.25939145088777876, 0.25994153271021786, 0.2609630661900155, 0.3083904793020338, 0.3871183399896836, 0.37929064180352723, 0.5399734609818552, 0.33511987249949016, 0.46398289600620046], "q9": [0.14847614959289784, 0.24094979370129294, 0.3155609767854912, 0.391722221011878, 0.3990479250234784, 0.46417775469017214, 0.48541054230299785, 0.5381346070062136, 0.5250495985907037, 0.5399734609818552, 0.5021332025062293, 0.46398289600620046]}, "bar": {"y": 0.2115930670115631, "times": [0.2113291840068996, 0.3149122130125761, 0.31784236698877066, 0.21133582698530518, 0.31450109399156645, 0.21171236599911936, 0.2108180929790251, 0.2100698380090762, 0.21147376802400686, 0.31530748898512684], "text": ""}, "color": "rgba(148.0, 103.0, 189.0, 1.0)", "marker": 4, "sampling_strategy": "Iteration"}}, "transformers": {"c_star": 0.9986076943232312, "max_f_0": 0.9986640595342793}}}}};
+            window.metadata = {"plot_configs": {}, "solvers_description": {"cvxpy[solver=ECOS]": "", "cvxpy[solver=MOSEK]": "", "cvxpy[solver=SCS]": "", "rehline[shrink=False]": "", "rehline[shrink=True]": "", "sklearn[solver=liblinear]": ""}, "obj_description": ""};
+
+            window.addEventListener("load", () => {
+                // Initialize plot state
+                setState({
+                    'dataset': document.getElementById('dataset_selector').value,
+                    'objective': document.getElementById('objective_selector').value,
+                    'objective_column': document.getElementById('objective_column').value,
+                    'plot_kind': document.getElementById('plot_kind').value,
+                    'scale': document.getElementById('change_scaling').value,
+                    'with_quantiles': document.getElementById('change_shades').checked,
+                    'xaxis_type':  document.getElementById('change_xaxis_type').value || "Time",
+                    'hidden_solvers': []
+                });
+                const plot_configs = document.getElementsByClassName('view');
+                if (plot_configs.length > 0 ){
+                    setConfig(plot_configs[1]); // [0] is the span with text : "Available plot views :"
+                }
+            });
+        </script>
+        <script type="text/javascript">
+            /**
+ * Round with precision control
+ * https://github.com/plotly/d3/blob/6bb40cd42f6479be84efda3e50c8444b50d5905d/d3.js#L2189
+ */
+const d3round = (x, n) => {
+    return n ? Math.round(x * (n = Math.pow(10, n))) / n : Math.round(x);
+};
+
+/**
+ * Container of function that create path for SVG plot marker
+ * https://github.com/plotly/plotly.js/blob/b2df3710d7877ff5b4f85256015a88c8ea8fbe1d/src/components/drawing/symbol_defs.js#L13
+ */
+const SYMBOLDEFS = {
+    circle: {
+        n: 0,
+        f: r => {
+            var rs = d3round(r, 2);
+            return 'M' + rs + ',0A' + rs + ',' + rs + ' 0 1,1 0,-' + rs +
+                'A' + rs + ',' + rs + ' 0 0,1 ' + rs + ',0Z';
+        }
+    },
+    square: {
+        n: 1,
+        f: r => {
+            var rs = d3round(r, 2);
+            return 'M' + rs + ',' + rs + 'H-' + rs + 'V-' + rs + 'H' + rs + 'Z';
+        }
+    },
+    diamond: {
+        n: 2,
+        f: r => {
+            var rd = d3round(r * 1.3, 2);
+            return 'M' + rd + ',0L0,' + rd + 'L-' + rd + ',0L0,-' + rd + 'Z';
+        }
+    },
+    cross: {
+        n: 3,
+        f: r => {
+            var rc = d3round(r * 0.4, 2);
+            var rc2 = d3round(r * 1.2, 2);
+            return 'M' + rc2 + ',' + rc + 'H' + rc + 'V' + rc2 + 'H-' + rc +
+                'V' + rc + 'H-' + rc2 + 'V-' + rc + 'H-' + rc + 'V-' + rc2 +
+                'H' + rc + 'V-' + rc + 'H' + rc2 + 'Z';
+        }
+    },
+    x: {
+        n: 4,
+        f: r => {
+            var rx = d3round(r * 0.8 / Math.sqrt(2), 2);
+            var ne = 'l' + rx + ',' + rx;
+            var se = 'l' + rx + ',-' + rx;
+            var sw = 'l-' + rx + ',-' + rx;
+            var nw = 'l-' + rx + ',' + rx;
+            return 'M0,' + rx + ne + se + sw + se + sw + nw + sw + nw + ne + nw + ne + 'Z';
+        }
+    },
+    'triangle-up': {
+        n: 5,
+        f: r => {
+            var rt = d3round(r * 2 / Math.sqrt(3), 2);
+            var r2 = d3round(r / 2, 2);
+            var rs = d3round(r, 2);
+            return 'M-' + rt + ',' + r2 + 'H' + rt + 'L0,-' + rs + 'Z';
+        }
+    },
+    'triangle-down': {
+        n: 6,
+        f: r => {
+            var rt = d3round(r * 2 / Math.sqrt(3), 2);
+            var r2 = d3round(r / 2, 2);
+            var rs = d3round(r, 2);
+            return 'M-' + rt + ',-' + r2 + 'H' + rt + 'L0,' + rs + 'Z';
+        }
+    },
+    'triangle-left': {
+        n: 7,
+        f: r => {
+            var rt = d3round(r * 2 / Math.sqrt(3), 2);
+            var r2 = d3round(r / 2, 2);
+            var rs = d3round(r, 2);
+            return 'M' + r2 + ',-' + rt + 'V' + rt + 'L-' + rs + ',0Z';
+        }
+    },
+    'triangle-right': {
+        n: 8,
+        f: r => {
+            var rt = d3round(r * 2 / Math.sqrt(3), 2);
+            var r2 = d3round(r / 2, 2);
+            var rs = d3round(r, 2);
+            return 'M-' + r2 + ',-' + rt + 'V' + rt + 'L' + rs + ',0Z';
+        }
+    },
+    'triangle-ne': {
+        n: 9,
+        f: r => {
+            var r1 = d3round(r * 0.6, 2);
+            var r2 = d3round(r * 1.2, 2);
+            return 'M-' + r2 + ',-' + r1 + 'H' + r1 + 'V' + r2 + 'Z';
+        }
+    },
+    'triangle-se': {
+        n: 10,
+        f: r => {
+            var r1 = d3round(r * 0.6, 2);
+            var r2 = d3round(r * 1.2, 2);
+            return 'M' + r1 + ',-' + r2 + 'V' + r1 + 'H-' + r2 + 'Z';
+        }
+    },
+    'triangle-sw': {
+        n: 11,
+        f: r => {
+            var r1 = d3round(r * 0.6, 2);
+            var r2 = d3round(r * 1.2, 2);
+            return 'M' + r2 + ',' + r1 + 'H-' + r1 + 'V-' + r2 + 'Z';
+        }
+    },
+    'triangle-nw': {
+        n: 12,
+        f: r => {
+            var r1 = d3round(r * 0.6, 2);
+            var r2 = d3round(r * 1.2, 2);
+            return 'M-' + r1 + ',' + r2 + 'V-' + r1 + 'H' + r2 + 'Z';
+        }
+    },
+    pentagon: {
+        n: 13,
+        f: r => {
+            var x1 = d3round(r * 0.951, 2);
+            var x2 = d3round(r * 0.588, 2);
+            var y0 = d3round(-r, 2);
+            var y1 = d3round(r * -0.309, 2);
+            var y2 = d3round(r * 0.809, 2);
+            return 'M' + x1 + ',' + y1 + 'L' + x2 + ',' + y2 + 'H-' + x2 +
+                'L-' + x1 + ',' + y1 + 'L0,' + y0 + 'Z';
+        }
+    },
+    hexagon: {
+        n: 14,
+        f: r => {
+            var y0 = d3round(r, 2);
+            var y1 = d3round(r / 2, 2);
+            var x = d3round(r * Math.sqrt(3) / 2, 2);
+            return 'M' + x + ',-' + y1 + 'V' + y1 + 'L0,' + y0 +
+                'L-' + x + ',' + y1 + 'V-' + y1 + 'L0,-' + y0 + 'Z';
+        }
+    },
+    hexagon2: {
+        n: 15,
+        f: r => {
+            var x0 = d3round(r, 2);
+            var x1 = d3round(r / 2, 2);
+            var y = d3round(r * Math.sqrt(3) / 2, 2);
+            return 'M-' + x1 + ',' + y + 'H' + x1 + 'L' + x0 +
+                ',0L' + x1 + ',-' + y + 'H-' + x1 + 'L-' + x0 + ',0Z';
+        }
+    },
+    octagon: {
+        n: 16,
+        f: r => {
+            var a = d3round(r * 0.924, 2);
+            var b = d3round(r * 0.383, 2);
+            return 'M-' + b + ',-' + a + 'H' + b + 'L' + a + ',-' + b + 'V' + b +
+                'L' + b + ',' + a + 'H-' + b + 'L-' + a + ',' + b + 'V-' + b + 'Z';
+        }
+    },
+    star: {
+        n: 17,
+        f: r => {
+            var rs = r * 1.4;
+            var x1 = d3round(rs * 0.225, 2);
+            var x2 = d3round(rs * 0.951, 2);
+            var x3 = d3round(rs * 0.363, 2);
+            var x4 = d3round(rs * 0.588, 2);
+            var y0 = d3round(-rs, 2);
+            var y1 = d3round(rs * -0.309, 2);
+            var y3 = d3round(rs * 0.118, 2);
+            var y4 = d3round(rs * 0.809, 2);
+            var y5 = d3round(rs * 0.382, 2);
+            return 'M' + x1 + ',' + y1 + 'H' + x2 + 'L' + x3 + ',' + y3 +
+                'L' + x4 + ',' + y4 + 'L0,' + y5 + 'L-' + x4 + ',' + y4 +
+                'L-' + x3 + ',' + y3 + 'L-' + x2 + ',' + y1 + 'H-' + x1 +
+                'L0,' + y0 + 'Z';
+        }
+    },
+    hexagram: {
+        n: 18,
+        f: r => {
+            var y = d3round(r * 0.66, 2);
+            var x1 = d3round(r * 0.38, 2);
+            var x2 = d3round(r * 0.76, 2);
+            return 'M-' + x2 + ',0l-' + x1 + ',-' + y + 'h' + x2 +
+                'l' + x1 + ',-' + y + 'l' + x1 + ',' + y + 'h' + x2 +
+                'l-' + x1 + ',' + y + 'l' + x1 + ',' + y + 'h-' + x2 +
+                'l-' + x1 + ',' + y + 'l-' + x1 + ',-' + y + 'h-' + x2 + 'Z';
+        }
+    },
+    'star-triangle-up': {
+        n: 19,
+        f: r => {
+            var x = d3round(r * Math.sqrt(3) * 0.8, 2);
+            var y1 = d3round(r * 0.8, 2);
+            var y2 = d3round(r * 1.6, 2);
+            var rc = d3round(r * 4, 2);
+            var aPart = 'A ' + rc + ',' + rc + ' 0 0 1 ';
+            return 'M-' + x + ',' + y1 + aPart + x + ',' + y1 +
+                aPart + '0,-' + y2 + aPart + '-' + x + ',' + y1 + 'Z';
+        }
+    },
+    'star-triangle-down': {
+        n: 20,
+        f: r => {
+            var x = d3round(r * Math.sqrt(3) * 0.8, 2);
+            var y1 = d3round(r * 0.8, 2);
+            var y2 = d3round(r * 1.6, 2);
+            var rc = d3round(r * 4, 2);
+            var aPart = 'A ' + rc + ',' + rc + ' 0 0 1 ';
+            return 'M' + x + ',-' + y1 + aPart + '-' + x + ',-' + y1 +
+                aPart + '0,' + y2 + aPart + x + ',-' + y1 + 'Z';
+        }
+    },
+    'star-square': {
+        n: 21,
+        f: r => {
+            var rp = d3round(r * 1.1, 2);
+            var rc = d3round(r * 2, 2);
+            var aPart = 'A ' + rc + ',' + rc + ' 0 0 1 ';
+            return 'M-' + rp + ',-' + rp + aPart + '-' + rp + ',' + rp +
+                aPart + rp + ',' + rp + aPart + rp + ',-' + rp +
+                aPart + '-' + rp + ',-' + rp + 'Z';
+        }
+    },
+    'star-diamond': {
+        n: 22,
+        f: r => {
+            var rp = d3round(r * 1.4, 2);
+            var rc = d3round(r * 1.9, 2);
+            var aPart = 'A ' + rc + ',' + rc + ' 0 0 1 ';
+            return 'M-' + rp + ',0' + aPart + '0,' + rp +
+                aPart + rp + ',0' + aPart + '0,-' + rp +
+                aPart + '-' + rp + ',0' + 'Z';
+        }
+    },
+    'diamond-tall': {
+        n: 23,
+        f: r => {
+            var x = d3round(r * 0.7, 2);
+            var y = d3round(r * 1.4, 2);
+            return 'M0,' + y + 'L' + x + ',0L0,-' + y + 'L-' + x + ',0Z';
+        }
+    },
+    'diamond-wide': {
+        n: 24,
+        f: r => {
+            var x = d3round(r * 1.4, 2);
+            var y = d3round(r * 0.7, 2);
+            return 'M0,' + y + 'L' + x + ',0L0,-' + y + 'L-' + x + ',0Z';
+        }
+    },
+    hourglass: {
+        n: 25,
+        f: r => {
+            var rs = d3round(r, 2);
+            return 'M' + rs + ',' + rs + 'H-' + rs + 'L' + rs + ',-' + rs + 'H-' + rs + 'Z';
+        },
+        noDot: true
+    },
+    bowtie: {
+        n: 26,
+        f: r => {
+            var rs = d3round(r, 2);
+            return 'M' + rs + ',' + rs + 'V-' + rs + 'L-' + rs + ',' + rs + 'V-' + rs + 'Z';
+        },
+        noDot: true
+    },
+    'circle-cross': {
+        n: 27,
+        f: r => {
+            var rs = d3round(r, 2);
+            return 'M0,' + rs + 'V-' + rs + 'M' + rs + ',0H-' + rs +
+                'M' + rs + ',0A' + rs + ',' + rs + ' 0 1,1 0,-' + rs +
+                'A' + rs + ',' + rs + ' 0 0,1 ' + rs + ',0Z';
+        },
+        needLine: true,
+        noDot: true
+    },
+    'circle-x': {
+        n: 28,
+        f: r => {
+            var rs = d3round(r, 2);
+            var rc = d3round(r / Math.sqrt(2), 2);
+            return 'M' + rc + ',' + rc + 'L-' + rc + ',-' + rc +
+                'M' + rc + ',-' + rc + 'L-' + rc + ',' + rc +
+                'M' + rs + ',0A' + rs + ',' + rs + ' 0 1,1 0,-' + rs +
+                'A' + rs + ',' + rs + ' 0 0,1 ' + rs + ',0Z';
+        },
+        needLine: true,
+        noDot: true
+    },
+    'square-cross': {
+        n: 29,
+        f: r => {
+            var rs = d3round(r, 2);
+            return 'M0,' + rs + 'V-' + rs + 'M' + rs + ',0H-' + rs +
+                'M' + rs + ',' + rs + 'H-' + rs + 'V-' + rs + 'H' + rs + 'Z';
+        },
+        needLine: true,
+        noDot: true
+    },
+    'square-x': {
+        n: 30,
+        f: r => {
+            var rs = d3round(r, 2);
+            return 'M' + rs + ',' + rs + 'L-' + rs + ',-' + rs +
+                'M' + rs + ',-' + rs + 'L-' + rs + ',' + rs +
+                'M' + rs + ',' + rs + 'H-' + rs + 'V-' + rs + 'H' + rs + 'Z';
+        },
+        needLine: true,
+        noDot: true
+    },
+    'diamond-cross': {
+        n: 31,
+        f: r => {
+            var rd = d3round(r * 1.3, 2);
+            return 'M' + rd + ',0L0,' + rd + 'L-' + rd + ',0L0,-' + rd + 'Z' +
+                'M0,-' + rd + 'V' + rd + 'M-' + rd + ',0H' + rd;
+        },
+        needLine: true,
+        noDot: true
+    },
+    'diamond-x': {
+        n: 32,
+        f: r => {
+            var rd = d3round(r * 1.3, 2);
+            var r2 = d3round(r * 0.65, 2);
+            return 'M' + rd + ',0L0,' + rd + 'L-' + rd + ',0L0,-' + rd + 'Z' +
+                'M-' + r2 + ',-' + r2 + 'L' + r2 + ',' + r2 +
+                'M-' + r2 + ',' + r2 + 'L' + r2 + ',-' + r2;
+        },
+        needLine: true,
+        noDot: true
+    },
+    'cross-thin': {
+        n: 33,
+        f: r => {
+            var rc = d3round(r * 1.4, 2);
+            return 'M0,' + rc + 'V-' + rc + 'M' + rc + ',0H-' + rc;
+        },
+        needLine: true,
+        noDot: true,
+        noFill: true
+    },
+    'x-thin': {
+        n: 34,
+        f: r => {
+            var rx = d3round(r, 2);
+            return 'M' + rx + ',' + rx + 'L-' + rx + ',-' + rx +
+                'M' + rx + ',-' + rx + 'L-' + rx + ',' + rx;
+        },
+        needLine: true,
+        noDot: true,
+        noFill: true
+    },
+    asterisk: {
+        n: 35,
+        f: r => {
+            var rc = d3round(r * 1.2, 2);
+            var rs = d3round(r * 0.85, 2);
+            return 'M0,' + rc + 'V-' + rc + 'M' + rc + ',0H-' + rc +
+                'M' + rs + ',' + rs + 'L-' + rs + ',-' + rs +
+                'M' + rs + ',-' + rs + 'L-' + rs + ',' + rs;
+        },
+        needLine: true,
+        noDot: true,
+        noFill: true
+    },
+    hash: {
+        n: 36,
+        f: r => {
+            var r1 = d3round(r / 2, 2);
+            var r2 = d3round(r, 2);
+            return 'M' + r1 + ',' + r2 + 'V-' + r2 +
+                'm-' + r2 + ',0V' + r2 +
+                'M' + r2 + ',' + r1 + 'H-' + r2 +
+                'm0,-' + r2 + 'H' + r2;
+        },
+        needLine: true,
+        noFill: true
+    },
+    'y-up': {
+        n: 37,
+        f: r => {
+            var x = d3round(r * 1.2, 2);
+            var y0 = d3round(r * 1.6, 2);
+            var y1 = d3round(r * 0.8, 2);
+            return 'M-' + x + ',' + y1 + 'L0,0M' + x + ',' + y1 + 'L0,0M0,-' + y0 + 'L0,0';
+        },
+        needLine: true,
+        noDot: true,
+        noFill: true
+    },
+    'y-down': {
+        n: 38,
+        f: r => {
+            var x = d3round(r * 1.2, 2);
+            var y0 = d3round(r * 1.6, 2);
+            var y1 = d3round(r * 0.8, 2);
+            return 'M-' + x + ',-' + y1 + 'L0,0M' + x + ',-' + y1 + 'L0,0M0,' + y0 + 'L0,0';
+        },
+        needLine: true,
+        noDot: true,
+        noFill: true
+    },
+    'y-left': {
+        n: 39,
+        f: r => {
+            var y = d3round(r * 1.2, 2);
+            var x0 = d3round(r * 1.6, 2);
+            var x1 = d3round(r * 0.8, 2);
+            return 'M' + x1 + ',' + y + 'L0,0M' + x1 + ',-' + y + 'L0,0M-' + x0 + ',0L0,0';
+        },
+        needLine: true,
+        noDot: true,
+        noFill: true
+    },
+    'y-right': {
+        n: 40,
+        f: r => {
+            var y = d3round(r * 1.2, 2);
+            var x0 = d3round(r * 1.6, 2);
+            var x1 = d3round(r * 0.8, 2);
+            return 'M-' + x1 + ',' + y + 'L0,0M-' + x1 + ',-' + y + 'L0,0M' + x0 + ',0L0,0';
+        },
+        needLine: true,
+        noDot: true,
+        noFill: true
+    },
+    'line-ew': {
+        n: 41,
+        f: r => {
+            var rc = d3round(r * 1.4, 2);
+            return 'M' + rc + ',0H-' + rc;
+        },
+        needLine: true,
+        noDot: true,
+        noFill: true
+    },
+    'line-ns': {
+        n: 42,
+        f: r => {
+            var rc = d3round(r * 1.4, 2);
+            return 'M0,' + rc + 'V-' + rc;
+        },
+        needLine: true,
+        noDot: true,
+        noFill: true
+    },
+    'line-ne': {
+        n: 43,
+        f: r => {
+            var rx = d3round(r, 2);
+            return 'M' + rx + ',-' + rx + 'L-' + rx + ',' + rx;
+        },
+        needLine: true,
+        noDot: true,
+        noFill: true
+    },
+    'line-nw': {
+        n: 44,
+        f: r => {
+            var rx = d3round(r, 2);
+            return 'M' + rx + ',' + rx + 'L-' + rx + ',-' + rx;
+        },
+        needLine: true,
+        noDot: true,
+        noFill: true
+    },
+    'arrow-up': {
+        n: 45,
+        f: r => {
+            var rx = d3round(r, 2);
+            var ry = d3round(r * 2, 2);
+            return 'M0,0L-' + rx + ',' + ry + 'H' + rx + 'Z';
+        },
+        noDot: true
+    },
+    'arrow-down': {
+        n: 46,
+        f: r => {
+            var rx = d3round(r, 2);
+            var ry = d3round(r * 2, 2);
+            return 'M0,0L-' + rx + ',-' + ry + 'H' + rx + 'Z';
+        },
+        noDot: true
+    },
+    'arrow-left': {
+        n: 47,
+        f: r => {
+            var rx = d3round(r * 2, 2);
+            var ry = d3round(r, 2);
+            return 'M0,0L' + rx + ',-' + ry + 'V' + ry + 'Z';
+        },
+        noDot: true
+    },
+    'arrow-right': {
+        n: 48,
+        f: r => {
+            var rx = d3round(r * 2, 2);
+            var ry = d3round(r, 2);
+            return 'M0,0L-' + rx + ',-' + ry + 'V' + ry + 'Z';
+        },
+        noDot: true
+    },
+    'arrow-bar-up': {
+        n: 49,
+        f: r => {
+            var rx = d3round(r, 2);
+            var ry = d3round(r * 2, 2);
+            return 'M-' + rx + ',0H' + rx + 'M0,0L-' + rx + ',' + ry + 'H' + rx + 'Z';
+        },
+        needLine: true,
+        noDot: true
+    },
+    'arrow-bar-down': {
+        n: 50,
+        f: r => {
+            var rx = d3round(r, 2);
+            var ry = d3round(r * 2, 2);
+            return 'M-' + rx + ',0H' + rx + 'M0,0L-' + rx + ',-' + ry + 'H' + rx + 'Z';
+        },
+        needLine: true,
+        noDot: true
+    },
+    'arrow-bar-left': {
+        n: 51,
+        f: r => {
+            var rx = d3round(r * 2, 2);
+            var ry = d3round(r, 2);
+            return 'M0,-' + ry + 'V' + ry + 'M0,0L' + rx + ',-' + ry + 'V' + ry + 'Z';
+        },
+        needLine: true,
+        noDot: true
+    },
+    'arrow-bar-right': {
+        n: 52,
+        f: r => {
+            var rx = d3round(r * 2, 2);
+            var ry = d3round(r, 2);
+            return 'M0,-' + ry + 'V' + ry + 'M0,0L-' + rx + ',-' + ry + 'V' + ry + 'Z';
+        },
+        needLine: true,
+        noDot: true
+    }
+};
+
+const DOTPATH = 'M0,0.5L0.5,0L0,-0.5L-0.5,0Z';
+
+const drawing = {
+    symbolFuncs: [],
+};
+
+/**
+ * Create arrays of symbol functions.
+ * https://plotly.com/javascript/reference/scatter/#scatter-marker-symbol
+ */
+Object.keys(SYMBOLDEFS).forEach(function(k) {
+    var symDef = SYMBOLDEFS[k];
+    var n = symDef.n;
+    drawing.symbolFuncs[n] = symDef.f;
+});
+
+/**
+ * Returns a <path></path> element that have to be placed in a <svg></svg> element.
+ * 
+ * @param {int} symbolNumber
+ * @param {String} color
+ * @return {Element}
+ */
+const createPathElement = (symbolNumber, color) => {
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    // d is the shape of the symbol.
+    path.setAttribute('d', createPathString(symbolNumber, 5));
+    // Translation must be the half of the svg size to have the symbol centered.
+    path.setAttribute('transform', 'translate(15, 15)');
+
+    // If svg is type "open" or "open-dot" : https://plotly.com/javascript/reference/scatter/#scatter-marker-symbol
+    if ((100 <= symbolNumber && symbolNumber < 200) || 300 <= symbolNumber) {
+        path.setAttribute('stroke', color);
+        path.setAttribute('stroke-width', 0.5);
+        path.setAttribute('stroke-opacity', 1);
+        path.setAttribute('fill', 'white');
+    }
+
+    // If svg is type "normal" or "dot" : https://plotly.com/javascript/reference/scatter/#scatter-marker-symbol
+    if (symbolNumber < 100 || (200 <= symbolNumber && symbolNumber < 300)) {
+        path.setAttribute('fill-opacity', 1);
+        path.setAttribute('fill', color);
+    }
+
+    // If svg is type "dot" : https://plotly.com/javascript/reference/scatter/#scatter-marker-symbol
+    if (200 <= symbolNumber && symbolNumber < 300) {
+        path.setAttribute('stroke', 'black');
+        path.setAttribute('stroke-width', 0.5);
+        path.setAttribute('stroke-opacity', 1);
+    }
+    
+    return path;
+}
+
+/**
+ * Returns the string corresponding of the symbol shape requested by symbolNumber.
+ * 
+ * @param {int} symbolNumber
+ * @param {int} r size of the symbol (currently, we request a 5)
+ * @returns {String} this string must be placed in the "d" attribute of <path></path> SVG element.
+ */
+function createPathString(symbolNumber, r) {
+    var base = symbolNumber % 100;
+    return drawing.symbolFuncs[base](r) + (symbolNumber >= 200 ? DOTPATH : '');
+}
+
+            const NON_CONVERGENT_COLOR = 'rgba(0.8627, 0.8627, 0.8627)'
+
+/*
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * STATE MANAGEMENT
+ *
+ * The state represent the plot state. It's an object
+ * that is stored into the window.state variable.
+ *
+ * Do not manually update window.state,
+ * instead, foreach state modification,
+ * you shoud call the setState() function
+ * to keep the plot in sync with its state.
+ *
+ * The state contains the following keys :
+ *   - dataset (string),
+ *   - objective (string),
+ *   - objective_column (string),
+ *   - plot_kind (string),
+ *   - scale (string)
+ *   - with_quantiles (boolean)
+ *   - xaxis_type (string)
+ *   - hidden_solvers (array)
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ */
+
+/**
+ * Update the state and create/update the plot
+ * using the new state.
+ *
+ * @param {Object} partialState
+ */
+const setState = (partialState) => {
+  window.state = {...state(), ...partialState};
+  displayScatterElements(!isBarChart());
+
+  // TODO: `listIdXaxisSelection` to be removed after
+  // implementing responsiveness through breakpoints
+  // and removing content duplication between big screen and mobile
+  let listIdXaxisSelection = ["change_xaxis_type", "change_xaxis_type_mobile"];
+  listIdXaxisSelection.forEach(idXaxisSelection => updateXaxis(idXaxisSelection))
+
+  makePlot();
+  makeLegend();
+}
+
+/**
+ * Retrieve the state object from window.state
+ *
+ * @returns Object
+ */
+const state = () => window.state;
+
+/**
+ * Mapping between selectors and configuration
+*/
+const config_mapping = {
+  'dataset': 'dataset_selector',
+  'objective': 'objective_selector',
+  'objective_column': 'objective_column',
+  'kind': 'plot_kind',
+  'scale': 'change_scaling',
+  'with_quantiles': 'change_shades',
+  'xaxis_type':'change_xaxis_type',
+};
+
+/*
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * PLOT MANAGEMENT
+ *
+ * Retrieve formatted data for PlotlyJS using state
+ * and create/update the plot.
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ */
+
+/**
+ * Create/Update the plot.
+ */
+const makePlot = () => {
+  const div = document.getElementById('unique_plot');
+  const data = isBarChart() ? getBarData() : getScatterCurves();
+  const layout = isBarChart() ? getBarChartLayout() : getScatterChartLayout();
+
+  Plotly.react(div, data, layout);
+};
+
+/**
+ * Gives the data formatted for plotlyJS bar chart.
+ *
+ * @returns {array}
+ */
+const getBarData = () => {
+  if (!isAvailable()) return [{type:'bar'}];
+
+  const {x, y, colors, texts} = barDataToArrays()
+
+  // Add bars
+  const barData = [{
+    type: 'bar',
+    x: x,
+    y: y,
+    marker: {
+      color: colors,
+    },
+    text: texts,
+    textposition: 'inside',
+    insidetextanchor: 'middle',
+    textangle: '-90',
+  }];
+
+  x.forEach(solver => {
+    // Add times for each convergent solver
+    // Check if text is not 'Did not converge'
+    if (data(solver).bar.text === '') {
+      let nbTimes = data(solver).bar.times.length
+
+      barData.push({
+        type: 'scatter',
+        x: new Array(nbTimes).fill(solver),
+        y: data(solver).bar.times,
+        marker: {
+          color: 'black',
+          symbol: 'line-ew-open'
+        },
+        line: {
+          width: 0
+        },
+      });
+    }
+  });
+
+  return barData;
+};
+
+/**
+ * Gives the data formatted for plotlyJS scatter chart.
+ *
+ * @returns {array}
+ */
+const getScatterCurves = () => {
+  // create a list of object to plot in plotly
+  const curves = [];
+
+  // For each solver, add the median curve with proper style and visibility.
+  let xaxisType = state().xaxis_type;
+
+  getSolvers().forEach(solver => {
+    solverSamplingStrategy = data(solver)['sampling_strategy'];
+
+    // plot only solvers that were stopped using xaxis type
+    // plot all solver if xaxis type is `time`
+    if(xaxisType !== "Time" && solverSamplingStrategy !== xaxisType) {
+      return
+    }
+
+    ScatterXaxisProperty = xaxisType === "Time" ? 'x' : 'stop_val';
+
+    curves.push({
+      type: 'scatter',
+      name: solver,
+      mode: 'lines+markers',
+      line: {
+        color: data(solver).color,
+      },
+      marker: {
+        symbol: data(solver).marker,
+        size: 10,
+      },
+      legendgroup: solver,
+      hovertemplate: solver + ' <br> (%{x:.1e},%{y:.1e}) <extra></extra>',
+      visible: isVisible(solver) ? true : 'legendonly',
+      x: data(solver).scatter[ScatterXaxisProperty],
+      y: useTransformer(data(solver).scatter.y, 'y', data().transformers),
+    });
+
+    // skip plotting quantiles if xaxis is not time
+    // as stop_val are predefined and hence deterministic
+    if(xaxisType !== "Time") {
+      return
+    }
+
+    if (state().with_quantiles) {
+      // Add shaded area for each solver, with proper style and visibility.
+
+      curves.push({
+        type: 'scatter',
+        mode: 'lines',
+        showlegend: false,
+        line: {
+          width: 0,
+          color: data(solver).color,
+        },
+        legendgroup: solver,
+        hovertemplate: '(%{x:.1e},%{y:.1e}) <extra></extra>',
+        visible: isVisible(solver) ? true : 'legendonly',
+        x: data(solver).scatter['q1'],
+        y: useTransformer(data(solver).scatter.y, 'y', data().transformers),
+      }, {
+        type: 'scatter',
+        mode: 'lines',
+        showlegend: false,
+        fill: 'tonextx',
+        line: {
+          width: 0,
+          color: data(solver).color,
+        },
+        legendgroup: solver,
+        hovertemplate: '(%{x:.1e},%{y:.1e}) <extra></extra>',
+        visible: isVisible(solver) ? true : 'legendonly',
+        x: data(solver).scatter['q9'],
+        y: useTransformer(data(solver).scatter.y, 'y', data().transformers),
+      });
+    }
+  });
+
+  return curves;
+};
+
+
+
+/*
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * CONFIG MANAGEMENT
+ *
+ * Configs are used to save particular benchmark results' views.
+ *
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ */
+
+const get_lim_plotly = (lim, ax) =>{
+  if(getScale()[ax + 'axis'] == 'log'){
+    lim = [Math.log10(parseFloat(lim[0])), Math.log10(parseFloat(lim[1]))]
+  };
+  return lim;
+};
+const get_lim_config = (lim, ax) =>{
+  if(getScale()[ax + 'axis'] == 'log'){
+    lim = [Math.pow(10, lim[0]), Math.pow(10, lim[1])]
+  };
+  return lim;
+};
+
+
+const setConfig = (config_item) =>{
+  // Retrieve the name of the config.
+  let config_name = config_item.textContent;
+  // Select on mobile version
+  if (config_item.tagName === "SELECT") {
+    config_name = config_item.value;
+  }
+
+  // Clear all selected views and select the good one.
+  setAllViewsToNonActive();
+  config_item.classList.add('active');
+  // Select on mobile version
+  if (config_item.tagName === "SELECT") {
+    config_item.value = config_name;
+  }
+
+  if (config_name !== "no_selected_view") {
+    // Get the updated state
+    let config = window.metadata.plot_configs[config_name];
+    let update = {};
+    const lims = ['xlim', 'ylim', 'hidden_solvers']
+    for(let key in config_mapping){
+      if (key in config){
+        value = config[key];
+        document.getElementById(config_mapping[key]).value = value;
+        if (key == "kind"){
+          key = "plot_kind";
+        }
+        update[key] = value;
+      }
+      else if (!lims.includes(key)) {
+        document.getElementById(config_mapping[key]).selectedIndex = 0;
+        update[key] = document.getElementById(config_mapping[key]).value;
+      }
+    }
+
+    setState(update);
+
+    let layout = {};
+    for(const ax of ['x', 'y']){
+      let lim = ax + 'lim';
+      if (config.hasOwnProperty(lim) & (config[lim] != null)){
+        layout[ax +'axis.range'] = get_lim_plotly(config[lim], ax);
+      };
+    };
+
+    // update the plot
+    const div = document.getElementById('unique_plot');
+    Plotly.relayout(div, layout);
+  }
+};
+
+
+const saveView = () => {
+  let n_configs = Object.keys(window.metadata.plot_configs).length;
+
+  let config_name = prompt("Config Name", "Config " + n_configs);
+  if(config_name === null || config_name === ""){
+    return;
+  }
+
+  // Retrieve the drop down menue selected values
+  let config = {};
+  for(let key in config_mapping) {
+    value = config[key];
+    config[key] = document.getElementById(config_mapping[key]).value;
+  }
+
+  // Retrieve the range of the plots.
+  const fig = document.getElementById('unique_plot');
+  config['xlim'] = get_lim_config(fig.layout.xaxis.range, 'x');
+  config['ylim'] = get_lim_config(fig.layout.yaxis.range, 'y');
+
+  let noViewAvailableElement = document.getElementById('no_view_available');
+
+  if (noViewAvailableElement) {
+    noViewAvailableElement.classList.add('hidden');
+  }
+  setAllViewsToNonActive();
+
+  // Only add a button if the config does not exist yet:
+  if (!(config_name in window.metadata.plot_configs)){
+    let viewTabs = document.getElementById("view-tabs");
+    let node = document.createElement("span");
+    node.innerHTML = config_name;
+    node.className = "view border-transparent whitespace-nowrap border-b-2 py-4 px-1 text-sm text-gray-400 hover:text-gray-500 hover:border-gray-300 cursor-pointer active";
+    node.onclick = function() {setConfig(node)};
+    viewTabs.appendChild(node);
+
+    let option = document.createElement("option");
+    option.setAttribute("value", config_name);
+    option.innerHTML = config_name;
+    let tabs = document.getElementById("tabs");
+    tabs.appendChild(option);
+    tabs.value = config_name;
+  }
+
+  // Add the config in the configs mapping.
+  window.metadata.plot_configs[config_name] = config;
+
+  return false;
+};
+
+const setAllViewsToNonActive = () => {
+  let view_items = document.getElementsByClassName('view');
+  for (let i = 0; i < view_items.length; i++) {
+     view_items.item(i).classList.remove('active');
+  }
+
+  document.getElementById('tabs').value = "no_selected_view";
+}
+
+const downloadBlob = (blob, name) => {
+  var tempLink = document.createElement("a");
+  tempLink.setAttribute('href', URL.createObjectURL(blob));
+  tempLink.setAttribute('download', name);
+  tempLink.click();
+  URL.revokeObjectURL(tempLink.href);
+
+  // To prevent the screen from going up when the user clicks on the button
+  return false;
+
+};
+
+const exportConfigs = () => {
+  // Construct the yaml export of the config.
+  var config_yaml = "plot_configs:\n"
+
+  for(var config_name in window.metadata.plot_configs){
+    var config = window.metadata.plot_configs[config_name];
+    config_yaml += "  " + config_name + ":\n";
+    for(var key in config){
+      var value = config[key];
+      if (key === 'xlim' || key === 'ylim')
+        value = "[" + value + "]";
+      config_yaml += "    " + key + ": " + value + "\n";
+    }
+  }
+
+  // Download the resulting yaml file.
+  var blob = new Blob([config_yaml], {type: 'text/yaml'});
+  return downloadBlob(blob, 'config.yml');
+};
+
+const exportHTML = () => {
+  var blob = new Blob(
+    [document.documentElement.innerHTML],
+    {type: 'text/html'}
+  );
+  return downloadBlob(blob, location.pathname.split("/").pop());
+};
+
+/*
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * DATA TRANSFORMERS
+ *
+ * Transformers are used to modify data
+ * on the fly.
+ *
+ * WARNING : If you add a new transformer function,
+ * don't forget to register it in the object : window.tranformers,
+ * at the end of this section.
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ */
+
+/**
+ * Select the right transformer according to the state.
+ * If the requested transformer does not exists,
+ * it returns raw data.
+ *
+ * @param {Object} data
+ * @param {String} solver
+ * @param {String} axis it could be x, y, q1, q9
+ * @returns {array}
+ */
+const useTransformer = (data, axis, options) => {
+  try {
+    let transformer = 'transformer_' + axis + '_' + state().plot_kind;
+    return window.transformers[transformer](data, options);
+  } catch(error) {
+    return data;
+  }
+};
+
+/**
+ * Transform data on the y axis for subotimality curve.
+ *
+ * @param {Object} data
+ * @param {String} solver
+ * @returns {array}
+ */
+const transformer_y_suboptimality_curve = (y, options) => {
+  // Retrieve c_star value
+  const c_star = options.c_star;
+
+  // Compute suboptimality for each data
+  return y.map(value => value - c_star);
+};
+
+/**
+ * Transform data ont the y axis for relative suboptimality curve.
+ *
+ * @param {Object} data
+ * @param {String} solver
+ * @returns {array}
+ */
+const transformer_y_relative_suboptimality_curve = (y, options) => {
+  // Retrieve transformer values
+  const c_star = options.c_star;
+  const max_f_0 = options.max_f_0;
+
+  // Compute relative suboptimality for each data
+  return y.map(value => (value - c_star) / (max_f_0 - c_star));
+};
+
+/**
+ * Store all the transformer functions to be callable
+ * by the useTransformer function.
+ */
+window.transformers = {
+  transformer_y_suboptimality_curve,
+  transformer_y_relative_suboptimality_curve,
+};
+
+/*
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * TOOLS
+ *
+ * Various functions to simplify life.
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ */
+
+const data = (solver = null) => {
+  return solver ?
+    window.data[state().dataset][state().objective][state().objective_column].solvers[solver]:
+    window.data[state().dataset][state().objective][state().objective_column]
+}
+
+const getSolvers = () => Object.keys(data().solvers);
+
+const isBarChart = () => state().plot_kind === 'bar_chart';
+
+const isVisible = solver => !state().hidden_solvers.includes(solver);
+
+const isSolverAvailable = solver => data(solver).scatter.y.filter(value => !isNaN(value)).length > 0;
+
+const isSmallScreen = () => window.screen.availHeight < 900;
+
+/**
+ * Check for each solver
+ * if data is available
+ *
+ * @returns {Boolean}
+ */
+const isAvailable = () => {
+  let isNotAvailable = true;
+
+  getSolvers().forEach(solver => {
+    if (isSolverAvailable(solver)) {
+      isNotAvailable = false;
+    }
+  });
+
+  return !isNotAvailable;
+}
+
+const displayScatterElements = shouldBeVisible => {
+  if (shouldBeVisible) {
+    document.getElementById('scale-form-group').style.display = 'inline-block';
+    document.getElementById('legend_container').style.display = 'block';
+    document.getElementById('plot_legend').style.display = 'flex';
+  } else {
+    document.getElementById('scale-form-group').style.display = 'none';
+    document.getElementById('legend_container').style.display = 'none';
+    document.getElementById('plot_legend').style.display = 'none';
+  }
+};
+
+const barDataToArrays = () => {
+  const colors = [], texts = [], x = [], y = [];
+
+  getSolvers().forEach(solver => {
+    x.push(solver);
+    y.push(data(solver).bar.y);
+    colors.push(data(solver).bar.text === '' ? data(solver).color : NON_CONVERGENT_COLOR);
+    texts.push(data(solver).bar.text);
+  });
+
+  return {x, y, colors, texts}
+}
+
+const getScale = () => {
+  return _getScale(state().scale)
+}
+
+const _getScale = (scale) => {
+  switch (scale) {
+    case 'loglog':
+      return {
+        xaxis: 'log',
+        yaxis: 'log',
+      };
+    case "semilog-y":
+      return {
+        xaxis: 'linear',
+        yaxis: 'log',
+      };
+    case "semilog-x":
+      return {
+        xaxis: 'log',
+        yaxis: 'linear',
+      };
+    case "linear":
+      return {
+        xaxis: 'linear',
+        yaxis: 'linear',
+      };
+    default:
+      console.error('Unknown scale value : ' + state().scale);
+  }
+}
+
+const getScatterChartLayout = () => {
+  let xaxisType = state().xaxis_type;
+
+  const layout = {
+    autosize: !isSmallScreen(),
+    modebar: {
+      orientation: 'v',
+    },
+    height: 700,
+    showlegend: false,
+    legend: {
+      title: {
+        text: 'Solvers',
+      },
+      orientation: 'h',
+      xanchor: 'center',
+      yanchor: 'top',
+      y: -.2,
+      x: .5
+    },
+    xaxis: {
+      type: getScale().xaxis,
+      title: xaxisType === "Time" ? "Time [sec]": xaxisType,
+      tickformat:  ["Time", "Tolerance"].includes(xaxisType) ? '.1e': '',
+      tickangle: -45,
+      gridcolor: '#ffffff',
+      zeroline : false,
+    },
+    yaxis: {
+      type: getScale().yaxis,
+      title: getYLabel(),
+      tickformat: '.1e',
+      gridcolor: '#ffffff',
+      zeroline : false,
+    },
+    title: `${state().objective}<br />Data: ${state().dataset}`,
+    plot_bgcolor: '#e5ecf6',
+  };
+
+  if (isSmallScreen()) {
+    layout.width = 900;
+    layout.height = window.screen.availHeight - 200;
+    layout.dragmode = false;
+  }
+
+  if (!isAvailable()) {
+    layout.annotations = [{
+      xref: 'paper',
+      yref: 'paper',
+      x: 0.5,
+      y: 0.5,
+      text: 'Not available',
+      showarrow: false,
+      font: {
+        color: 'black',
+        size: 32,
+      }
+    }];
+  };
+
+  return layout;
+};
+
+const getBarChartLayout = () => {
+
+  const layout = {
+    autosize: !isSmallScreen(),
+    modebar: {
+      orientation: 'v',
+    },
+    yaxis: {
+      type: 'log',
+      title: 'Time [sec]',
+      tickformat: '.1e',
+      gridcolor: '#ffffff',
+    },
+    xaxis: {
+      tickangle: -60,
+      ticktext: getSolvers(),
+    },
+    showlegend: false,
+    title: `${state().objective}<br />Data: ${state().dataset}`,
+    plot_bgcolor: '#e5ecf6',
+  };
+
+  if (isSmallScreen()) {
+    layout.width = 900;
+    layout.height = window.screen.availHeight - 200;
+    layout.dragmode = false;
+  }
+
+  if (!isAvailable()) {
+    layout.annotations = [{
+      xref: 'paper',
+      yref: 'paper',
+      x: 0.5,
+      y: 0.5,
+      text: 'Not available',
+      showarrow: false,
+      font: {
+        color: 'black',
+        size: 32,
+      }
+    }];
+  };
+
+  return layout;
+};
+
+const getYLabel = () => {
+  switch(state().plot_kind) {
+    case 'objective_curve':
+      return 'F(x)';
+    case 'suboptimality_curve':
+      return 'F(x) - F(x*)';
+    case 'relative_suboptimality_curve':
+      return 'F(x) - F(x*) / F(x0) - F(x*)'
+    case 'bar_chart':
+      return 'Time [sec]';
+    default:
+      return 'unknown';
+  };
+};
+
+/*
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * MANAGE HIDDEN SOLVERS
+ *
+ * Functions to hide/display and memorize solvers which were clicked
+ * by user on the legend of the plot.
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ */
+const getSolverFromEvent = event => {
+  const target = event.currentTarget;
+
+  for (let i = 0; i < target.children.length; i++) {
+    if (target.children[i].className == 'solver') {
+      return target.children[i].firstChild.nodeValue;
+    }
+  }
+
+  return null;
+};
+
+const purgeHiddenSolvers = () => setState({hidden_solvers: []});
+
+const hideAllSolversExcept = solver => {setState({hidden_solvers: getSolvers().filter(elmt => elmt !== solver)})};
+
+const hideSolver = solver => isVisible(solver) ? setState({hidden_solvers: [...state().hidden_solvers, solver]}) : null;
+
+const showSolver = solver => setState({hidden_solvers: state().hidden_solvers.filter(hidden => hidden !== solver)});
+
+/**
+ * Add or remove solver name from the list of hidden solvers.
+ *
+ * @param {String} solver
+ * @returns {void}
+ */
+const handleSolverClick = solver => {
+  if (!isVisible(solver)) {
+    showSolver(solver);
+
+    return;
+  }
+
+  hideSolver(solver);
+};
+
+const handleSolverDoubleClick = solver => {
+  // If all solvers except one are hidden, so double click should show all solvers
+  if (state().hidden_solvers.length === getSolvers().length - 1) {
+    purgeHiddenSolvers();
+
+    return;
+  }
+
+  hideAllSolversExcept(solver);
+};
+
+/**
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * MANAGE PLOT LEGEND
+ *
+ * We don't use the plotly legend to keep control
+ * on the size of the plot.
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ */
+
+/**
+ * Creates the legend at the bottom of the plot.
+ */
+const makeLegend = () => {
+  const legend = document.getElementById('plot_legend');
+
+  legend.innerHTML = '';
+  const solversDescription = window.metadata["solvers_description"];
+
+  Object.keys(data().solvers).forEach(solver => {
+    const color = data().solvers[solver].color;
+    const symbolNumber = data().solvers[solver].marker;
+
+    let legendItem = createLegendItem(solver, color, symbolNumber);
+
+    // preserve compatibility with prev version
+    if(solversDescription === null || solversDescription === undefined) {
+      legend.appendChild(legendItem);
+      return;
+    }
+
+    let payload = {
+      description: solversDescription[solver],
+    }
+
+    legend.appendChild(
+      createSolverDescription(legendItem, payload)
+    );
+  });
+}
+
+/**
+ * Creates a legend item which contains the solver name,
+ * the solver marker as an SVG and an horizontal bar with
+ * the solver color.
+ *
+ * @param {String} solver
+ * @param {String} color
+ * @param {int} symbolNumber
+ * @retuns {HTMLElement}
+ */
+const createLegendItem = (solver, color, symbolNumber) => {
+  // Create item container
+  const item = document.createElement('div');
+  item.style.display = 'flex';
+  item.style.flexDirection = 'row';
+  item.style.alignItems = 'center';
+  item.style.position = 'relative';
+  item.style.cursor = 'pointer';
+  item.className = 'bg-white py-1 px-4 shadow-sm mt-2 rounded'
+
+  if (!isVisible(solver)) {
+    item.style.opacity = 0.5;
+  }
+
+  // Click on a solver in the legend
+  item.addEventListener('click', event => {
+    solver = getSolverFromEvent(event);
+
+    if (!getSolvers().includes(solver)) {
+      console.error('An invalid solver has been handled during the click event.');
+
+      return;
+    }
+
+    // In javascript we must simulate double click.
+    // So first click is handled and kept in memory (window.clickedSolver)
+    // during 500ms, if nothing else happen timeout will execute
+    // single click function. However, if an other click happen during this
+    // 500ms, it clears the timeout and execute the double click function.
+    if (!window.clickedSolver) {
+      window.clickedSolver = solver;
+
+      // Timeout will execute single click function after 500ms
+      window.clickedTimeout = setTimeout(() => {
+        window.clickedSolver = null;
+
+        handleSolverClick(solver);
+      }, 500);
+    } else if (window.clickedSolver === solver) {
+      clearTimeout(window.clickedTimeout);
+      window.clickedSolver = null;
+      handleSolverDoubleClick(solver);
+    }
+  });
+
+  // Create the HTML text node for the solver name in the legend
+  const textContainer = document.createElement('div');
+  textContainer.style.marginLeft = '0.5rem';
+  textContainer.className = 'solver';
+  textContainer.appendChild(document.createTextNode(solver));
+
+  // Create the horizontal bar in the legend to represent the curve
+  const hBar = document.createElement('div');
+  hBar.style.height = '2px';
+  hBar.style.width = '30px';
+  hBar.style.backgroundColor = color;
+  hBar.style.position = 'absolute';
+  hBar.style.left = '1em';
+  hBar.style.zIndex = 10;
+
+  // Append elements to the legend item
+  item.appendChild(createSymbol(symbolNumber, color));
+  item.appendChild(hBar);
+  item.appendChild(textContainer);
+
+  return item;
+}
+
+
+function createSolverDescription(legendItem, { description }) {
+  if (description === null || description === undefined || description === "")
+    description = "No description provided";
+
+  let descriptionContainer = document.createElement("div");
+  descriptionContainer.setAttribute("class", "solver-description-container")
+
+  descriptionContainer.innerHTML = `
+  <div class="solver-description-content text-sm">
+    <span class="solver-description-body">${description}</span>
+  </div>
+  `;
+
+  descriptionContainer.prepend(legendItem);
+
+  return descriptionContainer;
+}
+
+
+function updateXaxis(idXaxisTypeSelection) {
+  let selection = document.getElementById(idXaxisTypeSelection);
+  selection.innerHTML = "";
+
+  let xaxisType = state()["xaxis_type"];
+  let options = new Set(['Time']);
+
+  // get solvers run for selected (dataset, objective, objective colum)
+  // and select their unique sampling strategies
+  let solvers = data()['solvers'];
+  Object.values(solvers).forEach(solver => options.add(solver['sampling_strategy']));
+
+  // create xaxis type options
+  options.forEach(option => {
+    element = document.createElement('option');
+    element.setAttribute('value', option);
+    element.innerText = option;
+
+    selection.append(element);
+  });
+
+  // set selected value
+  if (!options.has(xaxisType)){
+    alert("Unknown xaxis type '"+ xaxisType + "'.");
+  }
+  selection.value = options.has(xaxisType) ? xaxisType : "Time";
+}
+
+/**
+ * Create the same svg symbol as plotly.
+ * Returns an <svg> HTML Element
+ *
+ * @param {int} symbolNumber
+ * @param {String} color
+ * @returns {HTMLElement}
+ */
+const createSymbol = (symbolNumber, color) => {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+
+  svg.setAttribute('width', 30);
+  svg.setAttribute('height', 30);
+  svg.style.zIndex = 20;
+
+  // createPathElement() come from the local file symbols.js
+  svg.appendChild(createPathElement(symbolNumber, color));
+
+  return svg;
+}
+
+/**
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * EVENT REGISTRATIONS
+ *
+ * Some events are also registered in result.html.
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ */
+
+document.getElementById('btn-plot-config').addEventListener('click', () => {
+  const elmt = document.getElementById('mobile-plot-form');
+
+  if (elmt.style.display === 'block') {
+      elmt.style.display = 'none';
+
+      return;
+  }
+
+  elmt.style.display = 'block';
+});
+
+document.getElementById('btn-main-menu').addEventListener('click', () => {
+  const elmt = document.getElementById('mobile-menu');
+
+  if (elmt.style.display === 'block') {
+      elmt.style.display = 'none';
+
+      return;
+  }
+
+  elmt.style.display = 'block';
+});
+
+        </script>
+    </body>
+</html>
