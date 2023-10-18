@@ -1,4 +1,4 @@
-# **ReHLine**
+# **ReHLine** <a href="https://github.com/softmin/ReHLine"><img src="doc/source/logo.png" align="right" height="138" /></a>
 
 `ReHLine` is designed to be a computationally efficient and practically useful software package for large-scale ERMs.
 
@@ -23,10 +23,10 @@ where $\mathbf{U} = (u_{li}),\mathbf{V} = (v_{li}) \in \mathbb{R}^{L \times n}$ 
 Some existing problems of recent interest in statistics and machine learning can be solved by `ReHLine`. 
 | Problem   |      Results      |
 |---------- |:-----------------:|
-|[FairSVM](./python/benchmark/benchmark_FairSVM/README.md) | [Result](./python/benchmark/benchmark_FairSVM/outputs/benchmark_FairSVM.html)|
-|[ElasticQR](./python/benchmark/benchmark_QR/README.md) | [Result](./python/benchmark/benchmark_QR/outputs/benchmark_QR.html)|
-|[RidgeHuber](./python/benchmark/benchmark_Huber/README.md) | [Result](./python/benchmark/benchmark_Huber/outputs/benchmark_Huber.html)|
-|[SVM](./python/benchmark/benchmark_SVM/README.md) | [Result](./python/benchmark/benchmark_SVM/outputs/benchmark_SVM.html)|
+|[FairSVM](./python/benchmark/benchmark_FairSVM/README.md) | [Result](./doc/source/benchmark/benchmark_FairSVM.html)|
+|[ElasticQR](./python/benchmark/benchmark_QR/README.md) | [Result](./doc/source/benchmark/benchmark_QR/outputs/benchmark_QR.html)|
+|[RidgeHuber](./python/benchmark/benchmark_Huber/README.md) | [Result](./doc/source/benchmark/outputs/benchmark_Huber.html)|
+|[SVM](./python/benchmark/benchmark_SVM/README.md) | [Result](./doc/source/benchmark/benchmark_SVM.html)|
 
 ## 🧾 **Overview of Results**
 
