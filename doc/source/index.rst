@@ -74,11 +74,30 @@ and ridge regularized Huber minimization (RidgeHuber).
 
 .. image:: ./figs/tab.png
 
-.. 📚 Benchmark (powered by benchopt)
-.. ----------------------------------
+📚 Benchmark (powered by `benchopt`)
+------------------------------------
 
-.. Some existing problems of recent interest in statistics and machine learning can be solved by `ReHLine`. 
+To generate benchmark results in our paper, please check `ReHLine-benchmark <https://github.com/softmin/ReHLine-benchmark>`_.
 
++-------------+------------------------------------------------+
+| Problem     | Results                                        |
++=============+================================================+
+| FairSVM_    | `Result <./benchmark/benchmark_FairSVM.html>`_ |
++-------------+------------------------------------------------+
+| ElasticQR_  | `Result <./benchmark/benchmark_QR.html>`_      |
++-------------+------------------------------------------------+
+| RidgeHuber_ | `Result <./benchmark/benchmark_Huber.html>`_   |
++-------------+------------------------------------------------+
+| SVM_        | `Result <./benchmark/benchmark_SVM.html>`_     |
++-------------+------------------------------------------------+
+| sSVM_       | `Result <./benchmark/benchmark_sSVM.html>`_    |
++-------------+------------------------------------------------+
+
+.. _FairSVM: https://github.com/softmin/ReHLine-benchmark/tree/main/benchmark_FairSVM
+.. _ElasticQR: https://github.com/softmin/ReHLine-benchmark/tree/main/benchmark_QR
+.. _RidgeHuber: https://github.com/softmin/ReHLine-benchmark/tree/main/benchmark_Huber
+.. _SVM: https://github.com/softmin/ReHLine-benchmark/tree/main/benchmark_SVM
+.. _sSVM: https://github.com/softmin/ReHLine-benchmark/tree/main/benchmark_sSVM
 
 🧾 Overview of Results
 ----------------------
