@@ -2,6 +2,12 @@
 
 `ReHLine` is designed to be a computationally efficient and practically useful software package for large-scale ERMs.
 
+- GitHub repo: [https://github.com/softmin/ReHLine-python](https://github.com/softmin/ReHLine-python) 
+- Documentation: [https://rehline-python.readthedocs.io](https://rehline-python.readthedocs.io)
+- PyPi: [https://pypi.org/project/rehline](https://pypi.org/project/rehline)
+- Open Source: [MIT license](https://opensource.org/licenses/MIT)
+- Paper: [NeurIPS | 2023](https://openreview.net/pdf?id=3pEBW2UPAD)
+
 The proposed **ReHLine** solver has four appealing
 ``linear properties'':
 
@@ -20,13 +26,18 @@ where $\mathbf{U} = (u_{li}),\mathbf{V} = (v_{li}) \in \mathbb{R}^{L \times n}$ 
 ![](./figs/tab.png)
 
 ## 📚 **Benchmark (powered by benchopt)**
+
+To generate benchmark results in our paper, please check [ReHLine-benchmark](https://github.com/softmin/ReHLine-benchmark).
+
 Some existing problems of recent interest in statistics and machine learning can be solved by `ReHLine`. 
 | Problem   |      Results      |
 |---------- |:-----------------:|
-|[FairSVM](./python/benchmark/benchmark_FairSVM/README.md) | [Result](./doc/source/benchmark/benchmark_FairSVM.html)|
-|[ElasticQR](./python/benchmark/benchmark_QR/README.md) | [Result](./doc/source/benchmark/benchmark_QR/outputs/benchmark_QR.html)|
-|[RidgeHuber](./python/benchmark/benchmark_Huber/README.md) | [Result](./doc/source/benchmark/outputs/benchmark_Huber.html)|
-|[SVM](./python/benchmark/benchmark_SVM/README.md) | [Result](./doc/source/benchmark/benchmark_SVM.html)|
+|[FairSVM](https://github.com/softmin/ReHLine-benchmark/tree/main/benchmark_FairSVM) | [Result](https://rehline-python.readthedocs.io/en/latest/_static/benchmark/benchmark_FairSVM.html)|
+|[ElasticQR](https://github.com/softmin/ReHLine-benchmark/tree/main/benchmark_QR) | [Result](https://rehline-python.readthedocs.io/en/latest/_static/benchmark/benchmark_QR.html)|
+|[RidgeHuber]([https://github.com/softmin/ReHLine-benchmark/tree/main/benchmark_Huber) | [Result](https://rehline-python.readthedocs.io/en/latest/_static/benchmark/benchmark_Huber.html)|
+|[SVM](https://github.com/softmin/ReHLine-benchmark/tree/main/benchmark_SVM) | [Result](https://rehline-python.readthedocs.io/en/latest/_static/benchmark/benchmark_SVM.html)|
+|[sSVM](https://github.com/softmin/ReHLine-benchmark/tree/main/benchmark_sSVM) | [Result](https://rehline-python.readthedocs.io/en/latest/_static/benchmark/benchmark_sSVM.html)|
+
 
 ## 🧾 **Overview of Results**
 
