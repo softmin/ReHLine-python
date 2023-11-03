@@ -3,9 +3,11 @@ import numpy as np
 from rehline import ReHLine 
 from rehline import make_fair_classification
 
+np.random.seed(1024)
 # simulate classification dataset
 X, y, X_sen = make_fair_classification()
 n, d = X.shape
+C = 0.5
 
 ## solution provided by ReHLine
 # build-in hinge loss for svm
