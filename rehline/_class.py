@@ -15,9 +15,9 @@ def ReHLine_solver(X, U, V,
         Tau=np.empty(shape=(0, 0)),
         S=np.empty(shape=(0, 0)), T=np.empty(shape=(0, 0)),
         A=np.empty(shape=(0, 0)), b=np.empty(shape=(0)),
-        max_iter=1000, tol=1e-4, shrink=True, verbose=True):
+        max_iter=1000, tol=1e-4, shrink=1, verbose=1, trace_freq=100):
     result = rehline_result()
-    rehline_internal(result, X, A, b, U, V, S, T, Tau, max_iter, tol, shrink, verbose)
+    rehline_internal(result, X, A, b, U, V, S, T, Tau, max_iter, tol, shrink, verbose, trace_freq)
     return result
 
 class ReHLine(BaseEstimator):
@@ -118,7 +118,7 @@ class ReHLine(BaseEstimator):
                        Tau=np.empty(shape=(0,0)),
                        S=np.empty(shape=(0,0)), T=np.empty(shape=(0,0)),
                        A=np.empty(shape=(0,0)), b=np.empty(shape=(0)),
-                       max_iter=1000, tol=1e-4, shrink=True, verbose=False):
+                       max_iter=1000, tol=1e-4, shrink=1, verbose=0, trace_freq=100):
         self.loss = loss
         self.C = C
         self.U = U
@@ -132,6 +132,7 @@ class ReHLine(BaseEstimator):
         self.tol = tol
         self.shrink = shrink
         self.verbose = verbose
+        self.trace_freq = trace_freq
         self.L = U.shape[0]
         self.n = U.shape[1]
         self.H = S.shape[0]
@@ -392,12 +393,14 @@ class ReHLine(BaseEstimator):
                                 S=S_weight, T=T_weight,
                                 A=self.A, b=self.b,
                                 max_iter=self.max_iter, tol=self.tol,
-                                shrink=self.shrink, verbose=self.verbose)
+                                shrink=self.shrink, verbose=self.verbose,
+                                trace_freq=self.trace_freq)
 
         self.coef_ = result.beta
         self.opt_result_ = result
         self.n_iter_ = result.niter
         self.dual_obj_ = result.dual_objfns
+        self.primal_obj_ = result.primal_objfns
 
     def decision_function(self, X):
         """The decision function evaluated on the given dataset
