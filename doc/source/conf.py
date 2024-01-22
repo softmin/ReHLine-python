@@ -71,7 +71,7 @@ exclude_patterns = []
 # a list of builtin themes.
 
 html_theme = 'renku'
-html_logo = "logo.png"
+# html_logo = "logo.png"
 # html_theme_path = [hachibee_sphinx_theme.get_html_themes_path()]
 
 
