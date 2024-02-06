@@ -18,6 +18,6 @@ env/
 eigen-3.4.0/
 eigen3.zip
 
-# Package sdist and wheel
+# Package sdist
 *.tar.gz
 *.whl
