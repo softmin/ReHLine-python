@@ -3,7 +3,7 @@ from pathlib import Path
 import zipfile
 import requests
 from pybind11.setup_helpers import Pybind11Extension, build_ext
-from setuptools import setup
+# from setuptools.command.build_ext import build_ext
 
 __version__ = "0.0.3"
 
@@ -16,7 +16,6 @@ __version__ = "0.0.3"
 #   Sort input source files if you glob sources to ensure bit-for-bit
 #   reproducible builds (https://github.com/pybind/python_example/pull/53)
 
-# The directory that contains setup.py
 SETUP_DIRECTORY = Path(__file__).resolve().parent
 
 # Download Eigen source files
@@ -52,27 +51,35 @@ class get_eigen_include(object):
 
 ext_modules = [
     Pybind11Extension("rehline._internal",
-        ["src/rehline.cpp"],
+        sources=["src/rehline.cpp"],
         include_dirs=[get_eigen_include()],
         # Example: passing in the version to the compiled code
-        define_macros=[('VERSION_INFO', __version__)],
+        # define_macros=[('VERSION_INFO', __version__)],
         ),
 ]
 
-setup(
-    name="rehline",
-    version=__version__,
-    author=["Ben Dai", "Yixuan Qiu"],
-    author_email="bendai@cuhk.edu.hk",
-    url="https://github.com/softmin/ReHLine-python",
-    description="Regularized Composite ReLU-ReHU Loss Minimization with Linear Computation and Linear Convergence",
-    packages=["rehline"],
-    install_requires=["requests", "pybind11", "numpy", "scipy", "scikit-learn"],
-    ext_modules=ext_modules,
-    # extras_require={"test": "pytest"},
-    # Currently, build_ext only provides an optional "highest supported C++
-    # level" feature, but in the future it may provide more features.
-    cmdclass={"build_ext": build_ext},
-    zip_safe=False,
-    python_requires=">=3.8",
-)
+# class BuildFailed(Exception):
+#     pass
+
+# class ExtBuilder(build_ext):
+
+#     def run(self):
+#         try:
+#             build_ext.run(self)
+#         except (DistutilsPlatformError, FileNotFoundError):
+#             raise BuildFailed('File not found. Could not compile C extension.')
+
+#     def build_extension(self, ext):
+#         try:
+#             build_ext.build_extension(self, ext)
+#         except (CCompilerError, DistutilsExecError, DistutilsPlatformError, ValueError):
+#             raise BuildFailed('Could not compile C extension.')
+
+
+def build(setup_kwargs):
+    """
+    This function is mandatory in order to build the extensions.
+    """
+    setup_kwargs.update(
+        {"ext_modules": ext_modules, "cmd_class": {"build_ext": build_ext}, "zip_safe": False}
+    )
