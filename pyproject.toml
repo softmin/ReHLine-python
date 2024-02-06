@@ -24,6 +24,7 @@ pybind11 = "^2.11.1"
 numpy = "^1.23.5"
 scipy = "^1.11.4"
 scikit-learn = "^1.2.2"
+setuptools = "^59.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0", "requests ~= 2.27.0", "pybind11 ~= 2.11.1", "setuptools ~= 59.0"]
