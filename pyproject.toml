@@ -19,7 +19,7 @@ generate-setup-file = false
 
 [tool.poetry.dependencies]
 python = "^3.10"
-requests = "^2.31.0"
+requests = "^2.18.0"
 pybind11 = "^2.11.1"
 numpy = "^1.23.5"
 scipy = "^1.11.4"
