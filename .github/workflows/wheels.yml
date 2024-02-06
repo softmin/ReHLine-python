@@ -19,6 +19,9 @@ jobs:
       # Used to host poetry
       - uses: actions/setup-python@v3
 
+      - name: Lock dependencies
+        run: poetry lock
+
       - name: Install dependencies
         run: poetry install
 
