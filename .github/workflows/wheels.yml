@@ -19,6 +19,9 @@ jobs:
       # Used to host poetry
       - uses: actions/setup-python@v3
 
+      - name: Install dependencies
+        run: poetry install
+
       - name: Build sdist package
         run: python setup.py sdist
 
