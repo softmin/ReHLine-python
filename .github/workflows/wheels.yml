@@ -18,15 +18,18 @@ jobs:
 
       # Used to host poetry
       - uses: actions/setup-python@v3
+      - name: activate python env
+        run: |
+          pip install --upgrade pip
+          python3 -m venv env
+          source env/bin/activate
+          echo "VIRTUAL ENV:" $VIRTUAL_ENV
+          pip install "requests>=2.27.0" "pybind11>=2.11.1" "setuptools>=69.0.3" "wheel>=0.42.0"
 
-      - name: Lock dependencies
-        run: poetry lock
-
-      - name: Install dependencies
-        run: poetry install
-
-      - name: poetry pre-build 
-        run: poetry build
+      - name: Lock and install dependencies
+        run: |
+          poetry lock
+          poetry install
 
       - name: Build sdist package
         run: poetry run python setup.py sdist
@@ -35,9 +38,9 @@ jobs:
         run: poetry run python setup.py bdist_wheel
 
       - name: Build wheels for more general OS 
-        run: poetry build
+        run: poetry build --format=wheel
 
       - uses: actions/upload-artifact@v4
         with:
           name: rehline-wheels-${{ matrix.os }}-${{ strategy.job-index }}
-          path: ./sdist/*.whl
+          path: ./dist/*.whl
