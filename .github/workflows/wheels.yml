@@ -26,10 +26,10 @@ jobs:
         run: poetry install
 
       - name: Build sdist package
-        run: python setup.py sdist
+        run: poetry run python setup.py sdist
 
       - name: Build wheel package
-        run: python setup.py bdist_wheel
+        run: poetry run python setup.py bdist_wheel
 
       - name: Build wheels for more general OS 
         run: poetry build
