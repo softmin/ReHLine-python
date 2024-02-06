@@ -25,6 +25,9 @@ jobs:
       - name: Install dependencies
         run: poetry install
 
+      - name: poetry pre-build 
+        run: poetry build
+
       - name: Build sdist package
         run: poetry run python setup.py sdist
 
