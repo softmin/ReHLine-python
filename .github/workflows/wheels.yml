@@ -25,7 +25,7 @@ jobs:
 
       - name: Build and build sdist package
         run: |
-          python setup.py build
+          poetry run python setup.py build
           poetry run python setup.py sdist
 
       - name: Build wheel package
