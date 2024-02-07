@@ -23,8 +23,10 @@ jobs:
           poetry lock
           poetry install
 
-      - name: Build sdist package
-        run: poetry run python setup.py sdist
+      - name: Build and build sdist package
+        run: |
+          python setup.py build
+          poetry run python setup.py sdist
 
       - name: Build wheel package
         run: poetry run python setup.py bdist_wheel
