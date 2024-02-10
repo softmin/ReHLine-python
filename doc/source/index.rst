@@ -6,6 +6,12 @@
 🦌 ReHLine
 ==========
 
+.. raw:: html
+
+    <embed>
+        <a href="https://github.com/softmin/ReHLine"><img src="./logo.png" align="right" height="138" /></a>
+    </embed>
+
 .. -*- mode: rst -*-
 
 |PyPi|_ |MIT|_ |Python3|_ 
