@@ -23,16 +23,9 @@ jobs:
           poetry lock
           poetry install
 
-      - name: Build and build sdist package
-        run: |
-          poetry run python setup.py build
-          poetry run python setup.py sdist
-
       - name: Build wheel package
         run: poetry run python setup.py bdist_wheel
-
-      - name: Build wheels for more general OS 
-        run: poetry build --format=wheel
+        
 
       - uses: actions/upload-artifact@v4
         with:
