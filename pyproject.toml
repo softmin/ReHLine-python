@@ -2,16 +2,15 @@
 name = "rehline"
 version = "0.0.3"
 description = "Regularized Composite ReLU-ReHU Loss Minimization with Linear Computation and Linear Convergence"
-authors = ["Ben Dai <bendai@cuhk.edu.hk>", "Yixuan Qiu <yixuanq@gmail.com>"]
-maintainers = ["Ben Dai <bendai@cuhk.edu.hk>"]
+authors = [
+  {name = "Ben Dai", email = "bendai@cuhk.edu.hk"},
+  {name = "Yixuan Qiu", email = "yixuanq@gmail.com"}
+]
+maintainers = [
+  {name = "Ben Dai", email = "bendai@cuhk.edu.hk"},
+]
 license = {file = "LICENSE"}
 readme = "README.md"
-homepage = "https://rehline.github.io/"
-repository = "https://github.com/softmin/ReHLine-python"
-documentation = "https://rehline-python.readthedocs.io/en/latest/index.html"
-include = [
-    {path = "rehline/*.so", format = "wheel"}
-]
 dependencies = [
     "python = ^3.10",
     "requests = ^2.27.0",
@@ -20,6 +19,13 @@ dependencies = [
     "scipy = ^1.11.4",
     "scikit-learn = ^1.2.2"
 ]
+[pyproject.urls]
+homepage = "https://rehline.github.io/"
+repository = "https://github.com/softmin/ReHLine-python"
+documentation = "https://rehline-python.readthedocs.io/en/latest/index.html"
+
+[tools.setuptools]
+py-modules = ["build"]
 
 [build-system]
 requires = ["requests ~= 2.27.0", "pybind11 ~= 2.11.1", "setuptools >= 69.0.3", "wheel >= 0.42.0"]
