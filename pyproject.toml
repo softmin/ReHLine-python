@@ -11,6 +11,7 @@ maintainers = [
 ]
 license = {file = "LICENSE"}
 readme = "README.md"
+requires-python = ">=3.10"
 dependencies = [
     "requests>=2.27.0",
     "pybind11>=2.11.1",
