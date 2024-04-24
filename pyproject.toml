@@ -1,4 +1,4 @@
-[tool.poetry]
+[project]
 name = "rehline"
 version = "0.0.3"
 description = "Regularized Composite ReLU-ReHU Loss Minimization with Linear Computation and Linear Convergence"
@@ -12,19 +12,15 @@ documentation = "https://rehline-python.readthedocs.io/en/latest/index.html"
 include = [
     {path = "rehline/*.so", format = "wheel"}
 ]
-
-[tool.poetry.build]
-script = "build.py"
-generate-setup-file = false
-
-[tool.poetry.dependencies]
-python = "^3.10"
-requests = "^2.27.0"
-pybind11 = "^2.11.1"
-numpy = "^1.23.5"
-scipy = "^1.11.4"
-scikit-learn = "^1.2.2"
+dependencies = [
+    "python = ^3.10",
+    "requests = ^2.27.0",
+    "pybind11 = ^2.11.1",
+    "numpy = ^1.23.5",
+    "scipy = ^1.11.4",
+    "scikit-learn = ^1.2.2"
+]
 
 [build-system]
-requires = ["poetry-core>=1.0.0", "requests ~= 2.27.0", "pybind11 ~= 2.11.1", "setuptools >= 69.0.3", "wheel >= 0.42.0"]
-build-backend = "poetry.core.masonry.api" 
+requires = ["requests ~= 2.27.0", "pybind11 ~= 2.11.1", "setuptools >= 69.0.3", "wheel >= 0.42.0"]
+build-backend = "setuptools.build_meta"

@@ -8,23 +8,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-20.04, windows-2019]
+        os: [ubuntu-latest, windows-latest]
 
     steps:
-      # Install poetry
       - uses: actions/checkout@v4
-      - name: Install poetry
-        run: pipx install poetry
 
-      # Used to host poetry
-      - uses: actions/setup-python@v3
-      - name: Lock and install dependencies
-        run: |
-          poetry lock
-          poetry install
-
-      - name: Build wheel package
-        run: poetry run python setup.py bdist_wheel
+      - uses: pypa/cibuildwheel@v2.14
         
       - uses: actions/upload-artifact@v4
         with:
