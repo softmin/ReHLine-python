@@ -1,3 +1,6 @@
 {
-    "esbonio.sphinx.confDir": ""
+    "esbonio.sphinx.confDir": "",
+    "files.associations": {
+        "random": "cpp"
+    }
 }

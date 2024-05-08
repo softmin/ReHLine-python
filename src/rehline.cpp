@@ -22,11 +22,12 @@ void rehline_internal(
     const MapMat& X, const MapMat& A, const MapVec& b,
     const MapMat& U, const MapMat& V,
     const MapMat& S, const MapMat& T, const MapMat& Tau,
+    const MapVec& mu,
     int max_iter, double tol, int shrink = 1,
     int verbose = 0, int trace_freq = 100
 )
 {
-    rehline::rehline_solver(result, X, A, b, U, V, S, T, Tau,
+    rehline::rehline_solver(result, X, A, b, U, V, S, T, Tau, mu,
                             max_iter, tol, shrink, verbose, trace_freq);
 }
 

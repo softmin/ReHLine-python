@@ -147,6 +147,7 @@ private:
     ConstRefMat m_Tau;
     RMatrix     m_A;
     ConstRefVec m_b;
+    ConstRefVec m_mu;
 
     // Pre-computed
     Vector m_gk_denom;   // ||a[k]||^2
@@ -169,7 +170,7 @@ private:
     // =================== Initialization functions =================== //
 
     // Compute the primal variable beta from dual variables
-    // beta = A'xi - U3 * vec(Lambda) - S3 * vec(Gamma)
+    // beta = A'xi + mu - U3 * vec(Lambda) - S3 * vec(Gamma)
     // A can be empty, one of U and V may be empty
     inline void set_primal()
     {
@@ -179,6 +180,9 @@ private:
         // First term
         if (m_K > 0)
             m_beta.noalias() = m_A.transpose() * m_xi;
+
+        // Linear term
+        m_beta.noalias() += m_mu;
 
         // [n x 1]
         Vector LHterm = Vector::Zero(m_n);
@@ -216,6 +220,8 @@ private:
         }
         // Quadratic term
         result += Scalar(0.5) * m_beta.squaredNorm();
+        // Linear term
+        result -= m_mu.dot(m_beta);
         return result;
     }
 
@@ -246,26 +252,28 @@ private:
         // If K = 0, all terms that depend on A, xi, or b will be zero
         if (m_K > 0)
         {
-            // 0.5 * ||Atxi||^2 - Atxi' * U3L - Atxi' * S3G + xi' * b
+            // 0.5 * ||Atxi||^2 - Atxi' * U3L - Atxi' * S3G + xi' * b + Atxi' * mu
             const Scalar Atxi_U3L = (m_L > 0) ? (Atxi.dot(U3L)) : Scalar(0);
             const Scalar Atxi_S3G = (m_H > 0) ? (Atxi.dot(S3G)) : Scalar(0);
-            obj += Scalar(0.5) * Atxi.squaredNorm() - Atxi_U3L - Atxi_S3G + m_xi.dot(m_b);
+            obj += Scalar(0.5) * Atxi.squaredNorm() - Atxi_U3L - Atxi_S3G + m_xi.dot(m_b) + Atxi.dot(m_mu);
         }
         // If L = 0, all terms that depend on U, V, or Lambda will be zero
         if (m_L > 0)
         {
-            // 0.5 * ||U3L||^2 + U3L' * S3G - tr(Lambda * V')
+            // 0.5 * ||U3L||^2 + U3L' * S3G - tr(Lambda * V') - U3L' * mu
             const Scalar U3L_S3G = (m_H > 0) ? (U3L.dot(S3G)) : Scalar(0);
             obj += Scalar(0.5) * U3L.squaredNorm() + U3L_S3G -
-                m_Lambda.cwiseProduct(m_V).sum();
+                m_Lambda.cwiseProduct(m_V).sum() - U3L.dot(m_mu);
         }
         // If H = 0, all terms that depend on S, T, or Gamma will be zero
         if (m_H > 0)
         {
-            // 0.5 * ||S3G||^2 + 0.5 * ||Gamma||^2 - tr(Gamma * T')
+            // 0.5 * ||S3G||^2 + 0.5 * ||Gamma||^2 - tr(Gamma * T') - S3G' * mu
             obj += Scalar(0.5) * S3G.squaredNorm() + Scalar(0.5) * m_Gamma.squaredNorm() -
-                m_Gamma.cwiseProduct(m_T).sum();
+                m_Gamma.cwiseProduct(m_T).sum() - S3G.dot(m_mu);
         }
+
+        obj += Scalar(0.5) * m_mu.squaredNorm();
 
         return obj;
     }
@@ -552,9 +560,9 @@ private:
 public:
     ReHLineSolver(ConstRefMat X, ConstRefMat U, ConstRefMat V,
                   ConstRefMat S, ConstRefMat T, ConstRefMat Tau,
-                  ConstRefMat A, ConstRefVec b) :
+                  ConstRefMat A, ConstRefVec b, ConstRefVec mu) :
         m_n(X.rows()), m_d(X.cols()), m_L(U.rows()), m_H(S.rows()), m_K(A.rows()),
-        m_X(X), m_U(U), m_V(V), m_S(S), m_T(T), m_Tau(Tau), m_A(A), m_b(b),
+        m_X(X), m_U(U), m_V(V), m_S(S), m_T(T), m_Tau(Tau), m_A(A), m_b(b), m_mu(mu),
         m_gk_denom(m_K), m_gli_denom(m_L, m_n), m_ghi_denom(m_H, m_n),
         m_beta(m_d),
         m_xi(m_K), m_Lambda(m_L, m_n), m_Gamma(m_H, m_n)
@@ -758,13 +766,14 @@ void rehline_solver(
     const Eigen::MatrixBase<DerivedVec>& b,
     const Eigen::MatrixBase<DerivedMat>& U, const Eigen::MatrixBase<DerivedMat>& V,
     const Eigen::MatrixBase<DerivedMat>& S, const Eigen::MatrixBase<DerivedMat>& T, const Eigen::MatrixBase<DerivedMat>& Tau,
+    const Eigen::MatrixBase<DerivedVec>& mu,
     Index max_iter, typename DerivedMat::Scalar tol, Index shrink = 1,
     Index verbose = 0, Index trace_freq = 100,
     std::ostream& cout = std::cout
 )
 {
     // Create solver
-    ReHLineSolver<typename DerivedMat::PlainObject, Index> solver(X, U, V, S, T, Tau, A, b);
+    ReHLineSolver<typename DerivedMat::PlainObject, Index> solver(X, U, V, S, T, Tau, A, b, mu);
 
     // Initialize parameters
     solver.init_params();
