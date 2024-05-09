@@ -219,6 +219,12 @@ class ReHLine(BaseEstimator):
             self.S[1] =   np.sqrt(self.C)
             self.T[0] = np.sqrt(self.C)*y
             self.T[1] = -np.sqrt(self.C)*y
+        elif (self.loss['name'] == 'SVR'):
+            self.U = np.ones((2, n))*self.C
+            self.V = np.ones((2, n))*self.loss['eps']
+            self.U[1] = -self.U[1]
+            self.V[0] = self.V[0] - y
+            self.V[1] = self.V[1] + y
         elif (self.loss['name'] == 'custom'):
             pass
         else:
