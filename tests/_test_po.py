@@ -7,7 +7,7 @@ from numpy import linalg as LA
 from pypfopt import expected_returns, risk_models
 from pypfopt import EfficientFrontier, objective_functions
 
-from rehline import ReHLine
+from rehline import ReHLineLinear
 
 
 def resource(name):
@@ -48,7 +48,7 @@ A_tilde = A @ X
 mu_tilde = X.T @ mu
 tol = 1e-6
 
-markowitz = ReHLine(
+markowitz = ReHLineLinear(
     C=risk_aversion, 
     A=A_tilde, 
     b=b,

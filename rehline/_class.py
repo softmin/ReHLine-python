@@ -9,15 +9,24 @@ import numpy as np
 from sklearn.base import BaseEstimator
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 from ._base import relu, rehu
-from ._internal import rehline_internal, rehline_result
+from ._internal import rehline_internal, rehline_linear_internal, rehline_result
 
 def ReHLine_solver(X, U, V,
+        Tau=np.empty(shape=(0, 0)),
+        S=np.empty(shape=(0, 0)), T=np.empty(shape=(0, 0)),
+        A=np.empty(shape=(0, 0)), b=np.empty(shape=(0)),
+        max_iter=1000, tol=1e-4, shrink=1, verbose=1, trace_freq=100):
+    result = rehline_result()
+    rehline_internal(result, X, A, b, U, V, S, T, Tau, max_iter, tol, shrink, verbose, trace_freq)
+    return result
+
+def ReHLine_linear_solver(X, U, V,
         Tau=np.empty(shape=(0, 0)),
         S=np.empty(shape=(0, 0)), T=np.empty(shape=(0, 0)),
         A=np.empty(shape=(0, 0)), b=np.empty(shape=(0)), mu=np.empty(shape=(0)),
         max_iter=1000, tol=1e-4, shrink=1, verbose=1, trace_freq=100):
     result = rehline_result()
-    rehline_internal(result, X, A, b, U, V, S, T, Tau, mu, max_iter, tol, shrink, verbose, trace_freq)
+    rehline_linear_internal(result, X, A, b, U, V, S, T, Tau, mu, max_iter, tol, shrink, verbose, trace_freq)
     return result
 
 class ReHLine(BaseEstimator):
@@ -25,7 +34,7 @@ class ReHLine(BaseEstimator):
 
     .. math::
 
-        \min_{\mathbf{\beta} \in \mathbb{R}^d} \sum_{i=1}^n \sum_{l=1}^L \text{ReLU}( u_{li} \mathbf{x}_i^\intercal \mathbf{\beta} + v_{li}) + \sum_{i=1}^n \sum_{h=1}^H {\text{ReHU}}_{\tau_{hi}}( s_{hi} \mathbf{x}_i^\intercal \mathbf{\beta} + t_{hi}) + \frac{1}{2} \| \mathbf{\beta} \|_2^2 - \mathbf{beta}^T \mathbf{\mu}, \\ \text{ s.t. } 
+        \min_{\mathbf{\beta} \in \mathbb{R}^d} \sum_{i=1}^n \sum_{l=1}^L \text{ReLU}( u_{li} \mathbf{x}_i^\intercal \mathbf{\beta} + v_{li}) + \sum_{i=1}^n \sum_{h=1}^H {\text{ReHU}}_{\tau_{hi}}( s_{hi} \mathbf{x}_i^\intercal \mathbf{\beta} + t_{hi}) + \frac{1}{2} \| \mathbf{\beta} \|_2^2, \\ \text{ s.t. } 
         \mathbf{A} \mathbf{\beta} + \mathbf{b} \geq \mathbf{0},
         
     where :math:`\mathbf{U} = (u_{li}),\mathbf{V} = (v_{li}) \in \mathbb{R}^{L \times n}` 
@@ -59,9 +68,6 @@ class ReHLine(BaseEstimator):
 
     b: array of shape (K, ), default=np.empty(shape=0)
         The intercept vector in the linear constraint.
-
-    mu: array of shape (d, ), default=np.empty(shape=0)
-        The additional linear term
     
 
     Attributes
@@ -120,7 +126,7 @@ class ReHLine(BaseEstimator):
                        U=np.empty(shape=(0,0)), V=np.empty(shape=(0,0)),
                        Tau=np.empty(shape=(0,0)),
                        S=np.empty(shape=(0,0)), T=np.empty(shape=(0,0)),
-                       A=np.empty(shape=(0,0)), b=np.empty(shape=(0)), mu=np.empty(shape=(0)),
+                       A=np.empty(shape=(0,0)), b=np.empty(shape=(0)),
                        max_iter=1000, tol=1e-4, shrink=1, verbose=0, trace_freq=100):
         self.loss = loss
         self.C = C
@@ -131,7 +137,6 @@ class ReHLine(BaseEstimator):
         self.Tau = Tau
         self.A = A
         self.b = b
-        self.mu = mu
         self.max_iter = max_iter
         self.tol = tol
         self.shrink = shrink
@@ -142,7 +147,7 @@ class ReHLine(BaseEstimator):
         self.H = S.shape[0]
         self.K = A.shape[0]
 
-    def make_ReLHLoss(self, X, y=None, loss={}):
+    def make_ReLHLoss(self, X, y, loss={}):
         """The `make_ReLHLoss` function generates parameters for the ReLoss, based on the provided training data.
 
         The function matches the specific ReLoss (self.loss) with loss functions 
@@ -220,15 +225,11 @@ class ReHLine(BaseEstimator):
             self.Tau = np.sqrt(self.C) * loss['tau'] * np.ones((2, n))
 
             self.S[0] = - np.sqrt(self.C)
-            self.S[1] = np.sqrt(self.C)
+            self.S[1] =   np.sqrt(self.C)
             self.T[0] = np.sqrt(self.C)*y
             self.T[1] = -np.sqrt(self.C)*y
         elif (self.loss['name'] == 'custom'):
-            self.U = self.loss['func'].relu_coef*self.C
-            self.V = self.loss['func'].relu_intercept*self.C
-            self.S = self.loss['func'].rehu_coef*np.sqrt(self.C)
-            self.T = self.loss['func'].rehu_intercept*np.sqrt(self.C)
-            self.Tau = self.loss['func'].rehu_cut*np.sqrt(self.C)
+            pass
         else:
             raise Exception("Sorry, ReHLine currently does not support this loss function, \
                             but you can manually set ReLoss params to solve the problem.")
@@ -240,7 +241,7 @@ class ReHLine(BaseEstimator):
 
         .. math::
 
-            \min_{\mathbf{\beta} \in \mathbb{R}^d} \sum_{i=1}^n \sum_{l=1}^L \text{ReLU}( u_{li} \mathbf{x}_i^\intercal \mathbf{\beta} + v_{li}) + \sum_{i=1}^n \sum_{h=1}^H {\text{ReHU}}_{\tau_{hi}}( s_{hi} \mathbf{x}_i^\intercal \mathbf{\beta} + t_{hi}) + \frac{1}{2} \| \mathbf{\beta} \|_2^2 - \mathbf{beta}^T \mathbf{\mu} + \lambda_1 \| \mathbf{\beta} \|_1, \\ \text{ s.t. } 
+            \min_{\mathbf{\beta} \in \mathbb{R}^d} \sum_{i=1}^n \sum_{l=1}^L \text{ReLU}( u_{li} \mathbf{x}_i^\intercal \mathbf{\beta} + v_{li}) + \sum_{i=1}^n \sum_{h=1}^H {\text{ReHU}}_{\tau_{hi}}( s_{hi} \mathbf{x}_i^\intercal \mathbf{\beta} + t_{hi}) + \frac{1}{2} \| \mathbf{\beta} \|_2^2 + \lambda_1 \| \mathbf{\beta} \|_1, \\ \text{ s.t. } 
             \mathbf{A} \mathbf{\beta} + \mathbf{b} \geq \mathbf{0},
 
         where :math:`\lambda_1` is associated with `l1_pen`.
@@ -330,7 +331,6 @@ class ReHLine(BaseEstimator):
         self.H = self.S.shape[0]
         self.K = self.A.shape[0]
 
-    # this code block could be wrong
     def call_ReLHLoss(self, score):
         """
         Return the value of the ReHLine loss of the `score`.
@@ -346,15 +346,13 @@ class ReHLine(BaseEstimator):
             ReHLine loss evaluation of the given score.
         """
 
-        ans = 0
-        if len(self.U) > 0:
-            relu_input = (self.U.T * score[:,np.newaxis]).T + self.V 
-            ans += np.sum(relu(relu_input), 0).sum()
-        if len(self.S) > 0:
+        relu_input = np.zeros((self.L, self.n))
+        rehu_input = np.zeros((self.H, self.n))
+        if self.L > 0:
+            relu_input = (self.U.T * score[:,np.newaxis]).T + self.V
+        if self.H > 0:
             rehu_input = (self.S.T * score[:,np.newaxis]).T + self.T
-            ans += np.sum(rehu(rehu_input, cut=self.Tau), 0).sum()
-        return ans
-
+        return np.sum(relu(relu_input), 0) + np.sum(rehu(rehu_input), 0)
 
 
     def fit(self, X, sample_weight=None):
@@ -402,7 +400,7 @@ class ReHLine(BaseEstimator):
                                 U=U_weight, V=V_weight,
                                 Tau=Tau_weight,
                                 S=S_weight, T=T_weight,
-                                A=self.A, b=self.b, mu=self.mu,
+                                A=self.A, b=self.b,
                                 max_iter=self.max_iter, tol=self.tol,
                                 shrink=self.shrink, verbose=self.verbose,
                                 trace_freq=self.trace_freq)
@@ -431,3 +429,72 @@ class ReHLine(BaseEstimator):
 
         X = check_array(X)
         return np.dot(X, self.coef_)
+
+
+class ReHLineLinear(ReHLine):
+    def __init__(self, loss={'name':'QR', 'qt':[.25, .75]}, C=1.,
+                       U=np.empty(shape=(0,0)), V=np.empty(shape=(0,0)),
+                       Tau=np.empty(shape=(0,0)),
+                       S=np.empty(shape=(0,0)), T=np.empty(shape=(0,0)),
+                       A=np.empty(shape=(0,0)), b=np.empty(shape=(0)), mu=np.empty(shape=(0)),
+                       max_iter=1000, tol=1e-4, shrink=1, verbose=0, trace_freq=100):
+        super().__init__(loss, C, U, V, Tau, S, T, A, b, max_iter, tol, shrink, verbose, trace_freq)
+        self.mu = mu
+
+
+    # @override
+    def fit(self, X, sample_weight=None):
+        """Fit the model based on the given training data.
+
+        Parameters
+        ----------
+
+        X: {array-like} of shape (n_samples, n_features)
+            Training vector, where `n_samples` is the number of samples and
+            `n_features` is the number of features.
+
+        sample_weight : array-like of shape (n_samples,), default=None
+            Array of weights that are assigned to individual
+            samples. If not provided, then each sample is given unit weight.
+
+        Returns
+        -------
+        self : object
+            An instance of the estimator.
+        """
+
+        # X = check_array(X)
+        if sample_weight is None:
+            sample_weight = np.ones(X.shape[0])
+
+        if self.L > 0:
+            U_weight = self.U * sample_weight
+            V_weight = self.V * sample_weight
+        else:
+            U_weight = self.U
+            V_weight = self.V
+
+        if self.H > 0:
+            sqrt_sample_weight = np.sqrt(sample_weight)
+            Tau_weight = self.Tau * sqrt_sample_weight
+            S_weight = self.S * sqrt_sample_weight
+            T_weight = self.T * sqrt_sample_weight
+        else:
+            Tau_weight = self.Tau
+            S_weight = self.S
+            T_weight = self.T
+
+        result = ReHLine_linear_solver(X=X,
+                                U=U_weight, V=V_weight,
+                                Tau=Tau_weight,
+                                S=S_weight, T=T_weight,
+                                A=self.A, b=self.b, mu=self.mu,
+                                max_iter=self.max_iter, tol=self.tol,
+                                shrink=self.shrink, verbose=self.verbose,
+                                trace_freq=self.trace_freq)
+
+        self.coef_ = result.beta
+        self.opt_result_ = result
+        self.n_iter_ = result.niter
+        self.dual_obj_ = result.dual_objfns
+        self.primal_obj_ = result.primal_objfns
