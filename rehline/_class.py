@@ -224,8 +224,8 @@ class ReHLine(BaseEstimator):
             self.V = np.ones((2, n))
             self.U[1] = -self.U[1]
 
-            self.V[0] = -self.C*(y + loss['epsilon'])
-            self.V[1] = self.C*(y - loss['epsilon'])
+            self.V[0] = -self.C*(y + self.loss['epsilon'])
+            self.V[1] = self.C*(y - self.loss['epsilon'])
         elif (self.loss['name'] == 'custom'):
             pass
         else:
