@@ -46,3 +46,12 @@ reg.fit(X=X)
 
 print('solution privided by rehline (manually specified params): %s' %reg.coef_)
 print(reg.decision_function([new_sample]))
+
+# Output:
+# [-0.26024832 -0.29394989  0.05549916  2.24410393 -1.47306613]
+# solution privided by liblinear: [-0.266752   -0.28534044  0.05883864  2.24027556 -1.4996596 ]
+# [3.65233956]
+# solution privided by rehline: [-0.26742525 -0.28575844  0.05840424  2.24040812 -1.50018069]
+# [3.65242688]
+# solution privided by rehline (manually specified params): [-0.26742525 -0.28575844  0.05840424  2.24040812 -1.50018069]
+# [3.65242688]
