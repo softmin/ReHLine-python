@@ -9,7 +9,7 @@ import numpy as np
 from sklearn.base import BaseEstimator
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 from ._base import relu, rehu
-from ._internal import rehline_internal, rehline_linear_internal, rehline_result
+from ._internal import rehline_internal, rehline_result
 
 def ReHLine_solver(X, U, V,
         Tau=np.empty(shape=(0, 0)),
@@ -18,15 +18,6 @@ def ReHLine_solver(X, U, V,
         max_iter=1000, tol=1e-4, shrink=1, verbose=1, trace_freq=100):
     result = rehline_result()
     rehline_internal(result, X, A, b, U, V, S, T, Tau, max_iter, tol, shrink, verbose, trace_freq)
-    return result
-
-def ReHLine_linear_solver(X, U, V,
-        Tau=np.empty(shape=(0, 0)),
-        S=np.empty(shape=(0, 0)), T=np.empty(shape=(0, 0)),
-        A=np.empty(shape=(0, 0)), b=np.empty(shape=(0)), mu=np.empty(shape=(0)),
-        max_iter=1000, tol=1e-4, shrink=1, verbose=1, trace_freq=100):
-    result = rehline_result()
-    rehline_linear_internal(result, X, A, b, U, V, S, T, Tau, mu, max_iter, tol, shrink, verbose, trace_freq)
     return result
 
 class ReHLine(BaseEstimator):
@@ -430,7 +421,7 @@ class ReHLine(BaseEstimator):
         X = check_array(X)
         return np.dot(X, self.coef_)
 
-
+# ReHLine estimator with an option of additional linear term
 class ReHLineLinear(ReHLine):
     def __init__(self, loss={'name':'QR', 'qt':[.25, .75]}, C=1.,
                        U=np.empty(shape=(0,0)), V=np.empty(shape=(0,0)),
@@ -484,14 +475,30 @@ class ReHLineLinear(ReHLine):
             S_weight = self.S
             T_weight = self.T
 
-        result = ReHLine_linear_solver(X=X,
-                                U=U_weight, V=V_weight,
-                                Tau=Tau_weight,
-                                S=S_weight, T=T_weight,
-                                A=self.A, b=self.b, mu=self.mu,
-                                max_iter=self.max_iter, tol=self.tol,
-                                shrink=self.shrink, verbose=self.verbose,
-                                trace_freq=self.trace_freq)
+
+        Xtmu = X @ self.mu
+        if self.mu.size > 0:
+            # v_li' = v_li + u_li * (x_i.T @ mu)
+            V_weight = V_weight + U_weight * Xtmu.reshape(1, -1) if self.L > 0 else V_weight
+            # t_hi' = t_hi + s_hi * (x_i.T @ mu)
+            T_weight = T_weight + S_weight * Xtmu.reshape(1, -1) if self.H > 0 else T_weight
+            b_shifted = self.b + self.A @ self.mu
+        else:
+            b_shifted = self.b
+
+        result = ReHLine_solver(X=X,
+                        U=U_weight, V=V_weight,
+                        Tau=Tau_weight,
+                        S=S_weight, T=T_weight,
+                        A=self.A, b=b_shifted,
+                        max_iter=self.max_iter, tol=self.tol,
+                        shrink=self.shrink, verbose=self.verbose,
+                        trace_freq=self.trace_freq)
+
+        # unshift results
+        result.beta = result.beta + self.mu
+        result.dual_objfns = [dual_func + 0.5*self.mu.T @ self.mu for dual_func in result.dual_objfns]
+        result.primal_objfns = [primal_func - 0.5*self.mu.T @ self.mu for primal_func in result.primal_objfns]
 
         self.coef_ = result.beta
         self.opt_result_ = result

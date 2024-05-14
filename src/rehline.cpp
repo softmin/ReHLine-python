@@ -17,22 +17,6 @@ using MapVec = Eigen::Ref<Vector>;
 
 using ReHLineResult = rehline::ReHLineResult<Matrix>;
 
-
-void rehline_linear_internal(
-    ReHLineResult& result,
-    const MapMat& X, const MapMat& A, const MapVec& b,
-    const MapMat& U, const MapMat& V,
-    const MapMat& S, const MapMat& T, const MapMat& Tau,
-    const MapVec& mu,
-    int max_iter, double tol, int shrink = 1,
-    int verbose = 0, int trace_freq = 100
-)
-{
-    rehline::rehline_linear_solver(result, X, A, b, U, V, S, T, Tau, mu,
-                            max_iter, tol, shrink, verbose, trace_freq);
-}
-
-
 void rehline_internal(
     ReHLineResult& result,
     const MapMat& X, const MapMat& A, const MapVec& b,
@@ -45,7 +29,6 @@ void rehline_internal(
     rehline::rehline_solver(result, X, A, b, U, V, S, T, Tau,
                             max_iter, tol, shrink, verbose, trace_freq);
 }
-
 
 PYBIND11_MODULE(_internal, m) {
     py::class_<ReHLineResult>(m, "rehline_result")
@@ -62,6 +45,4 @@ PYBIND11_MODULE(_internal, m) {
     m.attr("__name__") = "rehline._internal";
     m.doc() = "rehline";
     m.def("rehline_internal", &rehline_internal);
-    m.def("rehline_linear_internal", &rehline_linear_internal);
 }
-
