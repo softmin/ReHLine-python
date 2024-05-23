@@ -427,3 +427,88 @@ class ReHLine(BaseEstimator):
 
         X = check_array(X)
         return np.dot(X, self.coef_)
+
+# ReHLine estimator with an option of additional linear term
+class ReHLineLinear(ReHLine):
+    def __init__(self, loss={'name':'QR', 'qt':[.25, .75]}, C=1.,
+                       U=np.empty(shape=(0,0)), V=np.empty(shape=(0,0)),
+                       Tau=np.empty(shape=(0,0)),
+                       S=np.empty(shape=(0,0)), T=np.empty(shape=(0,0)),
+                       A=np.empty(shape=(0,0)), b=np.empty(shape=(0)), mu=np.empty(shape=(0)),
+                       max_iter=1000, tol=1e-4, shrink=1, verbose=0, trace_freq=100):
+        super().__init__(loss, C, U, V, Tau, S, T, A, b, max_iter, tol, shrink, verbose, trace_freq)
+        self.mu = mu
+
+
+    # @override
+    def fit(self, X, sample_weight=None):
+        """Fit the model based on the given training data.
+
+        Parameters
+        ----------
+
+        X: {array-like} of shape (n_samples, n_features)
+            Training vector, where `n_samples` is the number of samples and
+            `n_features` is the number of features.
+
+        sample_weight : array-like of shape (n_samples,), default=None
+            Array of weights that are assigned to individual
+            samples. If not provided, then each sample is given unit weight.
+
+        Returns
+        -------
+        self : object
+            An instance of the estimator.
+        """
+
+        # X = check_array(X)
+        if sample_weight is None:
+            sample_weight = np.ones(X.shape[0])
+
+        if self.L > 0:
+            U_weight = self.U * sample_weight
+            V_weight = self.V * sample_weight
+        else:
+            U_weight = self.U
+            V_weight = self.V
+
+        if self.H > 0:
+            sqrt_sample_weight = np.sqrt(sample_weight)
+            Tau_weight = self.Tau * sqrt_sample_weight
+            S_weight = self.S * sqrt_sample_weight
+            T_weight = self.T * sqrt_sample_weight
+        else:
+            Tau_weight = self.Tau
+            S_weight = self.S
+            T_weight = self.T
+
+
+        Xtmu = X @ self.mu
+        if self.mu.size > 0:
+            # v_li' = v_li + u_li * (x_i.T @ mu)
+            V_weight = V_weight + U_weight * Xtmu.reshape(1, -1) if self.L > 0 else V_weight
+            # t_hi' = t_hi + s_hi * (x_i.T @ mu)
+            T_weight = T_weight + S_weight * Xtmu.reshape(1, -1) if self.H > 0 else T_weight
+            b_shifted = self.b + self.A @ self.mu
+        else:
+            b_shifted = self.b
+
+        result = ReHLine_solver(X=X,
+                        U=U_weight, V=V_weight,
+                        Tau=Tau_weight,
+                        S=S_weight, T=T_weight,
+                        A=self.A, b=b_shifted,
+                        max_iter=self.max_iter, tol=self.tol,
+                        shrink=self.shrink, verbose=self.verbose,
+                        trace_freq=self.trace_freq)
+
+        # unshift results
+        result.beta = result.beta + self.mu
+        result.dual_objfns = [dual_func + 0.5*self.mu.T @ self.mu for dual_func in result.dual_objfns]
+        result.primal_objfns = [primal_func - 0.5*self.mu.T @ self.mu for primal_func in result.primal_objfns]
+
+        self.coef_ = result.beta
+        self.opt_result_ = result
+        self.n_iter_ = result.niter
+        self.dual_obj_ = result.dual_objfns
+        self.primal_obj_ = result.primal_objfns
