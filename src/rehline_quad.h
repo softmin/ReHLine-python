@@ -1,5 +1,5 @@
-#ifndef REHLINE_H
-#define REHLINE_H
+#ifndef REHLINE_EXT_H
+#define REHLINE_EXT_H
 
 #include <vector>
 #include <numeric>
@@ -7,109 +7,14 @@
 #include <type_traits>
 #include <iostream>
 #include <Eigen/Core>
+#include "rehline.h"
 
 namespace rehline {
-
-// ========================= Internal utility functions ========================= //
-namespace internal {
-
-// A simple wrapper of existing RNG
-template <typename Index = int>
-class SimpleRNG
-{
-private:
-    std::mt19937 m_rng;
-
-public:
-    // Set seed
-    void seed(Index seed) { m_rng.seed(seed); }
-
-    // Used in random_shuffle(), generating a random integer from {0, 1, ..., i-1}
-    Index operator()(Index i)
-    {
-        return Index(m_rng() % i);
-    }
-};
-
-// Randomly shuffle a vector
-//
-// On Mac, std::random_shuffle() uses a "backward" implementation,
-// which leads to different results from Windows and Linux
-// Therefore, we use a consistent implementation based on GCC code
-template <typename RandomAccessIterator, typename RandomNumberGenerator>
-void random_shuffle(RandomAccessIterator first, RandomAccessIterator last, RandomNumberGenerator& gen)
-{
-    if(first == last)
-        return;
-    for(RandomAccessIterator i = first + 1; i != last; ++i)
-    {
-        RandomAccessIterator j = first + gen((i - first) + 1);
-        if(i != j)
-            std::iter_swap(i, j);
-    }
-}
-
-// Reset the free variable set to [0, 1, ..., n-1] (if the variables form a vector)
-template <typename Index = int>
-void reset_fv_set(std::vector<Index>& fvset, std::size_t n)
-{
-    fvset.resize(n);
-    // Fill the vector with 0, 1, ..., n-1
-    std::iota(fvset.begin(), fvset.end(), Index(0));
-}
-
-// Reset the free variable set to [(0, 0), (0, 1), ..., (n-1, m-2), (n-1, m-1)] (if the variables form a matrix)
-template <typename Index = int>
-void reset_fv_set(std::vector<std::pair<Index, Index>>& fvset, std::size_t n, std::size_t m)
-{
-    fvset.resize(n * m);
-    for(std::size_t i = 0; i < n * m; i++)
-        fvset[i] = std::make_pair(i % n, i / n);
-}
-
-
-}  // namespace internal
-// ========================= Internal utility functions ========================= //
-
-
-
-// Dimensions of the matrices involved
-// - Input
-//   * X        : [n x d]
-//   * U, V     : [L x n]
-//   * S, T, Tau: [H x n]
-//   * A        : [K x d]
-//   * b        : [K]
-// - Pre-computed
-//   * r: [n]
-//   * p: [K]
-// - Primal
-//   * beta: [d]
-// - Dual
-//   * xi    : [K]
-//   * Lambda: [L x n]
-//   * Gamma : [H x n]
-
-// Results of the optimization algorithm
-template <typename Matrix = Eigen::MatrixXd, typename Index = int>
-struct ReHLineResult
-{
-    using Scalar = typename Matrix::Scalar;
-    using Vector = Eigen::Matrix<Scalar, Eigen::Dynamic, 1>;
-
-    Vector              beta;           // Primal variable
-    Vector              xi;             // Dual variables
-    Matrix              Lambda;         // Dual variables
-    Matrix              Gamma;          // Dual variables
-    Index               niter;          // Number of iterations
-    std::vector<Scalar> dual_objfns;    // Recorded dual objective function values
-    std::vector<Scalar> primal_objfns;  // Recorded primal objective function values
-};
 
 // The main ReHLine solver
 // "Matrix" is the type of input data matrix, can be row-majored or column-majored
 template <typename Matrix = Eigen::MatrixXd, typename Index = int>
-class ReHLineSolver
+class ReHLineQuadSolver
 {
 private:
     using Scalar = typename Matrix::Scalar;
@@ -140,13 +45,18 @@ private:
 
     // Input matrices and vectors
     RMatrix     m_X;
+    RMatrix     m_XtinvG; // X @ inv(G)
     ConstRefMat m_U;
     ConstRefMat m_V;
     ConstRefMat m_S;
     ConstRefMat m_T;
     ConstRefMat m_Tau;
     RMatrix     m_A;
+    RMatrix     m_AtinvG; // A @ inv(G)
     ConstRefVec m_b;
+    ConstRefMat m_G;
+    ConstRefMat m_invG;
+    ConstRefVec m_mu;
 
     // Pre-computed
     Vector m_gk_denom;   // ||a[k]||^2
@@ -196,6 +106,8 @@ private:
     // Compute the primal objective function value
     inline Scalar primal_objfn() const
     {
+        if (m_G.rows() == 0) 
+            throw std::invalid_argument("Can't compute primal objfn without supplying matrix G");
         Scalar result = Scalar(0);
         const Vector Xbeta = m_X * m_beta;
         // ReLU part
@@ -215,13 +127,17 @@ private:
             ).sum();
         }
         // Quadratic term
-        result += Scalar(0.5) * m_beta.squaredNorm();
+        result += Scalar(0.5) * m_beta.transpose() * m_G * m_beta;
+        // linear term
+        result -= m_mu.dot(m_beta); 
         return result;
     }
 
     // Compute the dual objective function value
     inline Scalar dual_objfn() const
     {
+        if (m_invG.rows() == 0) 
+            throw std::invalid_argument("Can't compute dual objfn without supplying matrix invG");
         // A' * xi, [d x 1], A[K x d] may be empty
         Vector Atxi = Vector::Zero(m_d);
         if (m_K > 0)
@@ -246,27 +162,33 @@ private:
         // If K = 0, all terms that depend on A, xi, or b will be zero
         if (m_K > 0)
         {
-            // 0.5 * ||Atxi||^2 - Atxi' * U3L - Atxi' * S3G + xi' * b
-            const Scalar Atxi_U3L = (m_L > 0) ? (Atxi.dot(U3L)) : Scalar(0);
-            const Scalar Atxi_S3G = (m_H > 0) ? (Atxi.dot(S3G)) : Scalar(0);
-            obj += Scalar(0.5) * Atxi.squaredNorm() - Atxi_U3L - Atxi_S3G + m_xi.dot(m_b);
+            // 0.5 * Atxi' * invG * Atxi - Atxi' * invG * U3L - Atxi' * invG * S3G
+            //                           + Atxi' * invG * mu  + xi' * b
+            const Scalar Atxi_U3L = (m_L > 0) ? (Atxi.transpose() * m_invG * U3L) : Scalar(0);
+            const Scalar Atxi_S3G = (m_H > 0) ? (Atxi.transpose() * m_invG * S3G) : Scalar(0);
+            const Scalar Atxi_mu  = Atxi.transpose() * m_invG * m_mu;
+            obj += Scalar(0.5) * Atxi.transpose() * m_invG * Atxi + Atxi_mu - 
+                Atxi_U3L - Atxi_S3G + m_xi.dot(m_b);
         }
         // If L = 0, all terms that depend on U, V, or Lambda will be zero
         if (m_L > 0)
         {
-            // 0.5 * ||U3L||^2 + U3L' * S3G - tr(Lambda * V')
-            const Scalar U3L_S3G = (m_H > 0) ? (U3L.dot(S3G)) : Scalar(0);
-            obj += Scalar(0.5) * U3L.squaredNorm() + U3L_S3G -
+            // 0.5 * U3L' * invG * U3L  + U3L' * invG * S3G - U3L * invG * mu - tr(Lambda * V')
+            const Scalar U3L_S3G = (m_H > 0) ? (U3L.transpose() * m_invG * S3G) : Scalar(0);
+            const Scalar U3L_mu = U3L.transpose() * m_invG * m_mu;
+            obj += Scalar(0.5) * U3L.transpose() * m_invG * U3L + U3L_S3G - U3L_mu -
                 m_Lambda.cwiseProduct(m_V).sum();
         }
         // If H = 0, all terms that depend on S, T, or Gamma will be zero
         if (m_H > 0)
         {
-            // 0.5 * ||S3G||^2 + 0.5 * ||Gamma||^2 - tr(Gamma * T')
-            obj += Scalar(0.5) * S3G.squaredNorm() + Scalar(0.5) * m_Gamma.squaredNorm() -
-                m_Gamma.cwiseProduct(m_T).sum();
+            // 0.5 * S3G' * invG * S3G + 0.5 * ||Gamma||^2 - S3G' * invG * mu - tr(Gamma * T')
+            const Scalar S3G_mu = S3G.transpose() * m_invG * m_mu;
+            obj += Scalar(0.5) * S3G.transpose() * m_invG * S3G + Scalar(0.5) * m_Gamma.squaredNorm() -
+                S3G_mu - m_Gamma.cwiseProduct(m_T).sum();
         }
 
+        obj += Scalar(0.5) * m_mu.transpose() * m_invG * m_mu;
         return obj;
     }
 
@@ -289,7 +211,7 @@ private:
             const Scalar newxi = std::max(Scalar(0), candid);
             // Update xi and beta
             m_xi[k] = newxi;
-            m_beta.noalias() += (newxi - xi_k) * m_A.row(k).transpose();
+            m_beta.noalias() += (newxi - xi_k) * m_AtinvG.row(k).transpose();
         }
     }
 
@@ -314,7 +236,7 @@ private:
                 const Scalar newl = std::max(Scalar(0), std::min(Scalar(1), candid));
                 // Update Lambda and beta
                 m_Lambda(l, i) = newl;
-                m_beta.noalias() -= (newl - lambda_li) * u_li * m_X.row(i).transpose();
+                m_beta.noalias() -= (newl - lambda_li) * u_li * m_XtinvG.row(i).transpose();
             }
         }
     }
@@ -342,7 +264,7 @@ private:
                 const Scalar newg = std::max(Scalar(0), std::min(tau_hi, candid));
                 // Update Gamma and beta
                 m_Gamma(h, i) = newg;
-                m_beta.noalias() -= (newg - gamma_hi) * s_hi * m_X.row(i).transpose();
+                m_beta.noalias() -= (newg - gamma_hi) * s_hi * m_XtinvG.row(i).transpose();
             }
         }
     }
@@ -403,7 +325,7 @@ private:
             const Scalar newxi = std::max(Scalar(0), candid);
             // Update xi and beta
             m_xi[k] = newxi;
-            m_beta.noalias() += (newxi - xi_k) * m_A.row(k).transpose();
+            m_beta.noalias() += (newxi - xi_k) * m_AtinvG.row(k).transpose();
 
             // Add to new free variable set
             new_set.push_back(k);
@@ -470,7 +392,7 @@ private:
             const Scalar newl = std::max(Scalar(0), std::min(Scalar(1), candid));
             // Update Lambda and beta
             m_Lambda(l, i) = newl;
-            m_beta.noalias() -= (newl - lambda_li) * u_li * m_X.row(i).transpose();
+            m_beta.noalias() -= (newl - lambda_li) * u_li * m_XtinvG.row(i).transpose();
 
             // Add to new free variable set
             new_set.emplace_back(l, i);
@@ -539,7 +461,7 @@ private:
             const Scalar newg = std::max(Scalar(0), std::min(tau_hi, candid));
             // Update Gamma and beta
             m_Gamma(h, i) = newg;
-            m_beta.noalias() -= (newg - gamma_hi) * s_hi * m_X.row(i).transpose();
+            m_beta.noalias() -= (newg - gamma_hi) * s_hi * m_XtinvG.row(i).transpose();
 
             // Add to new free variable set
             new_set.emplace_back(h, i);
@@ -550,53 +472,43 @@ private:
     }
 
 public:
-    ReHLineSolver(ConstRefMat X, ConstRefMat U, ConstRefMat V,
+    ReHLineQuadSolver(ConstRefMat X, ConstRefMat XtinvG, 
+                  ConstRefMat U, ConstRefMat V,
                   ConstRefMat S, ConstRefMat T, ConstRefMat Tau,
-                  ConstRefMat A, ConstRefVec b) :
+                  ConstRefMat A, ConstRefMat AtinvG, ConstRefVec b, 
+                  ConstRefVec mu, ConstRefMat G, ConstRefMat invG,
+                  ConstRefVec beta0, 
+                  ConstRefVec xi0, ConstRefMat Lambda0, ConstRefMat Gamma0):
         m_n(X.rows()), m_d(X.cols()), m_L(U.rows()), m_H(S.rows()), m_K(A.rows()),
-        m_X(X), m_U(U), m_V(V), m_S(S), m_T(T), m_Tau(Tau), m_A(A), m_b(b),
+        m_X(X), m_XtinvG(XtinvG), m_U(U), m_V(V), m_S(S), m_T(T), m_Tau(Tau), m_A(A), 
+        m_AtinvG(AtinvG), m_b(b), m_mu(mu), m_G(G), m_invG(invG),
         m_gk_denom(m_K), m_gli_denom(m_L, m_n), m_ghi_denom(m_H, m_n),
-        m_beta(m_d),
-        m_xi(m_K), m_Lambda(m_L, m_n), m_Gamma(m_H, m_n)
+        m_beta(beta0), m_xi(xi0), m_Lambda(Lambda0), m_Gamma(Gamma0)
     {
         // A [K x d], K can be zero
+        // AtinvG [K x d], K can be zero
         if (m_K > 0)
-            m_gk_denom.noalias() = m_A.rowwise().squaredNorm();
-
-        Vector xi2 = m_X.rowwise().squaredNorm();
+        {
+            // a_k^T G^{-1} a_k
+            for (Index k = 0; k < m_K; ++k) 
+                m_gk_denom[k] = m_A.row(k).dot(m_AtinvG.row(k));
+        } 
+        
+        Vector xinvGx(m_n);
+        for (Index i = 0; i < m_n; ++i) 
+        {
+            // x[i]^T G^{-1} x[i]
+            xinvGx[i] = m_X.row(i).dot(m_XtinvG.row(i));
+        }
         if (m_L > 0)
         {
-            m_gli_denom.array() = m_U.array().square().rowwise() * xi2.transpose().array();
+            m_gli_denom.array() = m_U.array().square().rowwise() * xinvGx.transpose().array();
         }
 
         if (m_H > 0)
         {
-            m_ghi_denom.array() = m_S.array().square().rowwise() * xi2.transpose().array() + Scalar(1);
+            m_ghi_denom.array() = m_S.array().square().rowwise() * xinvGx.transpose().array() + Scalar(1);
         }
-    }
-
-    // Initialize primal and dual variables
-    inline void init_params()
-    {
-        // xi >= 0, initialized to be 1
-        if (m_K > 0)
-            m_xi.fill(Scalar(1));
-
-        // Each element of Lambda satisfies 0 <= lambda_li <= 1,
-        // and we use 0.5 to initialize Lambda
-        if (m_L > 0)
-            m_Lambda.fill(Scalar(0.5));
-
-        // Each element of Gamma satisfies 0 <= gamma_hi <= tau_hi,
-        // and we use min(0.5 * tau_hi, 1) to initialize (tau_hi can be Inf)
-        if (m_H > 0)
-        {
-            m_Gamma.noalias() = (Scalar(0.5) * m_Tau).cwiseMin(Scalar(1));
-            // Gamma.fill(std::min(1.0, 0.5 * tau));
-        }
-
-        // Set primal variable based on duals
-        set_primal();
     }
 
     inline void set_seed(Index seed) { m_rng.seed(seed); }
@@ -752,24 +664,28 @@ public:
 // Main solver interface
 // template <typename Matrix = Eigen::MatrixXd, typename Index = int>
 template <typename DerivedMat, typename DerivedVec, typename Index = int>
-void rehline_solver(
+void rehline_quad_solver(
     ReHLineResult<typename DerivedMat::PlainObject, Index>& result,
-    const Eigen::MatrixBase<DerivedMat>& X, const Eigen::MatrixBase<DerivedMat>& A,
-    const Eigen::MatrixBase<DerivedVec>& b,
+    const Eigen::MatrixBase<DerivedMat>& X, const Eigen::MatrixBase<DerivedMat>& XtinvG, 
+    const Eigen::MatrixBase<DerivedMat>& A, const Eigen::MatrixBase<DerivedMat>& AtinvG,
+    const Eigen::MatrixBase<DerivedVec>& b, const Eigen::MatrixBase<DerivedVec>& mu,
+    const Eigen::MatrixBase<DerivedMat>& G, const Eigen::MatrixBase<DerivedMat>& invG,
     const Eigen::MatrixBase<DerivedMat>& U, const Eigen::MatrixBase<DerivedMat>& V,
     const Eigen::MatrixBase<DerivedMat>& S, const Eigen::MatrixBase<DerivedMat>& T, const Eigen::MatrixBase<DerivedMat>& Tau,
+    const Eigen::MatrixBase<DerivedVec>& beta0, const Eigen::MatrixBase<DerivedVec>& xi0, 
+    const Eigen::MatrixBase<DerivedMat>& Lambda0, const Eigen::MatrixBase<DerivedMat>& Gamma0,
     Index max_iter, typename DerivedMat::Scalar tol, Index shrink = 1,
     Index verbose = 0, Index trace_freq = 100,
     std::ostream& cout = std::cout
 )
 {
     // Create solver
-    ReHLineSolver<typename DerivedMat::PlainObject, Index> solver(X, U, V, S, T, Tau, A, b);
-
-    // Initialize parameters
-    solver.init_params();
-
-    cout << "beta0:" << solver.get_beta_ref() << std::endl;
+    ReHLineQuadSolver<typename DerivedMat::PlainObject, Index> solver(
+        X, XtinvG, 
+        U, V, S, T, Tau, 
+        A, AtinvG, b, mu, G, invG, 
+        beta0, xi0, Lambda0, Gamma0
+    );
 
     // Main iterations
     std::vector<typename DerivedMat::Scalar> dual_objfns;
@@ -793,8 +709,6 @@ void rehline_solver(
     result.primal_objfns.swap(primal_objfns);
 }
 
-
 }  // namespace rehline
 
-
-#endif  // REHLINE_H
+#endif

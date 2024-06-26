@@ -13,6 +13,7 @@ build/
 rehline.egg-info/
 *.log
 env/
+.venv/
 
 # Files during package building
 eigen-3.4.0/
