@@ -7,6 +7,7 @@
 #include <pybind11/stl.h>
 #include <Eigen/Core>
 #include "rehline.h"
+#include "rehline_quad.h"
 
 namespace py = pybind11;
 
@@ -30,6 +31,27 @@ void rehline_internal(
                             max_iter, tol, shrink, verbose, trace_freq);
 }
 
+void rehline_quad_internal(
+    ReHLineResult& result,
+    const MapMat& X, const MapMat& XtinvG,
+    const MapMat& A, const MapMat& AtinvG, 
+    const MapVec& b, const MapVec& mu,
+    const MapMat& G, const MapMat& invG, 
+    const MapMat& U, const MapMat& V,
+    const MapMat& S, const MapMat& T, const MapMat& Tau,
+    const MapVec& beta0, const MapVec& xi0,
+    const MapMat& Lambda0, const MapMat& Gamma0,
+    int max_iter, double tol, int shrink = 1,
+    int verbose = 0, int trace_freq = 100
+) 
+{
+    rehline::rehline_quad_solver(result, X, XtinvG, A, AtinvG, b, mu, G, invG,
+                             U, V, S, T, Tau,
+                            beta0, xi0, Lambda0, Gamma0, 
+                            max_iter, tol, shrink, verbose, trace_freq);
+}
+
+
 PYBIND11_MODULE(_internal, m) {
     py::class_<ReHLineResult>(m, "rehline_result")
         .def(py::init<>())
@@ -45,4 +67,5 @@ PYBIND11_MODULE(_internal, m) {
     m.attr("__name__") = "rehline._internal";
     m.doc() = "rehline";
     m.def("rehline_internal", &rehline_internal);
+    m.def("rehline_quad_internal", &rehline_quad_internal);
 }
