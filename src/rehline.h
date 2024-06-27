@@ -769,8 +769,6 @@ void rehline_solver(
     // Initialize parameters
     solver.init_params();
 
-    cout << "beta0:" << solver.get_beta_ref() << std::endl;
-
     // Main iterations
     std::vector<typename DerivedMat::Scalar> dual_objfns;
     std::vector<typename DerivedMat::Scalar> primal_objfns;
