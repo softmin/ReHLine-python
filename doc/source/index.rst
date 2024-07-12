@@ -9,7 +9,7 @@
 .. raw:: html
 
     <embed>
-        <a href="https://github.com/softmin/ReHLine"><img src="logo.png" align="right" height="138" /></a>
+        <a href="https://github.com/softmin/ReHLine"><img src="https://github.com/softmin/ReHLine-python/blob/main/doc/source/logo.png" align="right" height="138" /></a>
     </embed>
 
 .. -*- mode: rst -*-
