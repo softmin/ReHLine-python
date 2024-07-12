@@ -10,3 +10,4 @@ setuptools
 sphinx-autodoc-typehints
 numpydoc
 nbsphinx
+sphinx-autoapi
