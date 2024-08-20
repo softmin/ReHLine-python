@@ -11,3 +11,5 @@ sphinx-autodoc-typehints
 numpydoc
 nbsphinx
 sphinx-autoapi
+sphinx-nbexamples
+furo
