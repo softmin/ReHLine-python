@@ -1,5 +1,5 @@
-Example
-=======
+🌰 Example
+==========
 
 - SVM and FairSVM [colab: svm_]
 

@@ -10,6 +10,7 @@ from scipy.special import huber
 from sklearn.datasets import make_classification
 from sklearn.preprocessing import StandardScaler
 
+
 def relu(x):
     """
     Evaluation of ReLU given a vector.

@@ -14,7 +14,10 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
+import furo
 import renku_sphinx_theme
+import sphinx_nbexamples
+
 # import sphinx.apidoc
 # -- Project information -----------------------------------------------------
 
@@ -24,7 +27,9 @@ author = 'Ben Dai, Yixuan Qiu'
 # The full version, including alpha/beta/rc tags
 # release = '0.10'
 
-import sys, os
+import os
+import sys
+
 sys.path.append('.')
 sys.path.insert(0, os.path.abspath('../..'))
 sys.path.insert(0, os.path.abspath('../rehline'))
@@ -46,10 +51,18 @@ extensions = [
     # "sphinx.ext.intersphinx",
     "sphinx_autodoc_typehints",
     'sphinx.ext.autosummary',
+    # 'sphinx_gallery.gen_gallery',
 	'numpydoc',
-	'nbsphinx'
+	'nbsphinx',
+    'sphinx_nbexamples'
 	]
 autoapi_dirs = ['../../rehline']
+
+# path to the examples scripts
+# sphinx_gallery_conf = {
+#     'examples_dirs': '../examples',   # path to your example scripts
+#     'gallery_dirs': 'auto_examples',  # path to where to save gallery generated output
+# }
 
 autosummary_generate = True
 numpydoc_show_class_members = False
@@ -70,7 +83,7 @@ exclude_patterns = []
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 
-html_theme = 'renku'
+# html_theme = 'renku'
 # html_logo = "logo.png"
 # html_theme_path = [hachibee_sphinx_theme.get_html_themes_path()]
 
@@ -80,7 +93,7 @@ html_theme = 'renku'
 # html_theme = 'python_docs_theme'
 # html_theme = 'sphinx_material'
 # html_theme = 'insegel'
-# html_theme = 'furo'
+html_theme = 'furo'
 # html_theme = 'yummy_sphinx_theme'
 # html_theme = 'groundwork'
 

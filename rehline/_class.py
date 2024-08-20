@@ -7,9 +7,11 @@
 
 import numpy as np
 from sklearn.base import BaseEstimator
-from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
-from ._base import relu, rehu
+from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
+
+from ._base import rehu, relu
 from ._internal import rehline_internal, rehline_result
+
 
 def ReHLine_solver(X, U, V,
         Tau=np.empty(shape=(0, 0)),
@@ -21,7 +23,7 @@ def ReHLine_solver(X, U, V,
     return result
 
 class ReHLine(BaseEstimator):
-    r"""**(main class)** ReHLine Minimization. (draft version v1.0)
+    r"""**(main class)** ReHLine Minimization.
 
     .. math::
 
@@ -430,15 +432,71 @@ class ReHLine(BaseEstimator):
 
 # ReHLine estimator with an option of additional linear term
 class ReHLineLinear(ReHLine):
+    r"""ReHLine Minimization with additional linear terms. 
+
+    .. math::
+
+        \min_{\mathbf{\beta} \in \mathbb{R}^d} \sum_{i=1}^n \sum_{l=1}^L \text{ReLU}( u_{li} \mathbf{x}_i^\intercal \mathbf{\beta} + v_{li}) + \sum_{i=1}^n \sum_{h=1}^H {\text{ReHU}}_{\tau_{hi}}( s_{hi} \mathbf{x}_i^\intercal \mathbf{\beta} + t_{hi}) + \mathbf{\mu}^T \mathbf{\beta} + \frac{1}{2} \| \mathbf{\beta} \|_2^2, \\ \text{ s.t. } 
+        \mathbf{A} \mathbf{\beta} + \mathbf{b} \geq \mathbf{0},
+        
+    where :math:`\mathbf{U} = (u_{li}),\mathbf{V} = (v_{li}) \in \mathbb{R}^{L \times n}` 
+    and :math:`\mathbf{S} = (s_{hi}),\mathbf{T} = (t_{hi}),\mathbf{\tau} = (\tau_{hi}) \in \mathbb{R}^{H \times n}` 
+    are the ReLU-ReHU loss parameters, and :math:`(\mathbf{A},\mathbf{b})` are the constraint parameters.
+    
+    Parameters
+    ----------
+
+    C : float, default=1.0
+        Regularization parameter. The strength of the regularization is
+        inversely proportional to C. Must be strictly positive. 
+        `C` will be absorbed by the ReHLine parameters when `self.make_ReLHLoss` is conducted.
+
+    verbose : int, default=0
+        Enable verbose output. Note that this setting takes advantage of a
+        per-process runtime setting in liblinear that, if enabled, may not work
+        properly in a multithreaded context.
+
+    max_iter : int, default=1000
+        The maximum number of iterations to be run.
+
+    U, V: array of shape (L, n_samples), default=np.empty(shape=(0, 0))
+        The parameters pertaining to the ReLU part in the loss function.
+
+    Tau, S, T: array of shape (H, n_samples), default=np.empty(shape=(0, 0))
+        The parameters pertaining to the ReHU part in the loss function.
+    
+    mu: array of shape (n_features, ), default=np.empty(shape=0)
+        The parameters pertaining to the linear part in the loss function.
+
+    A: array of shape (K, n_features), default=np.empty(shape=(0, 0))
+        The coefficient matrix in the linear constraint.
+
+    b: array of shape (K, ), default=np.empty(shape=0)
+        The intercept vector in the linear constraint.
+    
+
+    Attributes
+    ----------
+
+    coef_ : array of shape (n_features,)
+        Weights assigned to the features (coefficients in the primal
+        problem).
+
+    n_iter_: int
+        Maximum number of iterations run across all classes.
+
+    References
+    ----------
+    .. [1] `Dai, B., Qiu, Y,. (2023). ReHLine: Regularized Composite ReLU-ReHU Loss Minimization with Linear Computation and Linear Convergence 
+        <https://openreview.net/pdf?id=3pEBW2UPAD>`_
+    """
     def __init__(self, loss={'name':'QR', 'qt':[.25, .75]}, C=1.,
                        U=np.empty(shape=(0,0)), V=np.empty(shape=(0,0)),
                        Tau=np.empty(shape=(0,0)),
                        S=np.empty(shape=(0,0)), T=np.empty(shape=(0,0)),
                        A=np.empty(shape=(0,0)), b=np.empty(shape=(0)), mu=np.empty(shape=(0)),
                        max_iter=1000, tol=1e-4, shrink=1, verbose=0, trace_freq=100):
-        super().__init__(loss, C, U, V, Tau, S, T, A, b, max_iter, tol, shrink, verbose, trace_freq)
-        self.mu = mu
-
+        super().__init__(loss, C, U, V, Tau, S, T, A, b, mu, max_iter, tol, shrink, verbose, trace_freq)
 
     # @override
     def fit(self, X, sample_weight=None):

@@ -6,15 +6,13 @@
 🦌 ReHLine
 ==========
 
-.. raw:: html
-
-    <embed>
-        <a href="https://github.com/softmin/ReHLine"><img src="https://github.com/softmin/ReHLine-python/blob/main/doc/source/logo.png" align="right" height="138" /></a>
-    </embed>
+.. image:: logo.png
+   :width: 18%
+   :align: right
 
 .. -*- mode: rst -*-
 
-|PyPi|_ |MIT|_ |Python3|_ 
+|PyPi|_ |MIT|_ |Python3|_ |downloads|_
 
 .. |PyPi| image:: https://badge.fury.io/py/rehline.svg
 .. _PyPi: https://pypi.org/project/rehline/
@@ -31,22 +29,27 @@
 
 **ReHLine** is designed to be a computationally efficient and practically useful software package for large-scale ERMs. 
 
+- Homepage: `https://rehline.github.io/ <https://rehline.github.io/>`_
 - GitHub repo: `https://github.com/softmin/ReHLine-python <https://github.com/softmin/ReHLine-python>`_
 - Documentation: `https://rehline.readthedocs.io <https://rehline.readthedocs.io/en/latest/>`_
 - PyPi: `https://pypi.org/project/rehline <https://pypi.org/project/rehline>`_
-- Open Source: `MIT license <https://opensource.org/licenses/MIT>`_
 - Paper: `NeurIPS | 2023 <https://openreview.net/pdf?id=3pEBW2UPAD>`_
-
+.. - Open Source: `MIT license <https://opensource.org/licenses/MIT>`_
 
 `ReHLine` is designed to be a computationally efficient 
-and practically useful software package for large-scale ERMs.
+and practically useful software package for large-scale regularized ERMs.
 
-The proposed **ReHLine** solver has four appealing `linear properties`:
+The proposed **ReHLine** solver has appealing exhibits appealing properties:
 
-- It applies to any convex piecewise linear-quadratic loss function, including the hinge loss, the check loss, the Huber loss, etc.
-- In addition, it supports linear equality and inequality constraints on the parameter vector.
-- The optimization algorithm has a provable linear convergence rate.
-- The per-iteration computational complexity is linear in the sample size.
+.. list-table::
+    :widths: 20 80
+
+    * - **Flexible losses**
+      - It applies to ANY convex piecewise linear-quadratic loss function, including the hinge loss, the squared-hinge the check loss, the Huber loss, etc.
+    * - **Flexible constraints**
+      - It supports linear equality and inequality constraints on the parameter vector.
+    * - **Super-Efficient**
+      - The optimization algorithm has a provable **LINEAR** convergence rate, and the per-iteration computational complexity is **LINEAR** in the sample size.
 
 🔨 Installation
 ===============
@@ -80,41 +83,10 @@ and ridge regularized Huber minimization (RidgeHuber).
 
 .. image:: ./figs/tab.png
 
-📚 Benchmark (powered by `benchopt`)
-------------------------------------
-
-To generate benchmark results in our paper, please check `ReHLine-benchmark <https://github.com/softmin/ReHLine-benchmark>`_.
-
-+-------------+--------------------------------------------------------+
-| Problem     | Results                                                |
-+=============+========================================================+
-| FairSVM_    | `Result <./_static/benchmark/benchmark_FairSVM.html>`_ |
-+-------------+--------------------------------------------------------+
-| ElasticQR_  | `Result <./_static/benchmark/benchmark_QR.html>`_      |
-+-------------+--------------------------------------------------------+
-| RidgeHuber_ | `Result <./_static/benchmark/benchmark_Huber.html>`_   |
-+-------------+--------------------------------------------------------+
-| SVM_        | `Result <./_static/benchmark/benchmark_SVM.html>`_     |
-+-------------+--------------------------------------------------------+
-| sSVM_       | `Result <./_static/benchmark/benchmark_sSVM.html>`_    |
-+-------------+--------------------------------------------------------+
-
-.. _FairSVM: https://github.com/softmin/ReHLine-benchmark/tree/main/benchmark_FairSVM
-.. _ElasticQR: https://github.com/softmin/ReHLine-benchmark/tree/main/benchmark_QR
-.. _RidgeHuber: https://github.com/softmin/ReHLine-benchmark/tree/main/benchmark_Huber
-.. _SVM: https://github.com/softmin/ReHLine-benchmark/tree/main/benchmark_SVM
-.. _sSVM: https://github.com/softmin/ReHLine-benchmark/tree/main/benchmark_sSVM
-
-*Note*: You may select the "log-log scale" option in the left sidebar, as this will significantly improve the readability of the results.
-
-🧾 Overview of Results
-----------------------
-
-.. image:: ./figs/res.png
 
 Reference
 ---------
-**If you use this code please star the repository and cite the following paper:**
+If you use this code please star 🌟 the repository and cite the following paper:
 
 .. code:: bib
 
@@ -125,19 +97,13 @@ Reference
    year={2023},
    }
 
-📒 Contents
------------
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 0
+   :hidden:
 
+   getting_started
+   tutorials
    installation
-   example
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`search`
-   
-.. quickstart
+   examples/index
+   benchmark
