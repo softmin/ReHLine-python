@@ -1,5 +1,5 @@
-📚 Benchmark
-============
+Benchmark
+=========
 
 We have developed a benchmark for evaluating the performance of optimization methods, which is built on top of the `benchopt <https://github.com/benchopt/benchopt>`_. For those interested in reproducing the benchmark results presented in our paper, we provide a dedicated repository, `ReHLine-benchmark <https://github.com/softmin/ReHLine-benchmark>`_, which contains all the necessary resources and instructions.
 

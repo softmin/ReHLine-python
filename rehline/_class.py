@@ -485,10 +485,6 @@ class ReHLineLinear(ReHLine):
     n_iter_: int
         Maximum number of iterations run across all classes.
 
-    References
-    ----------
-    .. [1] `Dai, B., Qiu, Y,. (2023). ReHLine: Regularized Composite ReLU-ReHU Loss Minimization with Linear Computation and Linear Convergence 
-        <https://openreview.net/pdf?id=3pEBW2UPAD>`_
     """
     def __init__(self, loss={'name':'QR', 'qt':[.25, .75]}, C=1.,
                        U=np.empty(shape=(0,0)), V=np.empty(shape=(0,0)),

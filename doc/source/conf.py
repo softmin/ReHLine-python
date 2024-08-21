@@ -57,13 +57,7 @@ extensions = [
 	'numpydoc',
 	'nbsphinx',
 	]
-autoapi_dirs = ['../../rehline']
-
-# path to the examples scripts
-# sphinx_gallery_conf = {
-#     'examples_dirs': '../examples',   # path to your example scripts
-#     'gallery_dirs': 'auto_examples',  # path to where to save gallery generated output
-# }
+autoapi_dirs = ['../../rehline/']
 
 autosummary_generate = True
 numpydoc_show_class_members = False
@@ -72,17 +66,6 @@ nbsphinx_allow_errors = True
 # autodoc_mock_imports = ['numpy']
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
-
-
-
-not_document_data = 'sphinx_nbexamples.gallery_config'
-
-example_gallery_config = dict(
-    insert_bokeh='0.12.1',
-    urls='https://github.com/softmin/ReHLine-python/tree/main/examples',
-    )
-process_examples = not osp.exists(osp.join(osp.dirname(__file__), 'examples'))
-
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.

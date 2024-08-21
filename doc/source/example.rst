@@ -1,10 +1,23 @@
-🌰 Example
-==========
+Example
+=======
 
-- SVM and FairSVM [colab: svm_]
+Example Gallery
+---------------
 
-.. _svm: https://colab.research.google.com/drive/1f_7t1t6FNxAooQOmpyhHCOVq0IKgMxe-?usp=sharing
+.. nblinkgallery::
+   :caption: A few links
+   :name: rst-link-gallery
 
-- Quantile Regression [colab: qt_]
+   examples/ReHLine_QR
+   examples/ReHLine_SVM_FairSVM
 
-.. _qt: https://colab.research.google.com/drive/1LwatjwjnMSB97eLVyuOiUY3sl3A3Ie__?usp=sharing
+List of Examples
+----------------
+
+.. toctree::
+   :maxdepth: 0
+
+   examples/ReHLine_QR.ipynb
+   examples/ReHLine_SVM_FairSVM.ipynb
+   
+
