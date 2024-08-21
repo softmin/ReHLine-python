@@ -14,6 +14,8 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
+import os.path as osp
+
 import furo
 import renku_sphinx_theme
 import sphinx_nbexamples
@@ -54,7 +56,6 @@ extensions = [
     # 'sphinx_gallery.gen_gallery',
 	'numpydoc',
 	'nbsphinx',
-    'sphinx_nbexamples'
 	]
 autoapi_dirs = ['../../rehline']
 
@@ -71,6 +72,17 @@ nbsphinx_allow_errors = True
 # autodoc_mock_imports = ['numpy']
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
+
+
+
+not_document_data = 'sphinx_nbexamples.gallery_config'
+
+example_gallery_config = dict(
+    insert_bokeh='0.12.1',
+    urls='https://github.com/softmin/ReHLine-python/tree/main/examples',
+    )
+process_examples = not osp.exists(osp.join(osp.dirname(__file__), 'examples'))
+
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.

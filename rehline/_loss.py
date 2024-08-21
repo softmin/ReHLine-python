@@ -11,7 +11,7 @@ import numpy as np
 from ._base import _check_rehu, _check_relu, rehu, relu
 
 
-class _ReHLoss(object):
+class ReHLoss(object):
     """
     A ReHLine loss function composed of one or multiple ReLU and ReHU components.
     

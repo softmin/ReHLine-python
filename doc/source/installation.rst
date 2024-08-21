@@ -4,7 +4,7 @@
 Dependencies
 ------------
 
-``rehline`` requires: **Python>=3.8** + `requirements <./requirements.txt>`_
+``rehline`` requires: **Python>=3.10** + `requirements <./requirements.txt>`_
 
 .. code:: bash
 
