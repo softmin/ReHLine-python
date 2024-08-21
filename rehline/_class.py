@@ -9,21 +9,11 @@ import numpy as np
 from sklearn.base import BaseEstimator
 from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
 
-from ._base import rehu, relu
-from ._internal import rehline_internal, rehline_result
+from ._base import ReHLine_solver, _BaseReHLine
 
 
-def ReHLine_solver(X, U, V,
-        Tau=np.empty(shape=(0, 0)),
-        S=np.empty(shape=(0, 0)), T=np.empty(shape=(0, 0)),
-        A=np.empty(shape=(0, 0)), b=np.empty(shape=(0)),
-        max_iter=1000, tol=1e-4, shrink=1, verbose=1, trace_freq=100):
-    result = rehline_result()
-    rehline_internal(result, X, A, b, U, V, S, T, Tau, max_iter, tol, shrink, verbose, trace_freq)
-    return result
-
-class ReHLine(BaseEstimator):
-    r"""**(main class)** ReHLine Minimization.
+class ReHLine(_BaseReHLine, BaseEstimator):
+    r"""ReHLine Minimization.
 
     .. math::
 
@@ -33,6 +23,171 @@ class ReHLine(BaseEstimator):
     where :math:`\mathbf{U} = (u_{li}),\mathbf{V} = (v_{li}) \in \mathbb{R}^{L \times n}` 
     and :math:`\mathbf{S} = (s_{hi}),\mathbf{T} = (t_{hi}),\mathbf{\tau} = (\tau_{hi}) \in \mathbb{R}^{H \times n}` 
     are the ReLU-ReHU loss parameters, and :math:`(\mathbf{A},\mathbf{b})` are the constraint parameters.
+
+    Parameters
+    ----------
+
+    C : float, default=1.0
+        Regularization parameter. The strength of the regularization is
+        inversely proportional to C. Must be strictly positive. 
+
+    U, V: array of shape (L, n_samples), default=np.empty(shape=(0, 0))
+        The parameters pertaining to the ReLU part in the loss function.
+
+    Tau, S, T: array of shape (H, n_samples), default=np.empty(shape=(0, 0))
+        The parameters pertaining to the ReHU part in the loss function.
+    
+    A: array of shape (K, n_features), default=np.empty(shape=(0, 0))
+        The coefficient matrix in the linear constraint.
+
+    b: array of shape (K, ), default=np.empty(shape=0)
+        The intercept vector in the linear constraint.
+
+    verbose : int, default=0
+        Enable verbose output. Note that this setting takes advantage of a
+        per-process runtime setting in liblinear that, if enabled, may not work
+        properly in a multithreaded context.
+
+    max_iter : int, default=1000
+        The maximum number of iterations to be run.
+
+    Attributes
+    ----------
+
+    coef_ : array of shape (n_features,)
+        Weights assigned to the features (coefficients in the primal
+        problem).
+
+    n_iter_: int
+        Maximum number of iterations run across all classes.
+
+    Examples
+    --------
+
+    >>> ## test SVM on simulated dataset
+    >>> import numpy as np
+    >>> from rehline import ReHLine 
+
+    >>> # simulate classification dataset
+    >>> n, d, C = 1000, 3, 0.5
+    >>> np.random.seed(1024)
+    >>> X = np.random.randn(1000, 3)
+    >>> beta0 = np.random.randn(3)
+    >>> y = np.sign(X.dot(beta0) + np.random.randn(n))
+
+    >>> # Usage of ReHLine
+    >>> n, d = X.shape
+    >>> U = -(C*y).reshape(1,-1)
+    >>> L = U.shape[0]
+    >>> V = (C*np.array(np.ones(n))).reshape(1,-1)
+    >>> clf = ReHLine(loss={'name': 'svm'}, C=C)
+    >>> clf.U, clf.V = U, V
+    >>> clf.fit(X=X)
+    >>> print('sol privided by rehline: %s' %clf.coef_)
+    >>> sol privided by rehline: [ 0.7410154  -0.00615574  2.66990408]
+    >>> print(clf.decision_function([[.1,.2,.3]]))
+    >>> [0.87384162]
+
+    References
+    ----------
+    .. [1] `Dai, B., Qiu, Y,. (2023). ReHLine: Regularized Composite ReLU-ReHU Loss Minimization with Linear Computation and Linear Convergence <https://openreview.net/pdf?id=3pEBW2UPAD>`_
+    """
+
+    def __init__(self, C=1.,
+                       U=np.empty(shape=(0,0)), V=np.empty(shape=(0,0)),
+                       Tau=np.empty(shape=(0,0)),
+                       S=np.empty(shape=(0,0)), T=np.empty(shape=(0,0)),
+                       A=np.empty(shape=(0,0)), b=np.empty(shape=(0)), 
+                       max_iter=1000, tol=1e-4, shrink=1, verbose=0, trace_freq=100):
+        _BaseReHLine.__init__(self, C, U, V, Tau, S, T, A, b)
+        self.max_iter = max_iter
+        self.tol = tol
+        self.shrink = shrink
+        self.verbose = verbose
+        self.trace_freq = trace_freq
+
+    def fit(self, X, sample_weight=None):
+        """Fit the model based on the given training data.
+
+        Parameters
+        ----------
+
+        X: {array-like} of shape (n_samples, n_features)
+            Training vector, where `n_samples` is the number of samples and
+            `n_features` is the number of features.
+
+        sample_weight : array-like of shape (n_samples,), default=None
+            Array of weights that are assigned to individual
+            samples. If not provided, then each sample is given unit weight.
+
+        Returns
+        -------
+        self : object
+            An instance of the estimator.
+        """
+        # X = check_array(X)
+        if sample_weight is None:
+            sample_weight = np.ones(X.shape[0])
+
+        if self.L > 0:
+            U_weight = self.U * sample_weight
+            V_weight = self.V * sample_weight
+        else:
+            U_weight = self.U
+            V_weight = self.V
+
+        if self.H > 0:
+            sqrt_sample_weight = np.sqrt(sample_weight)
+            Tau_weight = self.Tau * sqrt_sample_weight
+            S_weight = self.S * sqrt_sample_weight
+            T_weight = self.T * sqrt_sample_weight
+        else:
+            Tau_weight = self.Tau
+            S_weight = self.S
+            T_weight = self.T
+
+        result = ReHLine_solver(X=X,
+                                U=U_weight, V=V_weight,
+                                Tau=Tau_weight,
+                                S=S_weight, T=T_weight,
+                                A=self.A, b=self.b,
+                                max_iter=self.max_iter, tol=self.tol,
+                                shrink=self.shrink, verbose=self.verbose,
+                                trace_freq=self.trace_freq)
+
+        self.coef_ = result.beta
+        self.opt_result_ = result
+        self.n_iter_ = result.niter
+        self.dual_obj_ = result.dual_objfns
+        self.primal_obj_ = result.primal_objfns
+
+    def decision_function(self, X):
+        """The decision function evaluated on the given dataset
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            The data matrix.
+
+        Returns
+        -------
+        ndarray of shape (n_samples, )
+            Returns the decision function of the samples.
+        """
+        # Check if fit has been called
+        check_is_fitted(self)
+
+        X = check_array(X)
+        return np.dot(X, self.coef_)
+
+
+class plqERM(_BaseReHLine, BaseEstimator):
+    r"""Empirical Risk Minimization (ERM) with a piecewise linear-quadratic (PLQ) objective.
+
+    .. math::
+
+        \min_{\mathbf{\beta} \in \mathbb{R}^d} \sum_{i=1}^n \text{PLQ}(y_i, \mathbf{x}_i^T \mathbf{\beta}) + \text{pen}(\mathbf{\beta}) + \frac{1}{2} \| \mathbf{\beta} \|_2^2, \\ \text{ s.t. } 
+        \mathbf{A} \mathbf{\beta} + \mathbf{b} \geq \mathbf{0},
     
     Parameters
     ----------
@@ -73,77 +228,28 @@ class ReHLine(BaseEstimator):
     n_iter_: int
         Maximum number of iterations run across all classes.
 
-    References
-    ----------
-    .. [1] `Dai, B., Qiu, Y,. (2023). ReHLine: Regularized Composite ReLU-ReHU Loss Minimization with Linear Computation and Linear Convergence 
-        <https://openreview.net/pdf?id=3pEBW2UPAD>`_
-
-    Examples
-    --------
-
-    >>> ## test SVM on simulated dataset
-    >>> import numpy as np
-    >>> from rehline import ReHLine 
-
-    >>> # simulate classification dataset
-    >>> n, d, C = 1000, 3, 0.5
-    >>> np.random.seed(1024)
-    >>> X = np.random.randn(1000, 3)
-    >>> beta0 = np.random.randn(3)
-    >>> y = np.sign(X.dot(beta0) + np.random.randn(n))
-
-    >>> # Usage 1: build-in loss
-    >>> clf = ReHLine(loss={'name': 'svm'}, C=C)
-    >>> clf.make_ReLHLoss(X=X, y=y, loss={'name': 'svm'})
-    >>> clf.fit(X=X)
-    >>> print('sol privided by rehline: %s' %clf.coef_)
-    >>> sol privided by rehline: [ 0.74104604 -0.00622664  2.66991198]
-    >>> print(clf.decision_function([[.1,.2,.3]]))
-    >>> [0.87383287]
-
-    >>> # Usage 2: manually specify params
-    >>> n, d = X.shape
-    >>> U = -(C*y).reshape(1,-1)
-    >>> L = U.shape[0]
-    >>> V = (C*np.array(np.ones(n))).reshape(1,-1)
-    >>> clf = ReHLine(loss={'name': 'svm'}, C=C)
-    >>> clf.U, clf.V = U, V
-    >>> clf.fit(X=X)
-    >>> print('sol privided by rehline: %s' %clf.coef_)
-    >>> sol privided by rehline: [ 0.7410154  -0.00615574  2.66990408]
-    >>> print(clf.decision_function([[.1,.2,.3]]))
-    >>> [0.87384162]
     """
 
-    def __init__(self, loss={'name':'QR', 'qt':[.25, .75]}, C=1.,
-                       U=np.empty(shape=(0,0)), V=np.empty(shape=(0,0)),
-                       Tau=np.empty(shape=(0,0)),
-                       S=np.empty(shape=(0,0)), T=np.empty(shape=(0,0)),
-                       A=np.empty(shape=(0,0)), b=np.empty(shape=(0)),
+
+    def __init__(self, loss, 
+                       constraint = None,
+                       penalty = None,
+
+                       C=1.,
                        max_iter=1000, tol=1e-4, shrink=1, verbose=0, trace_freq=100):
         self.loss = loss
-        self.C = C
-        self.U = U
-        self.V = V
-        self.S = S
-        self.T = T
-        self.Tau = Tau
-        self.A = A
-        self.b = b
+        self.constraint = constraint
+        self.penalty = penalty
         self.max_iter = max_iter
         self.tol = tol
         self.shrink = shrink
         self.verbose = verbose
         self.trace_freq = trace_freq
-        self.L = U.shape[0]
-        self.n = U.shape[1]
-        self.H = S.shape[0]
-        self.K = A.shape[0]
 
-    def make_ReLHLoss(self, X, y, loss={}):
-        """The `make_ReLHLoss` function generates parameters for the ReLoss, based on the provided training data.
+    def _make_loss_rehline_param(self, X, y):
+        """The `_make_loss_rehline_param` function generates parameters for the ReHLine solver, based on the provided training data.
 
-        The function matches the specific ReLoss (self.loss) with loss functions 
+        The function supports plq loss functions 
         like 'hinge', 'svm', 'SVM', 'check', 'quantile', 'quantile regression', 
         'QR', 'sSVM', 'smooth SVM', 'smooth hinge', 'TV', 'huber', and 'custom'.
 
@@ -155,16 +261,7 @@ class ReHLine(BaseEstimator):
 
         y : ndarray of shape (n_samples,)
             The +/- labels for class membership of each sample.
-
-        loss: dictionary
-            A dictionary that provides the loss function type and properties (optional).
         """
-        
-        if (loss=={}) or (loss==self.loss):
-            pass
-        else:
-            print('Loss has been updated!')
-            self.loss.update(loss)
 
         n, d = X.shape
 
@@ -172,6 +269,8 @@ class ReHLine(BaseEstimator):
             or (self.loss['name'] == 'SVM'):
             self.U = -(self.C*y).reshape(1,-1)
             self.V = (self.C*np.array(np.ones(n))).reshape(1,-1)
+            return X
+        
         elif (self.loss['name'] == 'check') \
                 or (self.loss['name'] == 'quantile') \
                 or (self.loss['name'] == 'quantile regression') \
@@ -205,6 +304,8 @@ class ReHLine(BaseEstimator):
             self.S[0] = - np.sqrt(self.C)*y
             self.T[0] = np.sqrt(self.C)
             self.Tau[0] = np.sqrt(self.C)
+            return X
+
         elif self.loss['name'] == 'TV':
             self.U = np.ones((2, n))*self.C
             self.V = np.ones((2, n))*self.C
@@ -212,7 +313,9 @@ class ReHLine(BaseEstimator):
 
             self.V[0] = - X.dot(y)*self.C
             self.V[1] = X.dot(y)*self.C
-        elif (self.loss['name'] == 'huber'):
+            return X
+
+        elif (self.loss['name'] == 'huber') or (self.loss['name'] == 'Huber'):
             self.S = np.ones((2, n))
             self.T = np.ones((2, n))
             self.Tau = np.sqrt(self.C) * loss['tau'] * np.ones((2, n))
@@ -221,6 +324,7 @@ class ReHLine(BaseEstimator):
             self.S[1] =   np.sqrt(self.C)
             self.T[0] = np.sqrt(self.C)*y
             self.T[1] = -np.sqrt(self.C)*y
+            return X
         elif (self.loss['name'] in ['SVR', 'svr']):
             self.U = np.ones((2, n))*self.C
             self.V = np.ones((2, n))
@@ -228,12 +332,20 @@ class ReHLine(BaseEstimator):
 
             self.V[0] = -self.C*(y + self.loss['epsilon'])
             self.V[1] = self.C*(y - self.loss['epsilon'])
+            return X
         elif (self.loss['name'] == 'custom'):
             pass
         else:
-            raise Exception("Sorry, ReHLine currently does not support this loss function, \
-                            but you can manually set ReLoss params to solve the problem.")
+            raise Exception("Sorry, plqERM currently does not support this loss function, \
+                            but you can manually set ReHLine params to solve the problem via ReHLine class.")
         self.auto_shape()
+
+    def _make_constraint_rehline_param(self):
+        """The `_make_constraint_rehline_param` function generates constraint parameters for the ReHLine solver.
+        """
+        if (self.constraint['name'] == 'nonnegative') or (self.constraint['name'] == '>=0'):
+            A = np.repeat([X_sen @ X], repeats=[2], axis=0) / n
+
 
     def append_l1(self, X, l1_pen=1.0):
         r"""
@@ -430,139 +542,135 @@ class ReHLine(BaseEstimator):
         X = check_array(X)
         return np.dot(X, self.coef_)
 
-# ReHLine estimator with an option of additional linear term
-class ReHLineLinear(ReHLine):
-    r"""ReHLine Minimization with additional linear terms. 
 
-    .. math::
+# # ReHLine estimator with an option of additional linear term
+# class ReHLineLinear(ReHLine, _BaseReHLine, BaseEstimator):
+#     r"""ReHLine Minimization with additional linear terms. 
 
-        \min_{\mathbf{\beta} \in \mathbb{R}^d} \sum_{i=1}^n \sum_{l=1}^L \text{ReLU}( u_{li} \mathbf{x}_i^\intercal \mathbf{\beta} + v_{li}) + \sum_{i=1}^n \sum_{h=1}^H {\text{ReHU}}_{\tau_{hi}}( s_{hi} \mathbf{x}_i^\intercal \mathbf{\beta} + t_{hi}) + \mathbf{\mu}^T \mathbf{\beta} + \frac{1}{2} \| \mathbf{\beta} \|_2^2, \\ \text{ s.t. } 
-        \mathbf{A} \mathbf{\beta} + \mathbf{b} \geq \mathbf{0},
+#     .. math::
+
+#         \min_{\mathbf{\beta} \in \mathbb{R}^d} \sum_{i=1}^n \sum_{l=1}^L \text{ReLU}( u_{li} \mathbf{x}_i^\intercal \mathbf{\beta} + v_{li}) + \sum_{i=1}^n \sum_{h=1}^H {\text{ReHU}}_{\tau_{hi}}( s_{hi} \mathbf{x}_i^\intercal \mathbf{\beta} + t_{hi}) + \mathbf{\mu}^T \mathbf{\beta} + \frac{1}{2} \| \mathbf{\beta} \|_2^2, \\ \text{ s.t. } 
+#         \mathbf{A} \mathbf{\beta} + \mathbf{b} \geq \mathbf{0},
         
-    where :math:`\mathbf{U} = (u_{li}),\mathbf{V} = (v_{li}) \in \mathbb{R}^{L \times n}` 
-    and :math:`\mathbf{S} = (s_{hi}),\mathbf{T} = (t_{hi}),\mathbf{\tau} = (\tau_{hi}) \in \mathbb{R}^{H \times n}` 
-    are the ReLU-ReHU loss parameters, and :math:`(\mathbf{A},\mathbf{b})` are the constraint parameters.
+#     where :math:`\mathbf{U} = (u_{li}),\mathbf{V} = (v_{li}) \in \mathbb{R}^{L \times n}` 
+#     and :math:`\mathbf{S} = (s_{hi}),\mathbf{T} = (t_{hi}),\mathbf{\tau} = (\tau_{hi}) \in \mathbb{R}^{H \times n}` 
+#     are the ReLU-ReHU loss parameters, and :math:`(\mathbf{A},\mathbf{b})` are the constraint parameters.
     
-    Parameters
-    ----------
+#     Parameters
+#     ----------
 
-    C : float, default=1.0
-        Regularization parameter. The strength of the regularization is
-        inversely proportional to C. Must be strictly positive. 
-        `C` will be absorbed by the ReHLine parameters when `self.make_ReLHLoss` is conducted.
+#     C : float, default=1.0
+#         Regularization parameter. The strength of the regularization is
+#         inversely proportional to C. Must be strictly positive. 
+#         `C` will be absorbed by the ReHLine parameters when `self.make_ReLHLoss` is conducted.
 
-    verbose : int, default=0
-        Enable verbose output. Note that this setting takes advantage of a
-        per-process runtime setting in liblinear that, if enabled, may not work
-        properly in a multithreaded context.
+#     verbose : int, default=0
+#         Enable verbose output. Note that this setting takes advantage of a
+#         per-process runtime setting in liblinear that, if enabled, may not work
+#         properly in a multithreaded context.
 
-    max_iter : int, default=1000
-        The maximum number of iterations to be run.
+#     max_iter : int, default=1000
+#         The maximum number of iterations to be run.
 
-    U, V: array of shape (L, n_samples), default=np.empty(shape=(0, 0))
-        The parameters pertaining to the ReLU part in the loss function.
+#     U, V: array of shape (L, n_samples), default=np.empty(shape=(0, 0))
+#         The parameters pertaining to the ReLU part in the loss function.
 
-    Tau, S, T: array of shape (H, n_samples), default=np.empty(shape=(0, 0))
-        The parameters pertaining to the ReHU part in the loss function.
+#     Tau, S, T: array of shape (H, n_samples), default=np.empty(shape=(0, 0))
+#         The parameters pertaining to the ReHU part in the loss function.
     
-    mu: array of shape (n_features, ), default=np.empty(shape=0)
-        The parameters pertaining to the linear part in the loss function.
+#     mu: array of shape (n_features, ), default=np.empty(shape=0)
+#         The parameters pertaining to the linear part in the loss function.
 
-    A: array of shape (K, n_features), default=np.empty(shape=(0, 0))
-        The coefficient matrix in the linear constraint.
+#     A: array of shape (K, n_features), default=np.empty(shape=(0, 0))
+#         The coefficient matrix in the linear constraint.
 
-    b: array of shape (K, ), default=np.empty(shape=0)
-        The intercept vector in the linear constraint.
+#     b: array of shape (K, ), default=np.empty(shape=0)
+#         The intercept vector in the linear constraint.
     
 
-    Attributes
-    ----------
+#     Attributes
+#     ----------
 
-    coef_ : array of shape (n_features,)
-        Weights assigned to the features (coefficients in the primal
-        problem).
+#     coef_ : array of shape (n_features,)
+#         Weights assigned to the features (coefficients in the primal
+#         problem).
 
-    n_iter_: int
-        Maximum number of iterations run across all classes.
+#     n_iter_: int
+#         Maximum number of iterations run across all classes.
 
-    """
-    def __init__(self, loss={'name':'QR', 'qt':[.25, .75]}, C=1.,
-                       U=np.empty(shape=(0,0)), V=np.empty(shape=(0,0)),
-                       Tau=np.empty(shape=(0,0)),
-                       S=np.empty(shape=(0,0)), T=np.empty(shape=(0,0)),
-                       A=np.empty(shape=(0,0)), b=np.empty(shape=(0)), mu=np.empty(shape=(0)),
-                       max_iter=1000, tol=1e-4, shrink=1, verbose=0, trace_freq=100):
-        super().__init__(loss, C, U, V, Tau, S, T, A, b, mu, max_iter, tol, shrink, verbose, trace_freq)
+#     """
+#     def __init__(self, *, mu=np.empty(shape=(0))):
+#         _BaseReHLine().__init__(C, U, V, Tau, S, T, A, b, mu, max_iter, tol, shrink, verbose, trace_freq)
 
-    # @override
-    def fit(self, X, sample_weight=None):
-        """Fit the model based on the given training data.
+#     # @override
+#     def fit(self, X, sample_weight=None):
+#         """Fit the model based on the given training data.
 
-        Parameters
-        ----------
+#         Parameters
+#         ----------
 
-        X: {array-like} of shape (n_samples, n_features)
-            Training vector, where `n_samples` is the number of samples and
-            `n_features` is the number of features.
+#         X: {array-like} of shape (n_samples, n_features)
+#             Training vector, where `n_samples` is the number of samples and
+#             `n_features` is the number of features.
 
-        sample_weight : array-like of shape (n_samples,), default=None
-            Array of weights that are assigned to individual
-            samples. If not provided, then each sample is given unit weight.
+#         sample_weight : array-like of shape (n_samples,), default=None
+#             Array of weights that are assigned to individual
+#             samples. If not provided, then each sample is given unit weight.
 
-        Returns
-        -------
-        self : object
-            An instance of the estimator.
-        """
+#         Returns
+#         -------
+#         self : object
+#             An instance of the estimator.
+#         """
 
-        # X = check_array(X)
-        if sample_weight is None:
-            sample_weight = np.ones(X.shape[0])
+#         # X = check_array(X)
+#         if sample_weight is None:
+#             sample_weight = np.ones(X.shape[0])
 
-        if self.L > 0:
-            U_weight = self.U * sample_weight
-            V_weight = self.V * sample_weight
-        else:
-            U_weight = self.U
-            V_weight = self.V
+#         if self.L > 0:
+#             U_weight = self.U * sample_weight
+#             V_weight = self.V * sample_weight
+#         else:
+#             U_weight = self.U
+#             V_weight = self.V
 
-        if self.H > 0:
-            sqrt_sample_weight = np.sqrt(sample_weight)
-            Tau_weight = self.Tau * sqrt_sample_weight
-            S_weight = self.S * sqrt_sample_weight
-            T_weight = self.T * sqrt_sample_weight
-        else:
-            Tau_weight = self.Tau
-            S_weight = self.S
-            T_weight = self.T
+#         if self.H > 0:
+#             sqrt_sample_weight = np.sqrt(sample_weight)
+#             Tau_weight = self.Tau * sqrt_sample_weight
+#             S_weight = self.S * sqrt_sample_weight
+#             T_weight = self.T * sqrt_sample_weight
+#         else:
+#             Tau_weight = self.Tau
+#             S_weight = self.S
+#             T_weight = self.T
 
 
-        Xtmu = X @ self.mu
-        if self.mu.size > 0:
-            # v_li' = v_li + u_li * (x_i.T @ mu)
-            V_weight = V_weight + U_weight * Xtmu.reshape(1, -1) if self.L > 0 else V_weight
-            # t_hi' = t_hi + s_hi * (x_i.T @ mu)
-            T_weight = T_weight + S_weight * Xtmu.reshape(1, -1) if self.H > 0 else T_weight
-            b_shifted = self.b + self.A @ self.mu
-        else:
-            b_shifted = self.b
+#         Xtmu = X @ self.mu
+#         if self.mu.size > 0:
+#             # v_li' = v_li + u_li * (x_i.T @ mu)
+#             V_weight = V_weight + U_weight * Xtmu.reshape(1, -1) if self.L > 0 else V_weight
+#             # t_hi' = t_hi + s_hi * (x_i.T @ mu)
+#             T_weight = T_weight + S_weight * Xtmu.reshape(1, -1) if self.H > 0 else T_weight
+#             b_shifted = self.b + self.A @ self.mu
+#         else:
+#             b_shifted = self.b
 
-        result = ReHLine_solver(X=X,
-                        U=U_weight, V=V_weight,
-                        Tau=Tau_weight,
-                        S=S_weight, T=T_weight,
-                        A=self.A, b=b_shifted,
-                        max_iter=self.max_iter, tol=self.tol,
-                        shrink=self.shrink, verbose=self.verbose,
-                        trace_freq=self.trace_freq)
+#         result = ReHLine_solver(X=X,
+#                         U=U_weight, V=V_weight,
+#                         Tau=Tau_weight,
+#                         S=S_weight, T=T_weight,
+#                         A=self.A, b=b_shifted,
+#                         max_iter=self.max_iter, tol=self.tol,
+#                         shrink=self.shrink, verbose=self.verbose,
+#                         trace_freq=self.trace_freq)
 
-        # unshift results
-        result.beta = result.beta + self.mu
-        result.dual_objfns = [dual_func + 0.5*self.mu.T @ self.mu for dual_func in result.dual_objfns]
-        result.primal_objfns = [primal_func - 0.5*self.mu.T @ self.mu for primal_func in result.primal_objfns]
+#         # unshift results
+#         result.beta = result.beta + self.mu
+#         result.dual_objfns = [dual_func + 0.5*self.mu.T @ self.mu for dual_func in result.dual_objfns]
+#         result.primal_objfns = [primal_func - 0.5*self.mu.T @ self.mu for primal_func in result.primal_objfns]
 
-        self.coef_ = result.beta
-        self.opt_result_ = result
-        self.n_iter_ = result.niter
-        self.dual_obj_ = result.dual_objfns
-        self.primal_obj_ = result.primal_objfns
+#         self.coef_ = result.beta
+#         self.opt_result_ = result
+#         self.n_iter_ = result.niter
+#         self.dual_obj_ = result.dual_objfns
+#         self.primal_obj_ = result.primal_objfns
