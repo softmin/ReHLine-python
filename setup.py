@@ -69,7 +69,7 @@ setup(
     url="https://github.com/softmin/ReHLine-python",
     description="Regularized Composite ReLU-ReHU Loss Minimization with Linear Computation and Linear Convergence",
     packages=["rehline"],
-    install_requires=["requests", "pybind11", "numpy", "scipy", "scikit-learn"],
+    # install_requires=["requests", "pybind11", "numpy", "scipy", "scikit-learn"],
     ext_modules=ext_modules,
     # extras_require={"test": "pytest"},
     # Currently, build_ext only provides an optional "highest supported C++
