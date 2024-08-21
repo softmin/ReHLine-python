@@ -27,6 +27,10 @@ documentation = "https://rehline-python.readthedocs.io/en/latest/index.html"
 [tool.setuptools]
 py-modules = ["build"]
 
+[tool.cibuildwheel]
+# Only build on CPython 3.6
+build = "cp*"
+
 [build-system]
 requires = ["requests ~= 2.27.0", "pybind11 ~= 2.11.1", "setuptools >= 69.0.3", "wheel >= 0.42.0"]
 build-backend = "setuptools.build_meta"
