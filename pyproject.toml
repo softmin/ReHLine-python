@@ -24,7 +24,7 @@ homepage = "https://rehline.github.io/"
 repository = "https://github.com/softmin/ReHLine-python"
 documentation = "https://rehline-python.readthedocs.io/en/latest/index.html"
 
-[tools.setuptools]
+[tool.setuptools]
 py-modules = ["build"]
 
 [build-system]
