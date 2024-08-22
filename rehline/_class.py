@@ -7,9 +7,11 @@
 
 import numpy as np
 from sklearn.base import BaseEstimator
-from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
+from sklearn.utils.validation import (_check_sample_weight, check_array,
+                                      check_is_fitted, check_X_y)
 
-from ._base import ReHLine_solver, _BaseReHLine
+from ._base import (ReHLine_solver, _BaseReHLine,
+                    _make_constraint_rehline_param, _make_loss_rehline_param)
 
 
 class ReHLine(_BaseReHLine, BaseEstimator):
@@ -126,8 +128,12 @@ class ReHLine(_BaseReHLine, BaseEstimator):
             An instance of the estimator.
         """
         # X = check_array(X)
+
+        
         if sample_weight is None:
-            sample_weight = np.ones(X.shape[0])
+            sample_weight = self.C
+        else:
+            sample_weight = self.C*_check_sample_weight(sample_weight, X, dtype=X.dtype)
 
         if self.L > 0:
             U_weight = self.U * sample_weight
@@ -180,17 +186,36 @@ class ReHLine(_BaseReHLine, BaseEstimator):
         X = check_array(X)
         return np.dot(X, self.coef_)
 
-
-class plqERM(_BaseReHLine, BaseEstimator):
-    r"""Empirical Risk Minimization (ERM) with a piecewise linear-quadratic (PLQ) objective.
+class plqERM_Ridge(_BaseReHLine, BaseEstimator):
+    r"""Empirical Risk Minimization (ERM) with a piecewise linear-quadratic (PLQ) objective with a ridge penalty.
 
     .. math::
 
-        \min_{\mathbf{\beta} \in \mathbb{R}^d} \sum_{i=1}^n \text{PLQ}(y_i, \mathbf{x}_i^T \mathbf{\beta}) + \text{pen}(\mathbf{\beta}) + \frac{1}{2} \| \mathbf{\beta} \|_2^2, \\ \text{ s.t. } 
+        \min_{\mathbf{\beta} \in \mathbb{R}^d} \sum_{i=1}^n \text{PLQ}(y_i, \mathbf{x}_i^T \mathbf{\beta}) + \frac{1}{2} \| \mathbf{\beta} \|_2^2, \ \text{ s.t. } \ 
         \mathbf{A} \mathbf{\beta} + \mathbf{b} \geq \mathbf{0},
-    
+
+    The function supports various loss functions, including:
+        - 'hinge', 'svm' or 'SVM'
+        - 'check' or 'quantile' or 'quantile regression' or 'QR'
+        - 'sSVM' or 'smooth SVM' or 'smooth hinge'
+        - 'TV'
+        - 'huber' or 'Huber'
+        - 'SVR' or 'svr'
+
+    The following constraint types are supported:
+        * 'nonnegative' or '>=0': A non-negativity constraint.
+        * 'fair' or 'fairness': A fairness constraint.
+        * 'custom': A custom constraint, where the user must provide the constraint matrix 'A' and vector 'b'.
+
     Parameters
     ----------
+
+    loss : dict
+        A dictionary specifying the loss function parameters. 
+    
+    constraint : list of dict
+        A list of dictionaries, where each dictionary represents a constraint.
+        Each dictionary must contain a 'name' key, which specifies the type of constraint.
 
     C : float, default=1.0
         Regularization parameter. The strength of the regularization is
@@ -220,254 +245,54 @@ class plqERM(_BaseReHLine, BaseEstimator):
 
     Attributes
     ----------
+    coef_ : array-like
+        The optimized model coefficients.
 
-    coef_ : array of shape (n_features,)
-        Weights assigned to the features (coefficients in the primal
-        problem).
+    n_iter_ : int
+        The number of iterations performed by the ReHLine solver.
 
-    n_iter_: int
-        Maximum number of iterations run across all classes.
+    opt_result_ : object
+        The optimization result object.
+
+    dual_obj_ : array-like
+        The dual objective function values.
+
+    primal_obj_ : array-like
+        The primal objective function values.
+
+    Methods
+    -------
+    fit(X, y, sample_weight=None)
+        Fit the model based on the given training data.
+
+    decision_function(X)
+        The decision function evaluated on the given dataset.
+
+    Notes
+    -----
+    The `plqERM_Ridge` class is a subclass of `_BaseReHLine` and `BaseEstimator`, which suggests that it is part of a larger framework for implementing ReHLine algorithms.
 
     """
 
-
-    def __init__(self, loss, 
-                       constraint = None,
-                       penalty = None,
-
+    def __init__(self, loss,
+                       constraint=[],
                        C=1.,
+                       U=np.empty(shape=(0,0)), V=np.empty(shape=(0,0)),
+                       Tau=np.empty(shape=(0,0)),
+                       S=np.empty(shape=(0,0)), T=np.empty(shape=(0,0)),
+                       A=np.empty(shape=(0,0)), b=np.empty(shape=(0)), 
                        max_iter=1000, tol=1e-4, shrink=1, verbose=0, trace_freq=100):
+        _BaseReHLine.__init__(self, C, U, V, Tau, S, T, A, b)
         self.loss = loss
         self.constraint = constraint
-        self.penalty = penalty
         self.max_iter = max_iter
         self.tol = tol
         self.shrink = shrink
         self.verbose = verbose
         self.trace_freq = trace_freq
+        self.dummy_n = 0
 
-    def _make_loss_rehline_param(self, X, y):
-        """The `_make_loss_rehline_param` function generates parameters for the ReHLine solver, based on the provided training data.
-
-        The function supports plq loss functions 
-        like 'hinge', 'svm', 'SVM', 'check', 'quantile', 'quantile regression', 
-        'QR', 'sSVM', 'smooth SVM', 'smooth hinge', 'TV', 'huber', and 'custom'.
-
-        Parameters
-        ----------
-
-        X : ndarray of shape (n_samples, n_features)
-            The generated samples.
-
-        y : ndarray of shape (n_samples,)
-            The +/- labels for class membership of each sample.
-        """
-
-        n, d = X.shape
-
-        if (self.loss['name'] == 'hinge') or (self.loss['name'] == 'svm')\
-            or (self.loss['name'] == 'SVM'):
-            self.U = -(self.C*y).reshape(1,-1)
-            self.V = (self.C*np.array(np.ones(n))).reshape(1,-1)
-            return X
-        
-        elif (self.loss['name'] == 'check') \
-                or (self.loss['name'] == 'quantile') \
-                or (self.loss['name'] == 'quantile regression') \
-                or (self.loss['name'] == 'QR'):
-
-            n_qt = len(loss['qt'])
-            self.U = np.ones((2, n*n_qt))
-            self.V = np.ones((2, n*n_qt))
-            X_fake = np.zeros((n*n_qt, d+n_qt))
-
-            for l,qt_tmp in enumerate(loss['qt']):
-                self.U[0,l*n:(l+1)*n] = - (self.C*qt_tmp*self.U[0,l*n:(l+1)*n])
-                self.U[1,l*n:(l+1)*n] = (self.C*(1.-qt_tmp)*self.U[1,l*n:(l+1)*n])
-
-                self.V[0,l*n:(l+1)*n] = self.C*qt_tmp*self.V[0,l*n:(l+1)*n]*y
-                self.V[1,l*n:(l+1)*n] = - self.C*(1.-qt_tmp)*self.V[1,l*n:(l+1)*n]*y
-
-                X_fake[l*n:(l+1)*n,:d] = X
-                X_fake[l*n:(l+1)*n,d+l] = 1.
-
-            self.auto_shape()
-            return X_fake
-
-        elif (self.loss['name'] == 'sSVM') \
-                or (self.loss['name'] == 'smooth SVM') \
-                or (self.loss['name'] == 'smooth hinge'):
-            self.S = np.ones((1, n))
-            self.T = np.ones((1, n))
-            self.Tau = np.ones((1, n))
-
-            self.S[0] = - np.sqrt(self.C)*y
-            self.T[0] = np.sqrt(self.C)
-            self.Tau[0] = np.sqrt(self.C)
-            return X
-
-        elif self.loss['name'] == 'TV':
-            self.U = np.ones((2, n))*self.C
-            self.V = np.ones((2, n))*self.C
-            self.U[1] = -self.U[1]
-
-            self.V[0] = - X.dot(y)*self.C
-            self.V[1] = X.dot(y)*self.C
-            return X
-
-        elif (self.loss['name'] == 'huber') or (self.loss['name'] == 'Huber'):
-            self.S = np.ones((2, n))
-            self.T = np.ones((2, n))
-            self.Tau = np.sqrt(self.C) * loss['tau'] * np.ones((2, n))
-
-            self.S[0] = - np.sqrt(self.C)
-            self.S[1] =   np.sqrt(self.C)
-            self.T[0] = np.sqrt(self.C)*y
-            self.T[1] = -np.sqrt(self.C)*y
-            return X
-        elif (self.loss['name'] in ['SVR', 'svr']):
-            self.U = np.ones((2, n))*self.C
-            self.V = np.ones((2, n))
-            self.U[1] = -self.U[1]
-
-            self.V[0] = -self.C*(y + self.loss['epsilon'])
-            self.V[1] = self.C*(y - self.loss['epsilon'])
-            return X
-        elif (self.loss['name'] == 'custom'):
-            pass
-        else:
-            raise Exception("Sorry, plqERM currently does not support this loss function, \
-                            but you can manually set ReHLine params to solve the problem via ReHLine class.")
-        self.auto_shape()
-
-    def _make_constraint_rehline_param(self):
-        """The `_make_constraint_rehline_param` function generates constraint parameters for the ReHLine solver.
-        """
-        if (self.constraint['name'] == 'nonnegative') or (self.constraint['name'] == '>=0'):
-            A = np.repeat([X_sen @ X], repeats=[2], axis=0) / n
-
-
-    def append_l1(self, X, l1_pen=1.0):
-        r"""
-        This function appends the l1 penalty to the ReHLine problem. The formulation becomes:
-
-        .. math::
-
-            \min_{\mathbf{\beta} \in \mathbb{R}^d} \sum_{i=1}^n \sum_{l=1}^L \text{ReLU}( u_{li} \mathbf{x}_i^\intercal \mathbf{\beta} + v_{li}) + \sum_{i=1}^n \sum_{h=1}^H {\text{ReHU}}_{\tau_{hi}}( s_{hi} \mathbf{x}_i^\intercal \mathbf{\beta} + t_{hi}) + \frac{1}{2} \| \mathbf{\beta} \|_2^2 + \lambda_1 \| \mathbf{\beta} \|_1, \\ \text{ s.t. } 
-            \mathbf{A} \mathbf{\beta} + \mathbf{b} \geq \mathbf{0},
-
-        where :math:`\lambda_1` is associated with `l1_pen`.
-
-        Parameters
-        ----------
-
-        X : ndarray of shape (n_samples, n_features)
-            The generated samples.
-
-        l1_pen : float, default=1.0
-            The l1 penalty level, which controls the complexity or sparsity of the resulting model.
-
-        Returns
-        -------
-
-        X_fake: ndarray of shape (n_samples+n_features, n_features)
-            The manipulated data matrix. It has been padded with 
-            identity matrix, allowing the correctly structured data to be input 
-            into `self.fit` or other modelling processes.
-
-        Examples
-        --------
-
-        >>> import numpy as np
-        >>> from rehline import ReHLine
-
-        >>> # simulate classification dataset
-        >>> n, d, C, lam1 = 1000, 3, 0.5, 1.0
-        >>> np.random.seed(1024)
-        >>> X = np.random.randn(1000, 3)
-        >>> beta0 = np.random.randn(3)
-        >>> y = np.sign(X.dot(beta0) + np.random.randn(n))
-
-        >>> clf = ReHLine(loss={'name': 'svm'}, C=C)
-        >>> clf.make_ReLHLoss(X=X, y=y, loss={'name': 'svm'})
-        >>> # save and fit with the manipulated data matrix
-        >>> X_fake = clf.append_l1(X, l1_pen=lam1)
-        >>> clf.fit(X=X_fake)
-        >>> print('sol privided by rehline: %s' %clf.coef_)
-        >>> sol privided by rehline: [ 7.17796629e-01 -1.87075728e-06  2.61965622e+00] #sparse sol
-        >>> print(clf.decision_function([[.1,.2,.3]]))
-        >>> [0.85767616]
-        """
-
-        n, d = X.shape
-        l1_pen = l1_pen*np.ones(d)
-        U_new = np.zeros((self.L+2, n+d))
-        V_new = np.zeros((self.L+2, n+d))
-        ## Block 1
-        if len(self.U):
-            U_new[:self.L, :n] = self.U
-            V_new[:self.L, :n] = self.V
-        ## Block 2
-        U_new[-2,n:] = l1_pen
-        U_new[-1,n:] = -l1_pen
-
-        if len(self.S):
-            S_new = np.zeros((self.H, n+d))
-            T_new = np.zeros((self.H, n+d))
-            Tau_new = np.zeros((self.H, n+d))
-
-            S_new[:,:n] = self.S
-            T_new[:,:n] = self.T
-            Tau_new[:,:n] = self.Tau
-
-            self.S = S_new
-            self.T = T_new
-            self.Tau = Tau_new
-
-        ## fake X
-        X_fake = np.zeros((n+d, d))
-        X_fake[:n,:] = X
-        X_fake[n:,:] = np.identity(d)
-
-        self.U = U_new
-        self.V = V_new
-        self.auto_shape()
-        return X_fake
-
-    def auto_shape(self):
-        """
-        Automatically generate the shape of the parameters of the ReHLine loss function.
-        """
-        self.L = self.U.shape[0]
-        self.n = self.U.shape[1]
-        self.H = self.S.shape[0]
-        self.K = self.A.shape[0]
-
-    def call_ReLHLoss(self, score):
-        """
-        Return the value of the ReHLine loss of the `score`.
-
-        Parameters
-        ----------
-        score : ndarray of shape (n_samples, )
-            The input score that will be evaluated through the ReHLine loss.
-
-        Returns
-        -------
-        float
-            ReHLine loss evaluation of the given score.
-        """
-
-        relu_input = np.zeros((self.L, self.n))
-        rehu_input = np.zeros((self.H, self.n))
-        if self.L > 0:
-            relu_input = (self.U.T * score[:,np.newaxis]).T + self.V
-        if self.H > 0:
-            rehu_input = (self.S.T * score[:,np.newaxis]).T + self.T
-        return np.sum(relu(relu_input), 0) + np.sum(rehu(rehu_input), 0)
-
-
-    def fit(self, X, sample_weight=None):
+    def fit(self, X, y, sample_weight=None):
         """Fit the model based on the given training data.
 
         Parameters
@@ -477,6 +302,9 @@ class plqERM(_BaseReHLine, BaseEstimator):
             Training vector, where `n_samples` is the number of samples and
             `n_features` is the number of features.
 
+        y : array-like of shape (n_samples,)
+            The target variable.
+
         sample_weight : array-like of shape (n_samples,), default=None
             Array of weights that are assigned to individual
             samples. If not provided, then each sample is given unit weight.
@@ -485,11 +313,23 @@ class plqERM(_BaseReHLine, BaseEstimator):
         -------
         self : object
             An instance of the estimator.
-        """
 
-        # X = check_array(X)
+
+        """
+        n, d = X.shape
+        
+        ## loss -> rehline params
+        self.U, self.V, self.Tau, self.S, self.T = _make_loss_rehline_param(loss=self.loss, X=X, y=y)
+        
+        ## constrain -> rehline params
+        self.A, self.b = _make_constraint_rehline_param(constraint=self.constraint, X=X, y=y)
+        self.auto_shape()
+
+        ## sample weight -> rehline params
         if sample_weight is None:
-            sample_weight = np.ones(X.shape[0])
+            sample_weight = self.C
+        else:
+            sample_weight = self.C*_check_sample_weight(sample_weight, X, dtype=X.dtype)
 
         if self.L > 0:
             U_weight = self.U * sample_weight

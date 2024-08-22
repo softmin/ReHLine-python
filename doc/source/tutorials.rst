@@ -40,6 +40,45 @@ Loss
 
  * - **Quantile Reg**
    - | ``loss_name``: 'check' / 'quantile' / 'quantile regression' / 'QR'
+     | ``qt`` (*float*): qt
+     |
+     | *Example:* ``loss = {'name': 'QR', 'qt': 0.25}``
+
+ * - **Smooth SVM**
+   - | ``loss_name``: 'sSVM' / 'smooth SVM' / 'smooth hinge'
+     |
+     | *Example:* ``loss = {'name': 'sSVM'}``
+
+ * - **Huber**
+   - | ``loss_name``: 'huber' / 'Huber'
+     |
+     | *Example:* ``loss = {'name': 'huber'}``
+
+ * - **SVR**
+   - | ``loss_name``: 'SVR' / 'svr'
+     | ``epsilon`` (*float*): 0.1
+     |
+     | *Example:* ``loss = {'name': 'svr', 'epsilon': 0.1}``
+
+constraint
+**********
+
+.. code:: python
+   
+   # list of 
+   # name (str): name of the custom loss function
+   # loss_kwargs: more keys and values for loss parameters
+   constraint = [{'name': <loss_name>, <**loss_kwargs>}, ...]
+
+.. list-table::
+
+ * - **SVM**
+   - | ``loss_name``: 'hinge' / 'svm' / 'SVM'
+     |
+     | *Example:* ``loss = {'name': 'SVM'}``
+
+ * - **Quantile Reg**
+   - | ``loss_name``: 'check' / 'quantile' / 'quantile regression' / 'QR'
      | ``qt`` (*list*): [q1, q2, ... qK]
      |
      | *Example:* ``loss = {'name': 'QR', 'qt': [0.25, 0.75]}``
