@@ -8,16 +8,16 @@ Example Gallery
    :caption: A few links
    :name: rst-link-gallery
 
-   examples/ReHLine_QR
-   examples/ReHLine_SVM_FairSVM
+   examples/QR.ipynb
+   examples/SVM.ipynb
+   examples/FairSVM.ipynb
 
 List of Examples
 ----------------
 
 .. toctree::
-   :maxdepth: 0
+   :maxdepth: 1
 
-   examples/ReHLine_QR.ipynb
-   examples/ReHLine_SVM_FairSVM.ipynb
-   
-
+   examples/QR.ipynb
+   examples/SVM.ipynb
+   examples/FairSVM.ipynb

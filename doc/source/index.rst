@@ -36,9 +36,6 @@
 - Paper: `NeurIPS | 2023 <https://openreview.net/pdf?id=3pEBW2UPAD>`_
 .. - Open Source: `MIT license <https://opensource.org/licenses/MIT>`_
 
-`ReHLine` is designed to be a computationally efficient 
-and practically useful software package for large-scale regularized ERMs.
-
 The proposed **ReHLine** solver has appealing exhibits appealing properties:
 
 .. list-table::
@@ -78,6 +75,5 @@ If you use this code please star 🌟 the repository and cite the following pape
    :maxdepth: 2
    :hidden:
 
-   tutorials
    example
    benchmark
