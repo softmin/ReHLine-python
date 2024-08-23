@@ -6,8 +6,9 @@
 - Project homepage: [https://rehline.github.io](https://rehline.github.io)
 - GitHub repo: [https://github.com/softmin/ReHLine-python](https://github.com/softmin/ReHLine-python) 
 - PyPi: [https://pypi.org/project/rehline](https://pypi.org/project/rehline)
-<!-- - Open Source: [MIT license](https://opensource.org/licenses/MIT) -->
 - Paper: [NeurIPS | 2023](https://openreview.net/pdf?id=3pEBW2UPAD)
+<!-- - Open Source: [MIT license](https://opensource.org/licenses/MIT) -->
+
 
 The **ReHLine** solver has four appealing
 "linear properties":

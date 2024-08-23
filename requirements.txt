@@ -1,6 +1,5 @@
 emoji
 renku_sphinx_theme
-keras
 matplotlib
 numpy
 pandas

@@ -17,8 +17,8 @@
 import os.path as osp
 
 import furo
+import nbsphinx
 import renku_sphinx_theme
-import sphinx_nbexamples
 
 # import sphinx.apidoc
 # -- Project information -----------------------------------------------------
