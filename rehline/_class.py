@@ -5,8 +5,11 @@
 
 # License: MIT License
 
+import warnings
+
 import numpy as np
 from sklearn.base import BaseEstimator
+from sklearn.exceptions import ConvergenceWarning
 from sklearn.utils.validation import (_check_sample_weight, check_array,
                                       check_is_fitted, check_X_y)
 
@@ -166,6 +169,12 @@ class ReHLine(_BaseReHLine, BaseEstimator):
         self.n_iter_ = result.niter
         self.dual_obj_ = result.dual_objfns
         self.primal_obj_ = result.primal_objfns
+
+        if self.n_iter_ >= self.max_iter:
+            warnings.warn(
+                "ReHLine failed to converge, increase the number of iterations: `max_iter`.",
+                ConvergenceWarning,
+            )
 
     def decision_function(self, X):
         """The decision function evaluated on the given dataset
@@ -362,6 +371,12 @@ class plqERM_Ridge(_BaseReHLine, BaseEstimator):
         self.n_iter_ = result.niter
         self.dual_obj_ = result.dual_objfns
         self.primal_obj_ = result.primal_objfns
+
+        if self.n_iter_ >= self.max_iter:
+            warnings.warn(
+                "ReHLine failed to converge, increase the number of iterations: `max_iter`.",
+                ConvergenceWarning,
+            )
 
     def decision_function(self, X):
         """The decision function evaluated on the given dataset
