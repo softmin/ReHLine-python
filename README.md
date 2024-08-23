@@ -2,10 +2,11 @@
 
 **ReHLine** is designed to be a computationally efficient and practically useful software package for large-scale empirical risk minimization (ERM) problems.
 
-- GitHub repo: [https://github.com/softmin/ReHLine-python](https://github.com/softmin/ReHLine-python) 
 - Documentation: [https://rehline-python.readthedocs.io](https://rehline-python.readthedocs.io)
+- Project homepage: [https://rehline.github.io](https://rehline.github.io)
+- GitHub repo: [https://github.com/softmin/ReHLine-python](https://github.com/softmin/ReHLine-python) 
 - PyPi: [https://pypi.org/project/rehline](https://pypi.org/project/rehline)
-- Open Source: [MIT license](https://opensource.org/licenses/MIT)
+<!-- - Open Source: [MIT license](https://opensource.org/licenses/MIT) -->
 - Paper: [NeurIPS | 2023](https://openreview.net/pdf?id=3pEBW2UPAD)
 
 The **ReHLine** solver has four appealing
@@ -16,6 +17,7 @@ The **ReHLine** solver has four appealing
 - The optimization algorithm has a provable linear convergence rate.
 - The per-iteration computational complexity is linear in the sample size.
 
+<!-- 
 ## 📝 Formulation
 
 **ReHLine** is designed to address the empirical regularized ReLU-ReHU minimization problem, named *ReHLine optimization*, of the following form:
@@ -38,7 +40,7 @@ $$
 
 This formulation has a wide range of applications spanning various fields, including statistics, machine learning, computational biology, and social studies. Some popular examples include SVMs with fairness constraints (FairSVM), elastic net regularized quantile regression (ElasticQR), and ridge regularized Huber minimization (RidgeHuber).
 
-![](./figs/tab.png)
+![](./figs/tab.png) -->
 
 ## ⌛ Benchmark (powered by benchopt)
 
