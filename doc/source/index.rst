@@ -75,5 +75,6 @@ If you use this code please star 🌟 the repository and cite the following pape
    :maxdepth: 2
    :hidden:
 
+   getting_started
    example
    benchmark

@@ -31,7 +31,6 @@ class ReHLine(_BaseReHLine, BaseEstimator):
 
     Parameters
     ----------
-
     C : float, default=1.0
         Regularization parameter. The strength of the regularization is
         inversely proportional to C. Must be strictly positive. 
@@ -218,7 +217,6 @@ class plqERM_Ridge(_BaseReHLine, BaseEstimator):
 
     Parameters
     ----------
-
     loss : dict
         A dictionary specifying the loss function parameters. 
     
@@ -251,7 +249,6 @@ class plqERM_Ridge(_BaseReHLine, BaseEstimator):
     b: array of shape (K, ), default=np.empty(shape=0)
         The intercept vector in the linear constraint.
     
-
     Attributes
     ----------
     coef_ : array-like
