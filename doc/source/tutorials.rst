@@ -20,7 +20,7 @@ and ridge regularized Huber minimization (RidgeHuber).
 .. image:: ./figs/tab.png
 
 Solving PLQ ERMs
--------------------
+----------------
 
 Loss
 ****
@@ -98,3 +98,6 @@ constraint
      | ``epsilon`` (*float*): 0.1
      |
      | *Example:* ``loss = {'name': 'svr', 'epsilon': 0.1}``
+
+manual ReHLine
+--------------

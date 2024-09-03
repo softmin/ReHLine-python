@@ -47,20 +47,68 @@ sys.path.insert(0, os.path.abspath('../rehline'))
 # ones.
 master_doc = 'index'
 extensions = [
-	'sphinx.ext.autodoc',
+	# 'sphinx.ext.autodoc',
     'autoapi.extension',
     # "sphinx.ext.linkcode",
-    # "sphinx.ext.intersphinx",
+    "sphinx.ext.intersphinx",
     "sphinx_autodoc_typehints",
-    'sphinx.ext.autosummary',
+    # 'sphinx.ext.autosummary',
     # 'sphinx_gallery.gen_gallery',
-	'numpydoc',
+	# 'numpydoc',
 	'nbsphinx',
 	]
-autoapi_dirs = ['../../rehline/']
 
-autosummary_generate = True
-numpydoc_show_class_members = False
+# -- Plausible support
+ENABLE_PLAUSIBLE = os.environ.get("READTHEDOCS_VERSION_TYPE", "") in ["branch", "tag"]
+html_context = {"enable_plausible": ENABLE_PLAUSIBLE}
+
+# -- autoapi configuration ---------------------------------------------------
+autodoc_typehints = "signature"  # autoapi respects this
+
+autoapi_type = "python"
+autoapi_dirs = ['../../rehline/']
+autoapi_template_dir = "_templates/autoapi"
+autoapi_options = [
+    "members",
+    "undoc-members",
+    "show-inheritance",
+    "show-module-summary",
+    "imported-members",
+]
+autoapi_keep_files = True
+
+
+# -- custom auto_summary() macro ---------------------------------------------
+def contains(seq, item):
+    """Jinja2 custom test to check existence in a container.
+
+    Example of use:
+    {% set class_methods = methods|selectattr("properties", "contains", "classmethod") %}
+
+    Related doc: https://jinja.palletsprojects.com/en/3.1.x/api/#custom-tests
+    """
+    return item in seq
+
+
+def prepare_jinja_env(jinja_env) -> None:
+    """Add `contains` custom test to Jinja environment."""
+    jinja_env.tests["contains"] = contains
+
+
+autoapi_prepare_jinja_env = prepare_jinja_env
+
+# Custom role for labels used in auto_summary() tables.
+rst_prolog = """
+.. role:: summarylabel
+"""
+
+# Related custom CSS
+html_css_files = [
+    "css/label.css",
+]
+
+# autosummary_generate = True
+# numpydoc_show_class_members = False
 nbsphinx_execute = 'never'
 nbsphinx_allow_errors = True
 # autodoc_mock_imports = ['numpy']
@@ -78,22 +126,12 @@ exclude_patterns = []
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 
-# html_theme = 'renku'
-# html_logo = "logo.png"
 # html_theme_path = [hachibee_sphinx_theme.get_html_themes_path()]
 
 
-# html_theme = 'karma_sphinx_theme'
-# html_theme = 'sphinx_book_theme'
-# html_theme = 'python_docs_theme'
-# html_theme = 'sphinx_material'
-# html_theme = 'insegel'
 html_theme = 'furo'
-# html_theme = 'yummy_sphinx_theme'
-# html_theme = 'groundwork'
 
 # html_permalinks_icon = '§'
-# html_theme = 'insipid'
 
 # html_permalinks_icon = 'alpha'
 # html_theme = 'sphinxawesome_theme'
@@ -115,14 +153,11 @@ html_static_path = ['_static']
 #     'css/custom.css',
 # ]
 
-def skip_submodules(app, what, name, obj, skip, options):
-    if what == "module":
+def autoapi_skip_members(app, what, name, obj, skip, options):
+    if what == "attribute":
         skip = True
     return skip
 
-
 def setup(sphinx):
-    sphinx.connect("autoapi-skip-member", skip_submodules)
+    sphinx.connect("autoapi-skip-member", autoapi_skip_members)
 
-autoapi_template_dir = "_templates/autoapi"
-# autoapi_add_toctree_entry = False

@@ -48,7 +48,7 @@ class _BaseReHLine(BaseEstimator):
 
     """
 
-    def __init__(self, C=1.,
+    def __init__(self, *, C=1.,
                        U=np.empty(shape=(0,0)), V=np.empty(shape=(0,0)),
                        Tau=np.empty(shape=(0,0)),
                        S=np.empty(shape=(0,0)), T=np.empty(shape=(0,0)),

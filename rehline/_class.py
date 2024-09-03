@@ -57,13 +57,20 @@ class ReHLine(_BaseReHLine, BaseEstimator):
 
     Attributes
     ----------
+    coef\_ : array-like
+        The optimized model coefficients.
 
-    coef_ : array of shape (n_features,)
-        Weights assigned to the features (coefficients in the primal
-        problem).
+    n_iter\_ : int
+        The number of iterations performed by the ReHLine solver.
 
-    n_iter_: int
-        Maximum number of iterations run across all classes.
+    opt_result\_ : object
+        The optimization result object.
+
+    dual_obj\_ : array-like
+        The dual objective function values.
+
+    primal_obj\_ : array-like
+        The primal objective function values.
 
     Examples
     --------
@@ -103,7 +110,17 @@ class ReHLine(_BaseReHLine, BaseEstimator):
                        S=np.empty(shape=(0,0)), T=np.empty(shape=(0,0)),
                        A=np.empty(shape=(0,0)), b=np.empty(shape=(0)), 
                        max_iter=1000, tol=1e-4, shrink=1, verbose=0, trace_freq=100):
-        _BaseReHLine.__init__(self, C, U, V, Tau, S, T, A, b)
+        self.C = C
+        self.U = U
+        self.V = V
+        self.S = S
+        self.T = T
+        self.Tau = Tau
+        self.A = A
+        self.b = b
+        self.L = U.shape[0]
+        self.H = S.shape[0]
+        self.K = A.shape[0]
         self.max_iter = max_iter
         self.tol = tol
         self.shrink = shrink
@@ -251,19 +268,19 @@ class plqERM_Ridge(_BaseReHLine, BaseEstimator):
     
     Attributes
     ----------
-    coef_ : array-like
+    coef\_ : array-like
         The optimized model coefficients.
 
-    n_iter_ : int
+    n_iter\_ : int
         The number of iterations performed by the ReHLine solver.
 
-    opt_result_ : object
+    opt_result\_ : object
         The optimization result object.
 
-    dual_obj_ : array-like
+    dual_obj\_ : array-like
         The dual objective function values.
 
-    primal_obj_ : array-like
+    primal_obj\_ : array-like
         The primal objective function values.
 
     Methods
@@ -288,9 +305,19 @@ class plqERM_Ridge(_BaseReHLine, BaseEstimator):
                        S=np.empty(shape=(0,0)), T=np.empty(shape=(0,0)),
                        A=np.empty(shape=(0,0)), b=np.empty(shape=(0)), 
                        max_iter=1000, tol=1e-4, shrink=1, verbose=0, trace_freq=100):
-        _BaseReHLine.__init__(self, C, U, V, Tau, S, T, A, b)
         self.loss = loss
         self.constraint = constraint
+        self.C = C
+        self.U = U
+        self.V = V
+        self.S = S
+        self.T = T
+        self.Tau = Tau
+        self.A = A
+        self.b = b
+        self.L = U.shape[0]
+        self.H = S.shape[0]
+        self.K = A.shape[0]
         self.max_iter = max_iter
         self.tol = tol
         self.shrink = shrink

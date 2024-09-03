@@ -9,15 +9,15 @@ We have developed a benchmark for evaluating the performance of optimization met
    +-------------+--------------------------------------------------------+
    | Problem     | Results                                                |
    +=============+========================================================+
-   | FairSVM_    | `Result <./_static/benchmark/benchmark_FairSVM.html>`_ |
+   | FairSVM_    | `Result <./_static/benchmark/benchmark_FairSVM.html>`__|
    +-------------+--------------------------------------------------------+
-   | ElasticQR_  | `Result <./_static/benchmark/benchmark_QR.html>`_      |
+   | ElasticQR_  | `Result <./_static/benchmark/benchmark_QR.html>`__     |
    +-------------+--------------------------------------------------------+
-   | RidgeHuber_ | `Result <./_static/benchmark/benchmark_Huber.html>`_   |
+   | RidgeHuber_ | `Result <./_static/benchmark/benchmark_Huber.html>`__  |
    +-------------+--------------------------------------------------------+
-   | SVM_        | `Result <./_static/benchmark/benchmark_SVM.html>`_     |
+   | SVM_        | `Result <./_static/benchmark/benchmark_SVM.html>`__    |
    +-------------+--------------------------------------------------------+
-   | sSVM_       | `Result <./_static/benchmark/benchmark_sSVM.html>`_    |
+   | sSVM_       | `Result <./_static/benchmark/benchmark_sSVM.html>`__   |
    +-------------+--------------------------------------------------------+
 
 .. _FairSVM: https://github.com/softmin/ReHLine-benchmark/tree/main/benchmark_FairSVM
