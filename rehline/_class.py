@@ -91,7 +91,7 @@ class ReHLine(_BaseReHLine, BaseEstimator):
     >>> U = -(C*y).reshape(1,-1)
     >>> L = U.shape[0]
     >>> V = (C*np.array(np.ones(n))).reshape(1,-1)
-    >>> clf = ReHLine(loss={'name': 'svm'}, C=C)
+    >>> clf = ReHLine(C=C)
     >>> clf.U, clf.V = U, V
     >>> clf.fit(X=X)
     >>> print('sol privided by rehline: %s' %clf.coef_)

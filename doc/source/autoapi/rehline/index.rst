@@ -19,6 +19,14 @@ Overview
      - Empirical Risk Minimization (ERM) with a piecewise linear-quadratic (PLQ) objective with a ridge penalty.
 
 
+.. list-table:: Function
+   :header-rows: 0
+   :widths: auto
+   :class: summarytable
+
+   * - :py:obj:`ReHLine_solver <rehline.ReHLine_solver>`\ (X, U, V, Tau, S, T, A, b, max_iter, tol, shrink, verbose, trace_freq)
+     - \-
+
 
 
 Classes
@@ -101,7 +109,7 @@ Classes
    >>> U = -(C*y).reshape(1,-1)
    >>> L = U.shape[0]
    >>> V = (C*np.array(np.ones(n))).reshape(1,-1)
-   >>> clf = ReHLine(loss={'name': 'svm'}, C=C)
+   >>> clf = ReHLine(C=C)
    >>> clf.U, clf.V = U, V
    >>> clf.fit(X=X)
    >>> print('sol privided by rehline: %s' %clf.coef_)
@@ -319,6 +327,10 @@ Classes
 
 
 
+
+Functions
+---------
+.. py:function:: ReHLine_solver(X, U, V, Tau=np.empty(shape=(0, 0)), S=np.empty(shape=(0, 0)), T=np.empty(shape=(0, 0)), A=np.empty(shape=(0, 0)), b=np.empty(shape=0), max_iter=1000, tol=0.0001, shrink=1, verbose=1, trace_freq=100)
 
 
 

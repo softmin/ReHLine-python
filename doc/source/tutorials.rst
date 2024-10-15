@@ -1,7 +1,7 @@
 Tutorials
-=========
+---------
 
-`ReHLine` is designed to address the empirical regularized ReLU-ReHU minimization problem, named *ReHLine optimization*, of the following form:
+`ReHLine` is designed to address the regularized ReLU-ReHU minimization problem, named *ReHLine optimization*, of the following form:
 
 .. math::
 
@@ -17,87 +17,43 @@ Some popular examples include SVMs with fairness constraints (FairSVM),
 elastic net regularized quantile regression (ElasticQR), 
 and ridge regularized Huber minimization (RidgeHuber).
 
-.. image:: ./figs/tab.png
+See `Manual ReHLine Formulation`_ documentation for more details and examples on converting your problem to ReHLine formulation.
 
-Solving PLQ ERMs
-----------------
 
-Loss
-****
+Moreover, the following specific classes of formulations can be directly solved by `ReHLine`.
 
-.. code:: python
-   
-   # name (str): name of the custom loss function
-   # loss_kwargs: more keys and values for loss parameters
-   loss = {'name': <loss_name>, <**loss_kwargs>}
+- **Empirical Risk Minimization** (ERM) with various loss functions, see `ReHLine: Empirical Risk Minimization`_.
+- **Matrix Factorization** (MF) with with various loss functions, see `ReHLine: Matrix Factorization`_.
+
+List of Tutorials
+=================
 
 .. list-table::
+ :align: left
+ :widths: 10 10 20
+ :header-rows: 1
 
- * - **SVM**
-   - | ``loss_name``: 'hinge' / 'svm' / 'SVM'
-     |
-     | *Example:* ``loss = {'name': 'SVM'}``
+ * - tutorials
+   - | API
+   - | description
+ * - `Manual ReHLine Formulation <./tutorials/ReHLine_manual.rst>`_
+   - | `ReHLine <./autoapi/rehline/index.html#rehline.ReHLine>`_
+   - | ReHLine minimization with manual parameter settings.
 
- * - **Quantile Reg**
-   - | ``loss_name``: 'check' / 'quantile' / 'quantile regression' / 'QR'
-     | ``qt`` (*float*): qt
-     |
-     | *Example:* ``loss = {'name': 'QR', 'qt': 0.25}``
+ * - `ReHLine: Empirical Risk Minimization <./tutorials/ReHLine_ERM.rst>`_
+   - | `plqERM_Ridge <./autoapi/rehline/index.html#rehline.plqERM_Ridge>`_
+   - | Empirical Risk Minimization (ERM) with a piecewise linear-quadratic (PLQ) objective with a ridge penalty.
 
- * - **Smooth SVM**
-   - | ``loss_name``: 'sSVM' / 'smooth SVM' / 'smooth hinge'
-     |
-     | *Example:* ``loss = {'name': 'sSVM'}``
+ * - `ReHLine: Matrix Factorization <./tutorials/ReHLine_MF.rst>`_
+   - | `plqMF_Ridge <./autoapi/rehline/index.html#rehline.plqERM_Ridge>`_
+   - | Matrix Factorization (MF) with a piecewise linear-quadratic (PLQ) objective with a ridge penalty.
 
- * - **Huber**
-   - | ``loss_name``: 'huber' / 'Huber'
-     |
-     | *Example:* ``loss = {'name': 'huber'}``
+.. toctree::
+   :maxdepth: 2
+   :hidden:
 
- * - **SVR**
-   - | ``loss_name``: 'SVR' / 'svr'
-     | ``epsilon`` (*float*): 0.1
-     |
-     | *Example:* ``loss = {'name': 'svr', 'epsilon': 0.1}``
+   ./tutorials/ReHLine_manual
+   ./tutorials/ReHLine_ERM
+   ./tutorials/loss
+   ./tutorials/constraint
 
-constraint
-**********
-
-.. code:: python
-   
-   # list of 
-   # name (str): name of the custom loss function
-   # loss_kwargs: more keys and values for loss parameters
-   constraint = [{'name': <loss_name>, <**loss_kwargs>}, ...]
-
-.. list-table::
-
- * - **SVM**
-   - | ``loss_name``: 'hinge' / 'svm' / 'SVM'
-     |
-     | *Example:* ``loss = {'name': 'SVM'}``
-
- * - **Quantile Reg**
-   - | ``loss_name``: 'check' / 'quantile' / 'quantile regression' / 'QR'
-     | ``qt`` (*list*): [q1, q2, ... qK]
-     |
-     | *Example:* ``loss = {'name': 'QR', 'qt': [0.25, 0.75]}``
-
- * - **Smooth SVM**
-   - | ``loss_name``: 'sSVM' / 'smooth SVM' / 'smooth hinge'
-     |
-     | *Example:* ``loss = {'name': 'sSVM'}``
-
- * - **Huber**
-   - | ``loss_name``: 'huber' / 'Huber'
-     |
-     | *Example:* ``loss = {'name': 'huber'}``
-
- * - **SVR**
-   - | ``loss_name``: 'SVR' / 'svr'
-     | ``epsilon`` (*float*): 0.1
-     |
-     | *Example:* ``loss = {'name': 'svr', 'epsilon': 0.1}``
-
-manual ReHLine
---------------

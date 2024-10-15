@@ -5,7 +5,7 @@ Example Gallery
 ---------------
 
 .. nblinkgallery::
-   :caption: A few links
+   :caption: Emprical Risk Minimization
    :name: rst-link-gallery
 
    examples/QR.ipynb

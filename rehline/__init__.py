@@ -5,7 +5,8 @@ from ._class import ReHLine, plqERM_Ridge
 from ._data import make_fair_classification
 from ._internal import rehline_internal, rehline_result
 
-__all__ = ("_BaseReHLine",
+__all__ = ("ReHLine_solver",
+           "_BaseReHLine",
            "ReHLine",
            "plqERM_Ridge",
            "_make_loss_rehline_param",

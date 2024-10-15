@@ -31,7 +31,7 @@
 
 - Homepage: `https://rehline.github.io/ <https://rehline.github.io/>`_
 - GitHub repo: `https://github.com/softmin/ReHLine-python <https://github.com/softmin/ReHLine-python>`_
-- Documentation: `https://rehline.readthedocs.io <https://rehline.readthedocs.io/en/latest/>`_
+- Documentation: `https://rehline-python.readthedocs.io <https://rehline-python.readthedocs.io/en/latest/>`_
 - PyPi: `https://pypi.org/project/rehline <https://pypi.org/project/rehline>`_
 - Paper: `NeurIPS | 2023 <https://openreview.net/pdf?id=3pEBW2UPAD>`_
 .. - Open Source: `MIT license <https://opensource.org/licenses/MIT>`_
@@ -76,5 +76,6 @@ If you use this code please star 🌟 the repository and cite the following pape
    :hidden:
 
    getting_started
+   tutorials
    example
    benchmark
