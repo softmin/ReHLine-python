@@ -7,7 +7,9 @@
 
 
 import numpy as np
-from ._base import relu, rehu, _check_relu
+
+from ._base import _check_rehu, _check_relu, _rehu, _relu
+
 
 class ReHLoss(object):
     """
@@ -72,7 +74,13 @@ class ReHLoss(object):
         _check_rehu(self.rehu_coef, self.rehu_intercept, self.rehu_cut)
 
         self.L, self.H, self.n = self.relu_coef.shape[0], self.rehu_coef.shape[0], self.relu_coef.shape[1]
-        relu_input = (self.relu_coef.T * x[:,np.newaxis]).T + self.relu_intercept
-        rehu_input = (self.rehu_coef.T * x[:,np.newaxis]).T + self.rehu_intercept
 
-        return np.sum(relu(relu_input), 0) + np.sum(rehu(rehu_input), 0)
+        ans = 0
+        if len(self.relu_coef) > 0:
+            relu_input = (self.relu_coef.T * x[:,np.newaxis]).T + self.relu_intercept 
+            ans += np.sum(relu(relu_input), 0).sum()
+        if len(self.rehu_coef) > 0:
+            rehu_input = (self.rehu_coef.T * x[:,np.newaxis]).T + self.rehu_intercept
+            ans += np.sum(rehu(rehu_input, cut=self.rehu_cut), 0).sum()
+
+        return ans

@@ -46,4 +46,3 @@ PYBIND11_MODULE(_internal, m) {
     m.doc() = "rehline";
     m.def("rehline_internal", &rehline_internal);
 }
-

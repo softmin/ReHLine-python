@@ -1,6 +1,5 @@
 emoji
 renku_sphinx_theme
-keras
 matplotlib
 numpy
 pandas
@@ -10,3 +9,5 @@ setuptools
 sphinx-autodoc-typehints
 numpydoc
 nbsphinx
+sphinx-autoapi
+furo

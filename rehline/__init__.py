@@ -1,10 +1,14 @@
 # Import from internal C++ module
+from ._base import (ReHLine_solver, _BaseReHLine,
+                    _make_constraint_rehline_param, _make_loss_rehline_param)
+from ._class import ReHLine, plqERM_Ridge
+from ._data import make_fair_classification
 from ._internal import rehline_internal, rehline_result
 
-from ._loss import ReHLoss
-from ._class import ReHLine, ReHLine_solver
-from ._base import relu, rehu, make_fair_classification
-
-__all__ = ("ReHLine",
-           "ReHLoss", 
-           "make_fair_classification", "relu", "rehu")
+__all__ = ("ReHLine_solver",
+           "_BaseReHLine",
+           "ReHLine",
+           "plqERM_Ridge",
+           "_make_loss_rehline_param",
+           "_make_constraint_rehline_param"
+           "make_fair_classification")

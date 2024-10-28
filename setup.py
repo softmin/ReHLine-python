@@ -1,12 +1,13 @@
 import os
-from pathlib import Path
 import zipfile
+from pathlib import Path
+
 import requests
 from pybind11.setup_helpers import Pybind11Extension
 from setuptools import setup
 from setuptools.command.build_ext import build_ext
 
-__version__ = "0.0.3"
+__version__ = "0.0.4"
 
 # The main interface is through Pybind11Extension.
 # * You can add cxx_std=11/14/17, and then build_ext can be removed.
@@ -65,10 +66,10 @@ setup(
     version=__version__,
     author=["Ben Dai", "Yixuan Qiu"],
     author_email="bendai@cuhk.edu.hk",
-    url="https://github.com/softmin/ReHLine-python",
+    url="https://rehline-python.readthedocs.io/en/latest/",
     description="Regularized Composite ReLU-ReHU Loss Minimization with Linear Computation and Linear Convergence",
     packages=["rehline"],
-    install_requires=["requests", "pybind11", "numpy", "scipy", "scikit-learn"],
+    # install_requires=["requests", "pybind11", "numpy", "scipy", "scikit-learn"],
     ext_modules=ext_modules,
     # extras_require={"test": "pytest"},
     # Currently, build_ext only provides an optional "highest supported C++
