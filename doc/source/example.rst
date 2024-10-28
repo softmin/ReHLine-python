@@ -11,6 +11,7 @@ Example Gallery
    examples/QR.ipynb
    examples/SVM.ipynb
    examples/FairSVM.ipynb
+   examples/RankRegression.ipynb
 
 List of Examples
 ----------------
@@ -21,3 +22,4 @@ List of Examples
    examples/QR.ipynb
    examples/SVM.ipynb
    examples/FairSVM.ipynb
+   examples/RankRegression.ipynb
