@@ -3,9 +3,8 @@ import zipfile
 from pathlib import Path
 
 import requests
-from pybind11.setup_helpers import Pybind11Extension
+from pybind11.setup_helpers import Pybind11Extension, build_ext
 from setuptools import setup
-from setuptools.command.build_ext import build_ext
 
 __version__ = "0.0.4"
 
