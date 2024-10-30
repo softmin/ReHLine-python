@@ -11,14 +11,13 @@ maintainers = [
 ]
 license = {file = "LICENSE"}
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">= 3.10"
 dependencies = [
-    "requests>=2.27.0",
-    "pybind11>=2.11.1",
-    "numpy>=1.23.5",
-    "scipy>=1.11.4",
-    "scikit-learn>=1.2.2"
+    "numpy >= 1.23.5",
+    "scipy >= 1.11.4",
+    "scikit-learn >= 1.2.2"
 ]
+
 [pyproject.urls]
 homepage = "https://rehline.github.io/"
 repository = "https://github.com/softmin/ReHLine-python"
@@ -28,9 +27,9 @@ documentation = "https://rehline-python.readthedocs.io/en/latest/index.html"
 py-modules = ["build"]
 
 [tool.cibuildwheel]
-# Only build on CPython 3.6
+# Only build on CPython
 build = "cp*"
 
 [build-system]
-requires = ["requests ~= 2.27.0", "pybind11 ~= 2.11.1", "setuptools >= 69.0.3", "wheel >= 0.42.0"]
+requires = ["requests ~= 2.31.0", "pybind11 ~= 2.13.0", "setuptools >= 69.0.0", "wheel >= 0.42.0"]
 build-backend = "setuptools.build_meta"
