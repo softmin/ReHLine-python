@@ -12,4 +12,5 @@
 - [ ] TV
 
 ## Constraint
+- [ ] box constraints
 - [ ] Monotonic constraints
