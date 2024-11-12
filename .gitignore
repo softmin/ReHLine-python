@@ -34,3 +34,7 @@ eigen3.zip
 
 # Built Visual Studio Code Extensions
 *.vsix
+
+# python checkpoint
+*-checkpoint.ipynb
+*-checkpoint.py
