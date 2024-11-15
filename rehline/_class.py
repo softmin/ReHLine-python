@@ -48,12 +48,23 @@ class ReHLine(_BaseReHLine, BaseEstimator):
         The intercept vector in the linear constraint.
 
     verbose : int, default=0
-        Enable verbose output. Note that this setting takes advantage of a
-        per-process runtime setting in liblinear that, if enabled, may not work
-        properly in a multithreaded context.
+        Enable verbose output. 
 
     max_iter : int, default=1000
         The maximum number of iterations to be run.
+
+    tol : float, default=1e-4
+        The tolerance for the stopping criterion.
+
+    shrink : float, default=1
+        The shrinkage of dual variables for the ReHLine algorithm.
+
+    warm_start : bool, default=False
+        Whether to use the given dual params as an initial guess for the
+        optimization algorithm.
+
+    trace_freq : int, default=100
+        The frequency at which to print the optimization trace.
 
     Attributes
     ----------
@@ -71,6 +82,15 @@ class ReHLine(_BaseReHLine, BaseEstimator):
 
     primal_obj\_ : array-like
         The primal objective function values.
+
+    Lambda: array-like
+        The optimized dual variables for ReLU parts.
+
+    Gamma: array-like
+        The optimized dual variables for ReHU parts.
+
+    xi: array-like
+        The optimized dual variables for linear constraints.
 
     Examples
     --------
@@ -109,7 +129,8 @@ class ReHLine(_BaseReHLine, BaseEstimator):
                        Tau=np.empty(shape=(0,0)),
                        S=np.empty(shape=(0,0)), T=np.empty(shape=(0,0)),
                        A=np.empty(shape=(0,0)), b=np.empty(shape=(0)), 
-                       max_iter=1000, tol=1e-4, shrink=1, verbose=0, trace_freq=100):
+                       max_iter=1000, tol=1e-4, shrink=1, warm_start=0,
+                       verbose=0, trace_freq=100):
         self.C = C
         self.U = U
         self.V = V
@@ -124,8 +145,13 @@ class ReHLine(_BaseReHLine, BaseEstimator):
         self.max_iter = max_iter
         self.tol = tol
         self.shrink = shrink
+        self.warm_start = warm_start
         self.verbose = verbose
         self.trace_freq = trace_freq
+        self.Lambda = np.empty(shape=(0, 0))
+        self.Gamma = np.empty(shape=(0, 0))
+        self.xi = np.empty(shape=(0, 0))
+        self.coef_ = None
 
     def fit(self, X, sample_weight=None):
         """Fit the model based on the given training data.
@@ -147,41 +173,34 @@ class ReHLine(_BaseReHLine, BaseEstimator):
             An instance of the estimator.
         """
         # X = check_array(X)
+        sample_weight = _check_sample_weight(sample_weight, X, dtype=X.dtype)
 
-        
-        if sample_weight is None:
-            sample_weight = self.C
-        else:
-            sample_weight = self.C*_check_sample_weight(sample_weight, X, dtype=X.dtype)
+        U_weight, V_weight, Tau_weight, S_weight, T_weight = self.cast_sample_weight(sample_weight=sample_weight)
 
-        if self.L > 0:
-            U_weight = self.U * sample_weight
-            V_weight = self.V * sample_weight
-        else:
-            U_weight = self.U
-            V_weight = self.V
-
-        if self.H > 0:
-            sqrt_sample_weight = np.sqrt(sample_weight)
-            Tau_weight = self.Tau * sqrt_sample_weight
-            S_weight = self.S * sqrt_sample_weight
-            T_weight = self.T * sqrt_sample_weight
-        else:
-            Tau_weight = self.Tau
-            S_weight = self.S
-            T_weight = self.T
+        if not self.warm_start:
+            ## remove warm_start params
+            self.Lambda = np.empty(shape=(0, 0))
+            self.Gamma = np.empty(shape=(0, 0))
+            self.xi = np.empty(shape=(0, 0))
 
         result = ReHLine_solver(X=X,
                                 U=U_weight, V=V_weight,
                                 Tau=Tau_weight,
                                 S=S_weight, T=T_weight,
                                 A=self.A, b=self.b,
+                                Lambda=self.Lambda, Gamma=self.Gamma, xi=self.xi,
                                 max_iter=self.max_iter, tol=self.tol,
                                 shrink=self.shrink, verbose=self.verbose,
                                 trace_freq=self.trace_freq)
 
-        self.coef_ = result.beta
         self.opt_result_ = result
+        # primal solution
+        self.coef_ = result.beta
+        # dual solution
+        self.Lambda = result.Lambda
+        self.Gamma = result.Gamma
+        self.xi = result.xi
+        # algo convergence
         self.n_iter_ = result.niter
         self.dual_obj_ = result.dual_objfns
         self.primal_obj_ = result.primal_objfns
@@ -191,6 +210,7 @@ class ReHLine(_BaseReHLine, BaseEstimator):
                 "ReHLine failed to converge, increase the number of iterations: `max_iter`.",
                 ConvergenceWarning,
             )
+        return self
 
     def decision_function(self, X):
         """The decision function evaluated on the given dataset
@@ -304,7 +324,8 @@ class plqERM_Ridge(_BaseReHLine, BaseEstimator):
                        Tau=np.empty(shape=(0,0)),
                        S=np.empty(shape=(0,0)), T=np.empty(shape=(0,0)),
                        A=np.empty(shape=(0,0)), b=np.empty(shape=(0)), 
-                       max_iter=1000, tol=1e-4, shrink=1, verbose=0, trace_freq=100):
+                       max_iter=1000, tol=1e-4, shrink=1, warm_start=0,
+                       verbose=0, trace_freq=100):
         self.loss = loss
         self.constraint = constraint
         self.C = C
@@ -321,9 +342,13 @@ class plqERM_Ridge(_BaseReHLine, BaseEstimator):
         self.max_iter = max_iter
         self.tol = tol
         self.shrink = shrink
+        self.warm_start = warm_start
         self.verbose = verbose
         self.trace_freq = trace_freq
-        self.dummy_n = 0
+        self.Lambda = np.empty(shape=(0, 0))
+        self.Gamma = np.empty(shape=(0, 0))
+        self.xi = np.empty(shape=(0, 0))
+        self.coef_ = None
 
     def fit(self, X, y, sample_weight=None):
         """Fit the model based on the given training data.
@@ -358,40 +383,34 @@ class plqERM_Ridge(_BaseReHLine, BaseEstimator):
         self.A, self.b = _make_constraint_rehline_param(constraint=self.constraint, X=X, y=y)
         self.auto_shape()
 
-        ## sample weight -> rehline params
-        if sample_weight is None:
-            sample_weight = self.C
-        else:
-            sample_weight = self.C*_check_sample_weight(sample_weight, X, dtype=X.dtype)
+        sample_weight = _check_sample_weight(sample_weight, X, dtype=X.dtype)
 
-        if self.L > 0:
-            U_weight = self.U * sample_weight
-            V_weight = self.V * sample_weight
-        else:
-            U_weight = self.U
-            V_weight = self.V
+        U_weight, V_weight, Tau_weight, S_weight, T_weight = self.cast_sample_weight(sample_weight=sample_weight)
 
-        if self.H > 0:
-            sqrt_sample_weight = np.sqrt(sample_weight)
-            Tau_weight = self.Tau * sqrt_sample_weight
-            S_weight = self.S * sqrt_sample_weight
-            T_weight = self.T * sqrt_sample_weight
-        else:
-            Tau_weight = self.Tau
-            S_weight = self.S
-            T_weight = self.T
+        if not self.warm_start:
+            ## remove warm_start params
+            self.Lambda = np.empty(shape=(0, 0))
+            self.Gamma = np.empty(shape=(0, 0))
+            self.xi = np.empty(shape=(0, 0))
 
         result = ReHLine_solver(X=X,
                                 U=U_weight, V=V_weight,
                                 Tau=Tau_weight,
                                 S=S_weight, T=T_weight,
                                 A=self.A, b=self.b,
+                                Lambda=self.Lambda, Gamma=self.Gamma, xi=self.xi,
                                 max_iter=self.max_iter, tol=self.tol,
                                 shrink=self.shrink, verbose=self.verbose,
                                 trace_freq=self.trace_freq)
 
-        self.coef_ = result.beta
         self.opt_result_ = result
+        # primal solution
+        self.coef_ = result.beta
+        # dual solution
+        self.Lambda = result.Lambda
+        self.Gamma = result.Gamma
+        self.xi = result.xi
+        # algo convergence
         self.n_iter_ = result.niter
         self.dual_obj_ = result.dual_objfns
         self.primal_obj_ = result.primal_objfns
@@ -401,6 +420,8 @@ class plqERM_Ridge(_BaseReHLine, BaseEstimator):
                 "ReHLine failed to converge, increase the number of iterations: `max_iter`.",
                 ConvergenceWarning,
             )
+
+        return self
 
     def decision_function(self, X):
         """The decision function evaluated on the given dataset

@@ -73,6 +73,62 @@ class _BaseReHLine(BaseEstimator):
         self.H = self.S.shape[0]
         self.K = self.A.shape[0]
 
+    def cast_sample_weight(self, sample_weight=None):
+        """
+        Cast the sample weight to the ReHLine parameters.
+
+        Parameters
+        ----------
+        sample_weight : array-like of shape (n_samples,), default=None
+            Sample weights. If None, then samples are equally weighted.
+
+        Returns
+        -------
+        U_weight : array-like of shape (L, n_samples)
+            Weighted ReLU coefficient matrix.
+
+        V_weight : array-like of shape (L, n_samples)
+            Weighted ReLU intercept vector.
+
+        Tau_weight : array-like of shape (H, n_samples)
+            Weighted ReHU cutpoint matrix.
+
+        S_weight : array-like of shape (H, n_samples)
+            Weighted ReHU coefficient vector.
+
+        T_weight : array-like of shape (H, n_samples)
+            Weighted ReHU intercept vector.
+
+        Notes
+        -----
+        This method casts the sample weight to the ReHLine parameters by multiplying
+        the sample weight with the ReLU and ReHU parameters. If sample_weight is None,
+        then the sample weight is set to the weight parameter C.
+        """
+        
+        self.auto_shape()
+        
+        sample_weight = self.C*sample_weight
+
+        if self.L > 0:
+            U_weight = self.U * sample_weight
+            V_weight = self.V * sample_weight
+        else:
+            U_weight = self.U
+            V_weight = self.V
+
+        if self.H > 0:
+            sqrt_sample_weight = np.sqrt(sample_weight)
+            Tau_weight = self.Tau * sqrt_sample_weight
+            S_weight = self.S * sqrt_sample_weight
+            T_weight = self.T * sqrt_sample_weight
+        else:
+            Tau_weight = self.Tau
+            S_weight = self.S
+            T_weight = self.T
+
+        return U_weight, V_weight, Tau_weight, S_weight, T_weight
+
     def call_ReLHLoss(self, score):
         """
         Return the value of the ReHLine loss of the `score`.
@@ -172,12 +228,22 @@ def _check_rehu(rehu_coef, rehu_intercept, rehu_cut):
     if len(rehu_coef) > 0:
         assert (rehu_cut >= 0.0).all(), "`rehu_cut` must be non-negative!"
 
+
 def ReHLine_solver(X, U, V,
         Tau=np.empty(shape=(0, 0)),
         S=np.empty(shape=(0, 0)), T=np.empty(shape=(0, 0)),
         A=np.empty(shape=(0, 0)), b=np.empty(shape=(0)),
+        Lambda=np.empty(shape=(0, 0)),
+        Gamma=np.empty(shape=(0, 0)),
+        xi=np.empty(shape=(0, 0)),
         max_iter=1000, tol=1e-4, shrink=1, verbose=1, trace_freq=100):
     result = rehline_result()
+    if len(Lambda)>0:
+        result.Lambda = Lambda
+    if len(Gamma)>0:
+        result.Gamma = Gamma
+    if len(xi)>0:
+        result.xi = xi
     rehline_internal(result, X, A, b, U, V, S, T, Tau, max_iter, tol, shrink, verbose, trace_freq)
     return result
 
