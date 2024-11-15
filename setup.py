@@ -6,7 +6,7 @@ import requests
 from pybind11.setup_helpers import Pybind11Extension, build_ext
 from setuptools import setup
 
-__version__ = "0.0.5"
+__version__ = "0.0.6"
 
 # The main interface is through Pybind11Extension.
 # * You can add cxx_std=11/14/17, and then build_ext can be removed.
@@ -77,3 +77,6 @@ setup(
     zip_safe=False,
     python_requires=">= 3.10",
 )
+
+## build .so file
+## $ c++ -O3 -Wall -shared -std=c++11 -fPIC $(python3 -m pybind11 --includes) ./src/rehline.cpp -o _internal$(python3-config --extension-suffix)
