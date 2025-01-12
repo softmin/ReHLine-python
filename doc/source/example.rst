@@ -9,9 +9,10 @@ Example Gallery
    :name: rst-link-gallery
 
    examples/QR.ipynb
+   examples/CQR.ipynb
    examples/SVM.ipynb
    examples/FairSVM.ipynb
-   examples/RankRegression.ipynb
+   examples/RankRegression.ipynb   
 
 List of Examples
 ----------------
@@ -20,6 +21,7 @@ List of Examples
    :maxdepth: 1
 
    examples/QR.ipynb
+   examples/CQR.ipynb
    examples/SVM.ipynb
    examples/FairSVM.ipynb
    examples/RankRegression.ipynb

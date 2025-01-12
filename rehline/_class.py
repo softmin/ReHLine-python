@@ -443,6 +443,234 @@ class plqERM_Ridge(_BaseReHLine, BaseEstimator):
         return np.dot(X, self.coef_)
 
 
+class CQR_Ridge(_BaseReHLine, BaseEstimator):
+    r"""Composite Quantile Regressor (CQR) with a ridge penalty.
+    
+    It allows for the fitting of a linear regression model that minimizes a composite quantile loss function.
+
+    .. math::
+
+        \min_{\mathbf{\beta} \in \mathbb{R}^d, \mathbf{\beta_0} \in \mathbb{R}^K} \sum_{k=1}^K \sum_{i=1}^n \text{PLQ}(y_i, \mathbf{x}_i^T \mathbf{\beta} + \mathbf{\beta_0k}) + \frac{1}{2} \| \mathbf{\beta} \|_2^2.
+
+
+    Parameters
+    ----------
+    quantiles : list of float (n_quantiles,)
+        The quantiles to be estimated.
+    
+    C : float, default=1.0
+        Regularization parameter. The strength of the regularization is
+        inversely proportional to C. Must be strictly positive. 
+        `C` will be absorbed by the ReHLine parameters when `self.make_ReLHLoss` is conducted.
+
+    verbose : int, default=0
+        Enable verbose output. Note that this setting takes advantage of a
+        per-process runtime setting in liblinear that, if enabled, may not work
+        properly in a multithreaded context.
+
+    max_iter : int, default=1000
+        The maximum number of iterations to be run.
+    
+    tol : float, default=1e-4
+        The tolerance for the stopping criterion.
+
+    shrink : float, default=1
+        The shrinkage of dual variables for the ReHLine algorithm.
+
+    warm_start : bool, default=False
+        Whether to use the given dual params as an initial guess for the
+        optimization algorithm.
+
+    trace_freq : int, default=100
+        The frequency at which to print the optimization trace.
+        
+    Attributes
+    ----------
+    coef\_ : array-like
+        The optimized model coefficients.
+
+    intercept\_ : array-like
+        The optimized model intercepts.
+
+    quantiles\_: array-like
+        The quantiles to be estimated.
+    
+    n_iter\_ : int
+        The number of iterations performed by the ReHLine solver.
+
+    opt_result\_ : object
+        The optimization result object.
+
+    dual_obj\_ : array-like
+        The dual objective function values.
+
+    primal_obj\_ : array-like
+        The primal objective function values.
+
+    Methods
+    -------
+    fit(X, y, sample_weight=None)
+        Fit the model based on the given training data.
+
+    predict(X)
+        The prediction for the given dataset.
+    """
+
+    def __init__(self, quantiles,
+                       C=1.,
+                       max_iter=1000, tol=1e-4, shrink=1, warm_start=0,
+                       verbose=0, trace_freq=100):
+        self.quantiles = quantiles
+        self.C = C
+        # self.U = U
+        # self.V = V
+        # self.S = S
+        # self.T = T
+        # self.Tau = Tau
+        # self.A = A
+        # self.b = b
+        # self.L = U.shape[0]
+        # self.H = S.shape[0]
+        # self.K = A.shape[0]
+        self.max_iter = max_iter
+        self.tol = tol
+        self.shrink = shrink
+        self.warm_start = warm_start
+        self.verbose = verbose
+        self.trace_freq = trace_freq
+        self.Lambda = np.empty(shape=(0, 0))
+        self.Gamma = np.empty(shape=(0, 0))
+        self.xi = np.empty(shape=(0, 0))
+        self.coef_ = None
+        self.quantiles_ = np.array(quantiles) # consistent with coef_ and intercept_ in sklearn
+
+    def fit(self, X, y, sample_weight=None):
+        """Fit the model based on the given training data.
+
+        Parameters
+        ----------
+
+        X: {array-like} of shape (n_samples, n_features)
+            Training vector, where `n_samples` is the number of samples and
+            `n_features` is the number of features.
+
+        y : array-like of shape (n_samples,)
+            The target variable.
+
+        sample_weight : array-like of shape (n_samples,), default=None
+            Array of weights that are assigned to individual
+            samples. If not provided, then each sample is given unit weight.
+
+        Returns
+        -------
+        self : object
+            An instance of the estimator.
+
+
+        """
+        n, d = X.shape
+        n_qt = len(self.quantiles_)
+
+        # transform X and sample_weight to fit the CQR
+        transform_X = np.zeros((n*n_qt, d+n_qt))
+
+        for l, _ in enumerate(self.quantiles_):
+            transform_X[l*n:(l+1)*n,:d] = X
+            transform_X[l*n:(l+1)*n,d+l] = 1.
+
+        transform_sample_weight = np.tile(sample_weight, n_qt) if sample_weight is not None else None
+
+        ## loss -> rehline params
+        self.Tau=np.empty(shape=(0,0))
+        self.S=np.empty(shape=(0,0))
+        self.T=np.empty(shape=(0,0))
+        self.U = np.ones((2, n*n_qt))
+        self.V = np.ones((2, n*n_qt))
+
+        for l,qt in enumerate(self.quantiles_):
+            self.U[0,l*n:(l+1)*n] = - (qt*self.U[0,l*n:(l+1)*n])
+            self.U[1,l*n:(l+1)*n] = ((1.-qt)*self.U[1,l*n:(l+1)*n])
+
+            self.V[0,l*n:(l+1)*n] = qt*self.V[0,l*n:(l+1)*n]*y
+            self.V[1,l*n:(l+1)*n] = - (1.-qt)*self.V[1,l*n:(l+1)*n]*y
+        
+        ## no constrain in CQR -> empty rehline params A and b
+        self.A, self.b = np.empty(shape=(0, 0)), np.empty(shape=(0))
+        self.auto_shape()
+
+        transform_sample_weight = _check_sample_weight(transform_sample_weight, transform_X, dtype=transform_X.dtype) 
+
+        U_weight, V_weight, Tau_weight, S_weight, T_weight = self.cast_sample_weight(sample_weight=transform_sample_weight)
+
+        if not self.warm_start:
+            ## remove warm_start params
+            self.Lambda = np.empty(shape=(0, 0))
+            self.Gamma = np.empty(shape=(0, 0))
+            self.xi = np.empty(shape=(0, 0))
+
+        result = ReHLine_solver(X=transform_X,
+                                U=U_weight, V=V_weight,
+                                Tau=Tau_weight,
+                                S=S_weight, T=T_weight,
+                                A=self.A, b=self.b,
+                                Lambda=self.Lambda, Gamma=self.Gamma, xi=self.xi,
+                                max_iter=self.max_iter, tol=self.tol,
+                                shrink=self.shrink, verbose=self.verbose,
+                                trace_freq=self.trace_freq)
+
+        self.opt_result_ = result
+        # primal solution
+        self.coef_ = result.beta[:-n_qt]
+        self.intercept_ = result.beta[-n_qt:]
+        # dual solution
+        self.Lambda = result.Lambda
+        self.Gamma = result.Gamma
+        self.xi = result.xi
+        # algo convergence
+        self.n_iter_ = result.niter
+        self.dual_obj_ = result.dual_objfns
+        self.primal_obj_ = result.primal_objfns
+
+        if self.n_iter_ >= self.max_iter:
+            warnings.warn(
+                "ReHLine failed to converge, increase the number of iterations: `max_iter`.",
+                ConvergenceWarning,
+            )
+
+        return self
+
+    def predict(self, X): 
+        """The decision function evaluated on the given dataset
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            The data matrix.
+
+        Returns
+        -------
+        ndarray of shape (n_samples, n_quantiles)
+            Returns the decision function of the samples.
+        """
+        # Check if fit has been called
+        check_is_fitted(self)
+        X = check_array(X)
+
+        n, d = X.shape
+        n_qt = len(self.quantiles_)
+
+        # transform X for CQR prediction
+        transform_X = np.zeros((n*n_qt, d+n_qt))
+
+        for l, _ in enumerate(self.quantiles_):
+            transform_X[l*n:(l+1)*n,:d] = X
+            transform_X[l*n:(l+1)*n,d+l] = 1.
+
+        # get beta by concatenating coef_ and intercept_
+        beta = np.concatenate((self.coef_, self.intercept_))
+        return np.dot(transform_X, beta).reshape(-1, n_qt, order='F')
+
+
 # # ReHLine estimator with an option of additional linear term
 # class ReHLineLinear(ReHLine, _BaseReHLine, BaseEstimator):
 #     r"""ReHLine Minimization with additional linear terms. 
