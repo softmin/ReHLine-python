@@ -22,5 +22,6 @@ Example
    :name: rst-link-gallery
 
    ../examples/QR.ipynb
+   ../examples/CQR.ipynb
    ../examples/SVM.ipynb
    ../examples/FairSVM.ipynb

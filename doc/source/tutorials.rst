@@ -40,6 +40,10 @@ List of Tutorials
    - | `ReHLine <./autoapi/rehline/index.html#rehline.ReHLine>`_
    - | ReHLine minimization with manual parameter settings.
 
+ * - `ReHLine: Ridge Composite Quantile Regression <./examples/CQR.ipynb>`_
+   - | `CQR_Ridge <./autoapi/rehline/index.html#rehline.CQR_Ridge>`_
+   - | Composite Quantile Regression (CQR) with a ridge penalty.
+
  * - `ReHLine: Empirical Risk Minimization <./tutorials/ReHLine_ERM.rst>`_
    - | `plqERM_Ridge <./autoapi/rehline/index.html#rehline.plqERM_Ridge>`_
    - | Empirical Risk Minimization (ERM) with a piecewise linear-quadratic (PLQ) objective with a ridge penalty.
