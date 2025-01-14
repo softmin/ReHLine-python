@@ -1,7 +1,8 @@
 # To-do list
 
 ## src
-- [ ] warmstarting GridSearchCV
+- [x] warmstarting 
+- [ ] GridSearchCV
 
 ## Class
 - [ ] sklearn Classifier and Regressor Estimator
@@ -10,6 +11,7 @@
 ## Loss
 - [ ] MAE
 - [ ] TV
+- [ ] Hinge_squared
 
 ## Constraint
 - [ ] box constraints

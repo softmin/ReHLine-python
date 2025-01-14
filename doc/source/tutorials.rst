@@ -22,9 +22,6 @@ See `Manual ReHLine Formulation`_ documentation for more details and examples on
 
 Moreover, the following specific classes of formulations can be directly solved by `ReHLine`.
 
-- **Empirical Risk Minimization** (ERM) with various loss functions, see `ReHLine: Empirical Risk Minimization`_.
-- **Matrix Factorization** (MF) with with various loss functions, see `ReHLine: Matrix Factorization`_.
-
 List of Tutorials
 =================
 
@@ -40,13 +37,13 @@ List of Tutorials
    - | `ReHLine <./autoapi/rehline/index.html#rehline.ReHLine>`_
    - | ReHLine minimization with manual parameter settings.
 
- * - `ReHLine: Ridge Composite Quantile Regression <./examples/CQR.ipynb>`_
-   - | `CQR_Ridge <./autoapi/rehline/index.html#rehline.CQR_Ridge>`_
-   - | Composite Quantile Regression (CQR) with a ridge penalty.
-
  * - `ReHLine: Empirical Risk Minimization <./tutorials/ReHLine_ERM.rst>`_
    - | `plqERM_Ridge <./autoapi/rehline/index.html#rehline.plqERM_Ridge>`_
    - | Empirical Risk Minimization (ERM) with a piecewise linear-quadratic (PLQ) objective with a ridge penalty.
+
+ * - `ReHLine: Ridge Composite Quantile Regression <./examples/CQR.ipynb>`_
+   - | `CQR_Ridge <./autoapi/rehline/index.html#rehline.CQR_Ridge>`_
+   - | Composite Quantile Regression (CQR) with a ridge penalty.
 
  * - `ReHLine: Matrix Factorization <./tutorials/ReHLine_MF.rst>`_
    - | `plqMF_Ridge <./autoapi/rehline/index.html#rehline.plqERM_Ridge>`_
@@ -60,4 +57,5 @@ List of Tutorials
    ./tutorials/ReHLine_ERM
    ./tutorials/loss
    ./tutorials/constraint
+   ./tutorials/warmstart
 
