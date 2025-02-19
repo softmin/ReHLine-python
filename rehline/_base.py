@@ -358,6 +358,14 @@ def _make_loss_rehline_param(loss, X, y):
         V[0] = -(y + loss['epsilon'])
         V[1] =  (y - loss['epsilon'])
 
+    
+    elif (loss['name'] == 'MAE') \
+            or (loss['name'] == 'mae') \
+            or (loss['name'] == 'mean absolute error'):
+        U = np.array([[1] * n, [-1] * n])
+        V = np.array([-y , y])
+
+    
     else:
         raise Exception("Sorry, ReHLine currently does not support this loss function, \
                         but you can manually set ReHLine params to solve the problem via `ReHLine` class.")
