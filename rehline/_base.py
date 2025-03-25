@@ -254,6 +254,7 @@ def _make_loss_rehline_param(loss, X, y):
     The function supports various loss functions, including:
         - 'hinge'
         - 'svm' or 'SVM'
+        - 'mae' or 'MAE' or 'mean absolute error'
         - 'check' or 'quantile' or 'quantile regression' or 'QR'
         - 'sSVM' or 'smooth SVM' or 'smooth hinge'
         - 'TV'
@@ -362,7 +363,7 @@ def _make_loss_rehline_param(loss, X, y):
     elif (loss['name'] == 'MAE') \
             or (loss['name'] == 'mae') \
             or (loss['name'] == 'mean absolute error'):
-        U = np.array([[1] * n, [-1] * n])
+        U = np.array([[1.0] * n, [-1.0] * n])
         V = np.array([-y , y])
 
     
