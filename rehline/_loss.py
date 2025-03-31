@@ -78,9 +78,9 @@ class ReHLoss(object):
         ans = 0
         if len(self.relu_coef) > 0:
             relu_input = (self.relu_coef.T * x[:,np.newaxis]).T + self.relu_intercept 
-            ans += np.sum(relu(relu_input), 0).sum()
+            ans += np.sum(_relu(relu_input), 0).sum()
         if len(self.rehu_coef) > 0:
             rehu_input = (self.rehu_coef.T * x[:,np.newaxis]).T + self.rehu_intercept
-            ans += np.sum(rehu(rehu_input, cut=self.rehu_cut), 0).sum()
+            ans += np.sum(_rehu(rehu_input, cut=self.rehu_cut), 0).sum()
 
         return ans
