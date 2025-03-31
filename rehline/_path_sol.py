@@ -52,9 +52,77 @@ def plqERM_path_sol(
     plot_path=False
 ):
     """
-    Compute PLQ ERM path over a range of regularization parameters.
-    Now includes structured benchmarking output.
+    Compute the PLQ Empirical Risk Minimization (ERM) path over a range of regularization parameters.
+    This function evaluates the model's performance for different values of the regularization parameter 
+    and provides structured benchmarking output.
+
+    Parameters
+    ----------
+    X : ndarray of shape (n_samples, n_features)
+        Training data, where each row represents a sample and each column represents a feature.
+
+    y : ndarray of shape (n_samples,)
+        Target values corresponding to the training data.
+
+    loss : dict
+        Dictionary containing parameters for the loss function used in the PLQ ERM problem.
+
+    constraint : list of dict, optional
+        List of constraints for the optimization problem. The default is None.
+
+    eps : float, default=1e-3
+        Path length parameter. A value of eps=1e-3 means that the ratio of the minimum to maximum 
+        regularization parameter \( C \) will be \( 1e-3 \).
+
+    n_Cs : int, default=100
+        Number of values for the regularization parameter \( C \) along the path.
+
+    Cs : array-like, default=None
+        List of specific \( C \) values to evaluate. If None, \( C \) values are automatically generated.
+
+    max_iter : int, default=5000
+        Maximum number of iterations allowed for the solver.
+
+    tol : float, default=1e-4
+        Convergence tolerance for the optimization algorithm.
+
+    verbose : int, default=0
+        Level of verbosity for logging output. Higher values produce more detailed output.
+
+    shrink : float, default=1
+        Shrinkage parameter used in the optimization process.
+
+    warm_start : bool, default=False
+        If True, reuse the solution of the previous call to fit as the starting point for the next call.
+
+    return_time : bool, default=True
+        If True, return the execution times for each \( C \).
+
+    plot_path : bool, default=False
+        If True, plot the regularization path of the coefficients.
+
+    Returns
+    -------
+    Cs : ndarray of shape (n_Cs,)
+        The regularization parameters evaluated.
+
+    times : list of float
+        Execution time for each regularization parameter \( C \).
+
+    n_iters : list of int
+        The number of iterations taken to converge for each \( C \).
+
+    loss_values : list of float
+        Computed loss values for each \( C \).
+
+    L2_norms : list of float
+        L2 norms of the coefficients for each \( C \).
+
+    coefs : ndarray of shape (n_features, n_Cs)
+        Coefficients corresponding to each regularization parameter \( C \) along the path.
+
     """
+
     n_samples, n_features = X.shape
 
     if Cs is None:
