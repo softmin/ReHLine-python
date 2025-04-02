@@ -239,11 +239,11 @@ def ReHLine_solver(X, U, V,
         max_iter=1000, tol=1e-4, shrink=1, verbose=1, trace_freq=100):
     result = rehline_result()
     if len(Lambda)>0:
-        result.Lambda = Lambda
+        result.Lambda = np.maximum(0, np.minimum(Lambda, 1.0))
     if len(Gamma)>0:
-        result.Gamma = Gamma
+        result.Gamma = np.maximum(0, np.minimum(Gamma, Tau))
     if len(xi)>0:
-        result.xi = xi
+        result.xi = np.maximum(xi, 0.0)
     rehline_internal(result, X, A, b, U, V, S, T, Tau, max_iter, tol, shrink, verbose, trace_freq)
     return result
 
