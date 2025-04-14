@@ -278,7 +278,8 @@ def _make_loss_rehline_param(loss, X, y):
         The +/- labels for class membership of each sample.
     """
 
-    n, d = X.shape
+    # n, d = X.shape
+    n = len(y)
 
     ## initialization of ReHLine params
     U=np.empty(shape=(0,0))

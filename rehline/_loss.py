@@ -64,6 +64,8 @@ class ReHLoss(object):
     def __call__(self, x):
         """Evaluate ReHLoss given a data matrix
 
+        Parameters
+        ----------
         x: {array-like} of shape (n_samples, )
             Training vector, where `n_samples` is the number of samples
         """
