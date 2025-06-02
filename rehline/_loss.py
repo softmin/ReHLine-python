@@ -68,6 +68,8 @@ class ReHLoss(object):
         ----------
         x: {array-like} of shape (n_samples, )
             Training vector, where `n_samples` is the number of samples
+
+        For ERM question, the input of this function is np.dot(X, self.coef_) rather than a single X.
         """
         if (self.L > 0) and (self.H > 0):
             assert self.relu_coef.shape[1] == self.rehu_coef.shape[1], "n_samples for `relu_coef` and `rehu_coef` should be the same shape!"
@@ -80,9 +82,9 @@ class ReHLoss(object):
         ans = 0
         if len(self.relu_coef) > 0:
             relu_input = (self.relu_coef.T * x[:,np.newaxis]).T + self.relu_intercept 
-            ans += np.sum(relu(relu_input), 0).sum()
+            ans += np.sum(_relu(relu_input), 0).sum()
         if len(self.rehu_coef) > 0:
             rehu_input = (self.rehu_coef.T * x[:,np.newaxis]).T + self.rehu_intercept
-            ans += np.sum(rehu(rehu_input, cut=self.rehu_cut), 0).sum()
+            ans += np.sum(_rehu(rehu_input, cut=self.rehu_cut), 0).sum()
 
         return ans
