@@ -6,40 +6,12 @@ from rehline import _make_loss_rehline_param
 from ._loss import ReHLoss
 
 
-# def relu(x):
-#     return np.maximum(0, x)
-
-# def rehu(x, tau):
-#     return np.minimum(np.maximum(0, x), tau)
-
-# def compute_custom_loss(beta, X, y, loss):
-#     """
-#     Compute the custom ReLU-ReHU loss function.
-#     """
-#     U, V, Tau, S, T = _make_loss_rehline_param(loss, X, y)
-
-#     relu_loss = 0
-#     rehu_loss = 0
-
-#     if U.size > 0 and V.size > 0:
-#         relu_input = (U @ (X @ beta)) + V
-#         relu_loss = np.sum(relu(relu_input))
-
-#     if S.size > 0 and T.size > 0 and Tau.size > 0:
-#         rehu_input = (S @ (X @ beta)) + T
-#         rehu_loss = np.sum(rehu(rehu_input, Tau))
-
-#     l2_norm = 0.5 * np.linalg.norm(beta) ** 2
-
-#     return round(relu_loss + rehu_loss + l2_norm, 4)
-
-
-def plqERM_path_sol(
+def plqERM_Ridge_path_sol(
     X,
     y,
     *,
     loss,
-    constraint=None,
+    constraint=[ ],
     eps=1e-3,
     n_Cs=100,
     Cs=None,
@@ -59,67 +31,90 @@ def plqERM_path_sol(
     Parameters
     ----------
     X : ndarray of shape (n_samples, n_features)
-        Training data, where each row represents a sample and each column represents a feature.
+        Training input samples.
 
     y : ndarray of shape (n_samples,)
-        Target values corresponding to the training data.
+        Target values corresponding to each input sample.
 
     loss : dict
-        Dictionary containing parameters for the loss function used in the PLQ ERM problem.
+        Dictionary describing the PLQ loss function parameters. Used to construct the loss object internally.
 
-    constraint : list of dict, optional
-        List of constraints for the optimization problem. The default is None.
+    constraint : list of dict, optional (default=[])
+        List of constraints applied to the optimization problem. Each constraint should be represented
+        as a dictionary compatible with the solver.
 
     eps : float, default=1e-3
-        Path length parameter. A value of eps=1e-3 means that the ratio of the minimum to maximum 
-        regularization parameter \( C \) will be \( 1e-3 \).
+        Defines the range of regularization values when `Cs` is not provided. Specifically, the smallest
+        regularization value will be approximately `eps` times the largest.
 
     n_Cs : int, default=100
-        Number of values for the regularization parameter \( C \) along the path.
+        Number of regularization values to evaluate if `Cs` is not provided.
 
-    Cs : array-like, default=None
-        List of specific \( C \) values to evaluate. If None, \( C \) values are automatically generated.
+    Cs : array-like of shape (n_Cs,), optional
+        Explicit values of regularization strength `C` to use. If `None`, the values are generated
+        logarithmically between 1e-2 and 1e3.
 
     max_iter : int, default=5000
-        Maximum number of iterations allowed for the solver.
+        Maximum number of iterations allowed for the optimization solver at each `C`.
 
     tol : float, default=1e-4
-        Convergence tolerance for the optimization algorithm.
+        Tolerance for solver convergence.
 
     verbose : int, default=0
-        Level of verbosity for logging output. Higher values produce more detailed output.
+        Controls verbosity level of output. Set to higher values (e.g., 1 or 2) for detailed progress logs.
 
     shrink : float, default=1
-        Shrinkage parameter used in the optimization process.
+        Shrinkage factor for the solver, potentially influencing convergence behavior.
 
     warm_start : bool, default=False
-        If True, reuse the solution of the previous call to fit as the starting point for the next call.
+        If True, reuse the previous solution to warm-start the next solver step, speeding up convergence.
 
     return_time : bool, default=True
-        If True, return the execution times for each \( C \).
+        If True, return timing information for each value of `C`.
 
     plot_path : bool, default=False
-        If True, plot the regularization path of the coefficients.
+        If True, generate a plot of the coefficient paths as a function of `C`.
 
     Returns
     -------
     Cs : ndarray of shape (n_Cs,)
-        The regularization parameters evaluated.
+        Array of regularization parameters used in the path.
 
     times : list of float
-        Execution time for each regularization parameter \( C \).
+        Time in seconds taken to fit the model at each `C`. Returned only if `return_time=True`.
 
     n_iters : list of int
-        The number of iterations taken to converge for each \( C \).
+        Number of iterations used by the solver at each regularization value.
 
     loss_values : list of float
-        Computed loss values for each \( C \).
+        Final loss values (including regularization term) at each `C`.
 
     L2_norms : list of float
-        L2 norms of the coefficients for each \( C \).
+        L2 norm of the coefficients (excluding bias) at each `C`.
 
     coefs : ndarray of shape (n_features, n_Cs)
-        Coefficients corresponding to each regularization parameter \( C \) along the path.
+        Learned model coefficients at each regularization strength.
+
+    Example
+    -------
+
+    >>> # generate data
+    >>> np.random.seed(42)
+    >>> n, d, C = 1000, 5, 0.5
+    >>> X = np.random.randn(n, d)
+    >>> beta0 = np.random.randn(d)
+    >>> y = np.sign(X.dot(beta0) + np.random.randn(n))
+    >>> # define loss function
+    >>> loss = {'name': 'svm'}
+    >>> Cs = [2000, 3000, 4000]
+    >>> constrain = [{'name': 'none'}]
+
+
+    >>> # calculate
+    >>> Cs, times, n_iters, losses, norms, coefs = plqERM_path_sol(
+    ...     X, y, loss=loss, Cs=Cs, max_iter=100000,tol=1e-4,verbose=1,
+    ...     warm_start=False, constrain=constrain, return_time=True, plot_path=True
+    ... )
 
     """
 
@@ -137,11 +132,16 @@ def plqERM_path_sol(
     loss_values = []
     L2_norms = []
 
-    Lambda, Gamma, xi = None, None, None
-    total_start = time.time()
+
+    if return_time:
+        total_start = time.time()
+    
+    U, V, Tau, S, T = _make_loss_rehline_param(loss, X, y)
+    loss_obj = ReHLoss(U, V, S, T, Tau)
 
     for i, C in enumerate(Cs):
-        start_time = time.time()
+        if return_time:
+            start_time = time.time()
 
         clf = plqERM_Ridge(
             loss=loss, constraint=constraint, C=C,
@@ -149,7 +149,7 @@ def plqERM_path_sol(
             warm_start=warm_start
         )
 
-        if warm_start and Lambda is not None:
+        if warm_start and (i>0):
             clf.Lambda = Lambda
             clf.Gamma = Gamma
             clf.xi = xi
@@ -158,9 +158,10 @@ def plqERM_path_sol(
         coefs[:, i] = clf.coef_
 
         # Compute loss function parameters for ReHLoss
-        U, V, Tau, S, T = _make_loss_rehline_param(loss, X, y)
-        loss_obj = ReHLoss(U, V, S, T, Tau)
-        loss_values.append(round(loss_obj(X), 4))
+        l2_norm = 0.5 * np.linalg.norm(clf.coef_) ** 2
+        score = clf.decision_function(X)
+        total_loss = loss_obj(score) + l2_norm
+        loss_values.append(round(total_loss, 4))
         L2_norms.append(round(np.linalg.norm(clf.coef_), 4))
 
         if warm_start:
@@ -168,8 +169,10 @@ def plqERM_path_sol(
             Gamma = clf.Gamma
             xi = clf.xi
 
-        elapsed_time = time.time() - start_time
-        times.append(elapsed_time)
+        if return_time:
+            elapsed_time = time.time() - start_time
+            times.append(elapsed_time)
+        
         n_iters.append(clf.n_iter_)
 
     if return_time:
@@ -210,3 +213,4 @@ def plqERM_path_sol(
         return Cs, times, n_iters, loss_values, L2_norms, coefs
     else:
         return Cs, n_iters, loss_values, L2_norms, coefs
+
