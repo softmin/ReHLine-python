@@ -1,8 +1,10 @@
-import numpy as np
 import time
+
 import matplotlib.pyplot as plt
-from rehline import plqERM_Ridge
-from rehline import _make_loss_rehline_param
+import numpy as np
+
+from ._base import _make_loss_rehline_param
+from ._class import plqERM_Ridge
 from ._loss import ReHLoss
 
 
@@ -11,7 +13,7 @@ def plqERM_Ridge_path_sol(
     y,
     *,
     loss,
-    constraint=[ ],
+    constraint=[],
     eps=1e-3,
     n_Cs=100,
     Cs=None,
@@ -139,35 +141,47 @@ def plqERM_Ridge_path_sol(
     U, V, Tau, S, T = _make_loss_rehline_param(loss, X, y)
     loss_obj = ReHLoss(U, V, S, T, Tau)
 
+    # Lambda_ws = np.empty(shape=(0, 0))
+    # Gamma_ws = np.empty(shape=(0, 0))
+    # xi_ws = np.empty(shape=(0, 0))
+
+    clf = plqERM_Ridge(
+        loss=loss, constraint=constraint, C=Cs[0],
+        max_iter=max_iter, tol=tol, shrink=shrink, verbose=verbose,
+        warm_start=warm_start
+    )
+
     for i, C in enumerate(Cs):
         if return_time:
             start_time = time.time()
 
-        clf = plqERM_Ridge(
-            loss=loss, constraint=constraint, C=C,
-            max_iter=max_iter, tol=tol, shrink=shrink, verbose=verbose,
-            warm_start=warm_start
-        )
+        clf.C = C
 
-        if warm_start and (i>0):
-            clf.Lambda = Lambda
-            clf.Gamma = Gamma
-            clf.xi = xi
+        # clf = plqERM_Ridge(
+        #     loss=loss, constraint=constraint, C=C,
+        #     max_iter=max_iter, tol=tol, shrink=shrink, verbose=verbose,
+        #     warm_start=warm_start
+        # )
+
+        # if (warm_start and (i>0)):
+        #     clf.Lambda = Lambda_ws
+        #     clf.Gamma = Gamma_ws
+        #     clf.xi = xi_ws
 
         clf.fit(X, y)
         coefs[:, i] = clf.coef_
 
         # Compute loss function parameters for ReHLoss
-        l2_norm = 0.5 * np.linalg.norm(clf.coef_) ** 2
+        l2_norm = np.linalg.norm(clf.coef_) ** 2
         score = clf.decision_function(X)
-        total_loss = loss_obj(score) + l2_norm
+        total_loss = loss_obj(score) + 0.5*l2_norm
         loss_values.append(round(total_loss, 4))
         L2_norms.append(round(np.linalg.norm(clf.coef_), 4))
 
-        if warm_start:
-            Lambda = clf.Lambda
-            Gamma = clf.Gamma
-            xi = clf.xi
+        # if warm_start:
+        #     Lambda_ws = clf.Lambda
+        #     Gamma_ws = clf.Gamma
+        #     xi_ws = clf.xi
 
         if return_time:
             elapsed_time = time.time() - start_time
