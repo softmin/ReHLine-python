@@ -1,5 +1,6 @@
 ## Test SVR on simulated dataset
 import numpy as np
+
 from rehline import ReHLine
 
 np.random.seed(1024)
@@ -13,6 +14,7 @@ new_sample = np.random.randn(d)
 
 ## solution provided by sklearn
 from sklearn.svm import LinearSVR
+
 reg = LinearSVR(C=C, loss='epsilon_insensitive', fit_intercept=False, epsilon=1e-5,
                 random_state=0, tol=1e-6, max_iter=1000000, dual='auto')
 reg.fit(X, y)
@@ -24,9 +26,8 @@ print(reg.predict([new_sample]))
 ## solution provided by ReHLine
 # build-in loss
 loss_dict = {'name': 'svr', 'epsilon': 1e-5}
-reg = ReHLine(loss=loss_dict, C=C)
-reg.make_ReLHLoss(X=X, y=y, loss=loss_dict)
-reg.fit(X=X)
+reg = plqERM_Ridge(loss=loss_dict, C=C)
+reg.fit(X=X, y=y)
 
 print('solution privided by rehline: %s' %reg.coef_)
 print(reg.decision_function([new_sample]))
@@ -40,7 +41,7 @@ U[1] = -U[1]
 V[0] = -C*(y + loss_dict['epsilon'])
 V[1] = C*(y - loss_dict['epsilon'])
 
-reg = ReHLine(loss=loss_dict, C=C)
+reg = ReHLine(C=C)
 reg.U, reg.V = U, V
 reg.fit(X=X)
 

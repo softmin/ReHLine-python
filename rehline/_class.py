@@ -35,16 +35,16 @@ class ReHLine(_BaseReHLine, BaseEstimator):
         Regularization parameter. The strength of the regularization is
         inversely proportional to C. Must be strictly positive. 
 
-    U, V: array of shape (L, n_samples), default=np.empty(shape=(0, 0))
+    _U, _V: array of shape (L, n_samples), default=np.empty(shape=(0, 0))
         The parameters pertaining to the ReLU part in the loss function.
 
-    Tau, S, T: array of shape (H, n_samples), default=np.empty(shape=(0, 0))
+    _Tau, _S, _T: array of shape (H, n_samples), default=np.empty(shape=(0, 0))
         The parameters pertaining to the ReHU part in the loss function.
     
-    A: array of shape (K, n_features), default=np.empty(shape=(0, 0))
+    _A: array of shape (K, n_features), default=np.empty(shape=(0, 0))
         The coefficient matrix in the linear constraint.
 
-    b: array of shape (K, ), default=np.empty(shape=0)
+    _b: array of shape (K, ), default=np.empty(shape=0)
         The intercept vector in the linear constraint.
 
     verbose : int, default=0
@@ -83,13 +83,13 @@ class ReHLine(_BaseReHLine, BaseEstimator):
     primal_obj\_ : array-like
         The primal objective function values.
 
-    Lambda: array-like
+    _Lambda: array-like
         The optimized dual variables for ReLU parts.
 
-    Gamma: array-like
+    _Gamma: array-like
         The optimized dual variables for ReHU parts.
 
-    xi: array-like
+    _xi: array-like
         The optimized dual variables for linear constraints.
 
     Examples
@@ -112,7 +112,7 @@ class ReHLine(_BaseReHLine, BaseEstimator):
     >>> L = U.shape[0]
     >>> V = (C*np.array(np.ones(n))).reshape(1,-1)
     >>> clf = ReHLine(C=C)
-    >>> clf.U, clf.V = U, V
+    >>> clf._U, clf._V = U, V
     >>> clf.fit(X=X)
     >>> print('sol privided by rehline: %s' %clf.coef_)
     >>> sol privided by rehline: [ 0.7410154  -0.00615574  2.66990408]
@@ -132,13 +132,13 @@ class ReHLine(_BaseReHLine, BaseEstimator):
                        max_iter=1000, tol=1e-4, shrink=1, warm_start=0,
                        verbose=0, trace_freq=100):
         self.C = C
-        self.U = U
-        self.V = V
-        self.S = S
-        self.T = T
-        self.Tau = Tau
-        self.A = A
-        self.b = b
+        self._U = U
+        self._V = V
+        self._S = S
+        self._T = T
+        self._Tau = Tau
+        self._A = A
+        self._b = b
         self.L = U.shape[0]
         self.H = S.shape[0]
         self.K = A.shape[0]
@@ -148,9 +148,9 @@ class ReHLine(_BaseReHLine, BaseEstimator):
         self.warm_start = warm_start
         self.verbose = verbose
         self.trace_freq = trace_freq
-        self.Lambda = np.empty(shape=(0, 0))
-        self.Gamma = np.empty(shape=(0, 0))
-        self.xi = np.empty(shape=(0, 0))
+        self._Lambda = np.empty(shape=(0, 0))
+        self._Gamma = np.empty(shape=(0, 0))
+        self._xi = np.empty(shape=(0, 0))
         self.coef_ = None
 
     def fit(self, X, sample_weight=None):
@@ -179,16 +179,16 @@ class ReHLine(_BaseReHLine, BaseEstimator):
 
         if not self.warm_start:
             ## remove warm_start params
-            self.Lambda = np.empty(shape=(0, 0))
-            self.Gamma = np.empty(shape=(0, 0))
-            self.xi = np.empty(shape=(0, 0))
+            self._Lambda = np.empty(shape=(0, 0))
+            self._Gamma = np.empty(shape=(0, 0))
+            self._xi = np.empty(shape=(0, 0))
 
         result = ReHLine_solver(X=X,
                                 U=U_weight, V=V_weight,
                                 Tau=Tau_weight,
                                 S=S_weight, T=T_weight,
-                                A=self.A, b=self.b,
-                                Lambda=self.Lambda, Gamma=self.Gamma, xi=self.xi,
+                                A=self._A, b=self._b,
+                                Lambda=self._Lambda, Gamma=self._Gamma, xi=self._xi,
                                 max_iter=self.max_iter, tol=self.tol,
                                 shrink=self.shrink, verbose=self.verbose,
                                 trace_freq=self.trace_freq)
@@ -197,9 +197,9 @@ class ReHLine(_BaseReHLine, BaseEstimator):
         # primal solution
         self.coef_ = result.beta
         # dual solution
-        self.Lambda = result.Lambda
-        self.Gamma = result.Gamma
-        self.xi = result.xi
+        self._Lambda = result.Lambda
+        self._Gamma = result.Gamma
+        self._xi = result.xi
         # algo convergence
         self.n_iter_ = result.niter
         self.dual_obj_ = result.dual_objfns
@@ -274,16 +274,16 @@ class plqERM_Ridge(_BaseReHLine, BaseEstimator):
     max_iter : int, default=1000
         The maximum number of iterations to be run.
 
-    U, V: array of shape (L, n_samples), default=np.empty(shape=(0, 0))
+    _U, _V: array of shape (L, n_samples), default=np.empty(shape=(0, 0))
         The parameters pertaining to the ReLU part in the loss function.
 
-    Tau, S, T: array of shape (H, n_samples), default=np.empty(shape=(0, 0))
+    _Tau, _S, _T: array of shape (H, n_samples), default=np.empty(shape=(0, 0))
         The parameters pertaining to the ReHU part in the loss function.
     
-    A: array of shape (K, n_features), default=np.empty(shape=(0, 0))
+    _A: array of shape (K, n_features), default=np.empty(shape=(0, 0))
         The coefficient matrix in the linear constraint.
 
-    b: array of shape (K, ), default=np.empty(shape=0)
+    _b: array of shape (K, ), default=np.empty(shape=0)
         The intercept vector in the linear constraint.
     
     Attributes
@@ -329,13 +329,13 @@ class plqERM_Ridge(_BaseReHLine, BaseEstimator):
         self.loss = loss
         self.constraint = constraint
         self.C = C
-        self.U = U
-        self.V = V
-        self.S = S
-        self.T = T
-        self.Tau = Tau
-        self.A = A
-        self.b = b
+        self._U = U
+        self._V = V
+        self._S = S
+        self._T = T
+        self._Tau = Tau
+        self._A = A
+        self._b = b
         self.L = U.shape[0]
         self.H = S.shape[0]
         self.K = A.shape[0]
@@ -345,9 +345,9 @@ class plqERM_Ridge(_BaseReHLine, BaseEstimator):
         self.warm_start = warm_start
         self.verbose = verbose
         self.trace_freq = trace_freq
-        self.Lambda = np.empty(shape=(0, 0))
-        self.Gamma = np.empty(shape=(0, 0))
-        self.xi = np.empty(shape=(0, 0))
+        self._Lambda = np.empty(shape=(0, 0))
+        self._Gamma = np.empty(shape=(0, 0))
+        self._xi = np.empty(shape=(0, 0))
         self.coef_ = None
 
     def fit(self, X, y, sample_weight=None):
@@ -377,10 +377,10 @@ class plqERM_Ridge(_BaseReHLine, BaseEstimator):
         n, d = X.shape
         
         ## loss -> rehline params
-        self.U, self.V, self.Tau, self.S, self.T = _make_loss_rehline_param(loss=self.loss, X=X, y=y)
+        self._U, self._V, self._Tau, self._S, self._T = _make_loss_rehline_param(loss=self.loss, X=X, y=y)
         
         ## constrain -> rehline params
-        self.A, self.b = _make_constraint_rehline_param(constraint=self.constraint, X=X, y=y)
+        self._A, self._b = _make_constraint_rehline_param(constraint=self.constraint, X=X, y=y)
         self.auto_shape()
 
         sample_weight = _check_sample_weight(sample_weight, X, dtype=X.dtype)
@@ -389,16 +389,16 @@ class plqERM_Ridge(_BaseReHLine, BaseEstimator):
 
         if not self.warm_start:
             ## remove warm_start params
-            self.Lambda = np.empty(shape=(0, 0))
-            self.Gamma = np.empty(shape=(0, 0))
-            self.xi = np.empty(shape=(0, 0))
+            self._Lambda = np.empty(shape=(0, 0))
+            self._Gamma = np.empty(shape=(0, 0))
+            self._xi = np.empty(shape=(0, 0))
 
         result = ReHLine_solver(X=X,
                                 U=U_weight, V=V_weight,
                                 Tau=Tau_weight,
                                 S=S_weight, T=T_weight,
-                                A=self.A, b=self.b,
-                                Lambda=self.Lambda, Gamma=self.Gamma, xi=self.xi,
+                                A=self._A, b=self._b,
+                                Lambda=self._Lambda, Gamma=self._Gamma, xi=self._xi,
                                 max_iter=self.max_iter, tol=self.tol,
                                 shrink=self.shrink, verbose=self.verbose,
                                 trace_freq=self.trace_freq)
@@ -407,9 +407,9 @@ class plqERM_Ridge(_BaseReHLine, BaseEstimator):
         # primal solution
         self.coef_ = result.beta
         # dual solution
-        self.Lambda = result.Lambda
-        self.Gamma = result.Gamma
-        self.xi = result.xi
+        self._Lambda = result.Lambda
+        self._Gamma = result.Gamma
+        self._xi = result.xi
         # algo convergence
         self.n_iter_ = result.niter
         self.dual_obj_ = result.dual_objfns
@@ -538,9 +538,9 @@ class CQR_Ridge(_BaseReHLine, BaseEstimator):
         self.warm_start = warm_start
         self.verbose = verbose
         self.trace_freq = trace_freq
-        self.Lambda = np.empty(shape=(0, 0))
-        self.Gamma = np.empty(shape=(0, 0))
-        self.xi = np.empty(shape=(0, 0))
+        self._Lambda = np.empty(shape=(0, 0))
+        self._Gamma = np.empty(shape=(0, 0))
+        self._xi = np.empty(shape=(0, 0))
         self.coef_ = None
         self.quantiles_ = np.array(quantiles) # consistent with coef_ and intercept_ in sklearn
 
@@ -581,21 +581,21 @@ class CQR_Ridge(_BaseReHLine, BaseEstimator):
         transform_sample_weight = np.tile(sample_weight, n_qt) if sample_weight is not None else None
 
         ## loss -> rehline params
-        self.Tau=np.empty(shape=(0,0))
-        self.S=np.empty(shape=(0,0))
-        self.T=np.empty(shape=(0,0))
-        self.U = np.ones((2, n*n_qt))
-        self.V = np.ones((2, n*n_qt))
+        self._Tau = np.empty(shape=(0,0))
+        self._S = np.empty(shape=(0,0))
+        self._T = np.empty(shape=(0,0))
+        self._U = np.ones((2, n*n_qt))
+        self._V = np.ones((2, n*n_qt))
 
         for l,qt in enumerate(self.quantiles_):
-            self.U[0,l*n:(l+1)*n] = - (qt*self.U[0,l*n:(l+1)*n])
-            self.U[1,l*n:(l+1)*n] = ((1.-qt)*self.U[1,l*n:(l+1)*n])
+            self._U[0,l*n:(l+1)*n] = - (qt*self._U[0,l*n:(l+1)*n])
+            self._U[1,l*n:(l+1)*n] = ((1.-qt)*self._U[1,l*n:(l+1)*n])
 
-            self.V[0,l*n:(l+1)*n] = qt*self.V[0,l*n:(l+1)*n]*y
-            self.V[1,l*n:(l+1)*n] = - (1.-qt)*self.V[1,l*n:(l+1)*n]*y
+            self._V[0,l*n:(l+1)*n] = qt*self._V[0,l*n:(l+1)*n]*y
+            self._V[1,l*n:(l+1)*n] = - (1.-qt)*self._V[1,l*n:(l+1)*n]*y
         
         ## no constrain in CQR -> empty rehline params A and b
-        self.A, self.b = np.empty(shape=(0, 0)), np.empty(shape=(0))
+        self._A, self._b = np.empty(shape=(0, 0)), np.empty(shape=(0))
         self.auto_shape()
 
         transform_sample_weight = _check_sample_weight(transform_sample_weight, transform_X, dtype=transform_X.dtype) 
@@ -604,16 +604,16 @@ class CQR_Ridge(_BaseReHLine, BaseEstimator):
 
         if not self.warm_start:
             ## remove warm_start params
-            self.Lambda = np.empty(shape=(0, 0))
-            self.Gamma = np.empty(shape=(0, 0))
-            self.xi = np.empty(shape=(0, 0))
+            self._Lambda = np.empty(shape=(0, 0))
+            self._Gamma = np.empty(shape=(0, 0))
+            self._xi = np.empty(shape=(0, 0))
 
         result = ReHLine_solver(X=transform_X,
                                 U=U_weight, V=V_weight,
                                 Tau=Tau_weight,
                                 S=S_weight, T=T_weight,
-                                A=self.A, b=self.b,
-                                Lambda=self.Lambda, Gamma=self.Gamma, xi=self.xi,
+                                A=self._A, b=self._b,
+                                Lambda=self._Lambda, Gamma=self._Gamma, xi=self._xi,
                                 max_iter=self.max_iter, tol=self.tol,
                                 shrink=self.shrink, verbose=self.verbose,
                                 trace_freq=self.trace_freq)
@@ -623,9 +623,9 @@ class CQR_Ridge(_BaseReHLine, BaseEstimator):
         self.coef_ = result.beta[:-n_qt]
         self.intercept_ = result.beta[-n_qt:]
         # dual solution
-        self.Lambda = result.Lambda
-        self.Gamma = result.Gamma
-        self.xi = result.xi
+        self._Lambda = result.Lambda
+        self._Gamma = result.Gamma
+        self._xi = result.xi
         # algo convergence
         self.n_iter_ = result.niter
         self.dual_obj_ = result.dual_objfns

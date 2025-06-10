@@ -54,24 +54,50 @@ class _BaseReHLine(BaseEstimator):
                        S=np.empty(shape=(0,0)), T=np.empty(shape=(0,0)),
                        A=np.empty(shape=(0,0)), b=np.empty(shape=(0))):
         self.C = C
-        self.U = U
-        self.V = V
-        self.S = S
-        self.T = T
-        self.Tau = Tau
-        self.A = A
-        self.b = b
-        self.L = U.shape[0]
-        self.H = S.shape[0]
-        self.K = A.shape[0]
+        self._U = U
+        self._V = V
+        self._S = S
+        self._T = T
+        self._Tau = Tau
+        self._A = A
+        self._b = b
+        self.L = self._U.shape[0]
+        self.H = self._S.shape[0]
+        self.K = self._A.shape[0]
+
+    def get_params(self, deep=True):
+        """Get parameters for this estimator.
+        
+        Override the default get_params to exclude computation-only parameters.
+        
+        Parameters
+        ----------
+        deep : bool, default=True
+            If True, will return the parameters for this estimator and
+            contained subobjects that are estimators.
+            
+        Returns
+        -------
+        params : dict
+            Parameter names mapped to their values.
+        """
+        out = dict()
+        for key in self._get_param_names():
+            if key not in ['U', 'V', 'S', 'T', 'Tau', 'A', 'b', 'Lambda', 'Gamma', 'xi']:
+                value = getattr(self, key)
+                if deep and hasattr(value, 'get_params') and not isinstance(value, type):
+                    deep_items = value.get_params().items()
+                    out.update((key + '__' + k, val) for k, val in deep_items)
+                out[key] = value
+        return out
 
     def auto_shape(self):
         """
         Automatically generate the shape of the parameters of the ReHLine loss function.
         """
-        self.L = self.U.shape[0]
-        self.H = self.S.shape[0]
-        self.K = self.A.shape[0]
+        self.L = self._U.shape[0]
+        self.H = self._S.shape[0]
+        self.K = self._A.shape[0]
 
     def cast_sample_weight(self, sample_weight=None):
         """
@@ -111,21 +137,21 @@ class _BaseReHLine(BaseEstimator):
         sample_weight = self.C*sample_weight
 
         if self.L > 0:
-            U_weight = self.U * sample_weight
-            V_weight = self.V * sample_weight
+            U_weight = self._U * sample_weight
+            V_weight = self._V * sample_weight
         else:
-            U_weight = self.U
-            V_weight = self.V
+            U_weight = self._U
+            V_weight = self._V
 
         if self.H > 0:
             sqrt_sample_weight = np.sqrt(sample_weight)
-            Tau_weight = self.Tau * sqrt_sample_weight
-            S_weight = self.S * sqrt_sample_weight
-            T_weight = self.T * sqrt_sample_weight
+            Tau_weight = self._Tau * sqrt_sample_weight
+            S_weight = self._S * sqrt_sample_weight
+            T_weight = self._T * sqrt_sample_weight
         else:
-            Tau_weight = self.Tau
-            S_weight = self.S
-            T_weight = self.T
+            Tau_weight = self._Tau
+            S_weight = self._S
+            T_weight = self._T
 
         return U_weight, V_weight, Tau_weight, S_weight, T_weight
 
@@ -147,9 +173,9 @@ class _BaseReHLine(BaseEstimator):
         relu_input = np.zeros((self.L, n))
         rehu_input = np.zeros((self.H, n))
         if self.L > 0:
-            relu_input = (self.U.T * score[:,np.newaxis]).T + self.V
+            relu_input = (self._U.T * score[:,np.newaxis]).T + self._V
         if self.H > 0:
-            rehu_input = (self.S.T * score[:,np.newaxis]).T + self.T
+            rehu_input = (self._S.T * score[:,np.newaxis]).T + self._T
         return np.sum(_relu(relu_input), 0) + np.sum(_rehu(rehu_input), 0)
 
     @abstractmethod

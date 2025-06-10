@@ -1,7 +1,7 @@
 ## Test SVM on simulated dataset
 import numpy as np
 
-from rehline import ReHLine
+from rehline import ReHLine, plqERM_Ridge
 
 np.random.seed(1024)
 # simulate classification dataset
@@ -24,15 +24,23 @@ print('solution privided by liblinear: %s' %sol)
 print('solution privided by rehline: %s' %clf.coef_)
 print(clf.decision_function([[.1,.2,.3]]))
 
-# manually specify params
-n, d = X.shape
-U = -(C*y).reshape(1,-1)
-L = U.shape[0]
-V = (C*np.array(np.ones(n))).reshape(1,-1)
+## solution provided by plqERM_Ridge
 
-clf = ReHLine(loss={'name': 'svm'}, C=C)
-clf.U, clf.V = U, V
-clf.fit(X=X)
+clf = plqERM_Ridge(loss={'name': 'svm'}, C=C)
+clf.fit(X=X, y=y)
 
-print('solution privided by rehline: %s' %clf.coef_)
+print('solution privided by plqERM_Ridge: %s' %clf.coef_)
 print(clf.decision_function([[.1,.2,.3]]))
+
+# manually specify params
+# n, d = X.shape
+# U = -(C*y).reshape(1,-1)
+# L = U.shape[0]
+# V = (C*np.array(np.ones(n))).reshape(1,-1)
+
+# clf = ReHLine(C=C)
+# clf._U, clf._V = U, V
+# clf.fit(X=X)
+
+# print('solution privided by rehline: %s' %clf.coef_)
+# print(clf.decision_function([[.1,.2,.3]]))

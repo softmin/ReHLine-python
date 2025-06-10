@@ -1,6 +1,8 @@
 ## Test CQR on simulated dataset
 import numpy as np
-from rehline._class import CQR_Ridge
+
+from rehline import CQR_Ridge
+
 
 def test_CQR_Ridge():
     # Simulate dataset
