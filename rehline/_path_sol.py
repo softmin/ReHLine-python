@@ -23,7 +23,6 @@ def plqERM_Ridge_path_sol(
     shrink=1,
     warm_start=False,
     return_time=True,
-    plot_path=False
 ):
     """
     Compute the PLQ Empirical Risk Minimization (ERM) path over a range of regularization parameters.
@@ -44,6 +43,7 @@ def plqERM_Ridge_path_sol(
     constraint : list of dict, optional (default=[])
         List of constraints applied to the optimization problem. Each constraint should be represented
         as a dictionary compatible with the solver.
+        
 
     eps : float, default=1e-3
         Defines the range of regularization values when `Cs` is not provided. Specifically, the smallest
@@ -64,6 +64,8 @@ def plqERM_Ridge_path_sol(
 
     verbose : int, default=0
         Controls verbosity level of output. Set to higher values (e.g., 1 or 2) for detailed progress logs.
+        When verbose = 1, only print path results table;
+        when verbose = 2, print path results table and path solution plot.
 
     shrink : float, default=1
         Shrinkage factor for the solver, potentially influencing convergence behavior.
@@ -108,14 +110,14 @@ def plqERM_Ridge_path_sol(
     >>> y = np.sign(X.dot(beta0) + np.random.randn(n))
     >>> # define loss function
     >>> loss = {'name': 'svm'}
-    >>> Cs = [2000, 3000, 4000]
-    >>> constrain = [{'name': 'none'}]
+    >>> Cs = np.logspace(-1,3,15)
+    >>> constraint = [{'name': 'nonnegative'}]
 
 
     >>> # calculate
-    >>> Cs, times, n_iters, losses, norms, coefs = plqERM_path_sol(
-    ...     X, y, loss=loss, Cs=Cs, max_iter=100000,tol=1e-4,verbose=1,
-    ...     warm_start=False, constrain=constrain, return_time=True, plot_path=True
+    >>> Cs, times, n_iters, losses, norms, coefs = plqERM_Ridge_path_sol(
+    ...     X, y, loss=loss, Cs=Cs, max_iter=100000,tol=1e-4,verbose=2,
+    ...     warm_start=False, constraint=constraint, return_time=True
     ... )
 
     """
@@ -123,7 +125,7 @@ def plqERM_Ridge_path_sol(
     n_samples, n_features = X.shape
 
     if Cs is None:
-        Cs = np.logspace(-2, 3, n_Cs)
+        Cs = np.logspace(np.log10(eps), 3, n_Cs)
 
     # Sort Cs to ensure computation starts from the smallest value
     Cs = np.sort(Cs)
@@ -194,7 +196,7 @@ def plqERM_Ridge_path_sol(
         avg_time_per_iter = total_time / sum(n_iters) if sum(n_iters) > 0 else float("inf")
 
 
-    if verbose:
+    if verbose >= 1:
         print("\nPLQ ERM Path Solution Results")
         print("=" * 90)
         print(f"{'C Value':<15}{'Iterations':<15}{'Time (s)':<20}{'Loss':<20}{'L2 Norm':<20}")
@@ -211,7 +213,7 @@ def plqERM_Ridge_path_sol(
         print(f"{'Avg Time/Iter':<12}{avg_time_per_iter:.6f} sec")
         print("=" * 90)
 
-    if plot_path:
+    if verbose >= 2:
         import matplotlib.pyplot as plt
         plt.figure(figsize=(10, 6))
         for i in range(n_features):
