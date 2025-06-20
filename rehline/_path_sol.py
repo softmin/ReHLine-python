@@ -46,8 +46,8 @@ def plqERM_Ridge_path_sol(
         
 
     eps : float, default=1e-3
-        Defines the range of regularization values when `Cs` is not provided. Specifically, the smallest
-        regularization value will be approximately `eps` times the largest.
+        Defines the length of the regularization path when `Cs` is not provided.
+        The values of `C` will range from `10^log10(eps)` to `10^-log10(eps)`.
 
     n_Cs : int, default=100
         Number of regularization values to evaluate if `Cs` is not provided.
@@ -125,7 +125,8 @@ def plqERM_Ridge_path_sol(
     n_samples, n_features = X.shape
 
     if Cs is None:
-        Cs = np.logspace(np.log10(eps), 3, n_Cs)
+        log_eps = np.log10(eps)
+        Cs = np.logspace(log_eps, -log_eps, n_Cs)
 
     # Sort Cs to ensure computation starts from the smallest value
     Cs = np.sort(Cs)
