@@ -12,7 +12,9 @@ Example Gallery
    examples/CQR.ipynb
    examples/SVM.ipynb
    examples/FairSVM.ipynb
-   examples/RankRegression.ipynb   
+   examples/RankRegression.ipynb
+   examples/Path_solution.ipynb
+   examples/Warm_start.ipynb   
 
 List of Examples
 ----------------
@@ -25,3 +27,5 @@ List of Examples
    examples/SVM.ipynb
    examples/FairSVM.ipynb
    examples/RankRegression.ipynb
+   examples/Path_solution.ipynb
+   examples/Warm_start.ipynb
