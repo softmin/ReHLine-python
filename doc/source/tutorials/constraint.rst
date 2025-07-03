@@ -9,9 +9,9 @@ Usage
 .. code:: python
    
    # list of 
-   # name (str): name of the custom loss function
-   # loss_kwargs: more keys and values for loss parameters
-   constraint = [{'name': <loss_name>, <**loss_kwargs>}, ...]
+   # name (str): name of the custom linear constraints
+   # loss_kwargs: more keys and values for constraint parameters
+   constraint = [{'name': <constraint_name>, <**constraint_kwargs>}, ...]
 
 .. list-table::
  :align: left
@@ -24,19 +24,19 @@ Usage
 
  * - **nonnegative**
    - | ``name``: 'nonnegative' or '>=0'
-   - | ``loss={'name': '>=0'}``
+   - | ``constraint=[{'name': '>=0'}]``
 
  * - **fair**
    - | ``name``: 'fair' or 'fairness'
      | ``X_sen``: 2d array [n x p] for sensitive attributes
      | ``tol_sen``: 1d array [p] of tolerance for fairness
-   - | ``loss={'name': 'fair', 'X_sen': X_sen, 'tol_sen': tol_sen}``
+   - | ``constraint=[{'name': 'fair', 'X_sen': X_sen, 'tol_sen': tol_sen}]``
 
  * - **custom**
    - | ``name``: 'custom'
      | ``A``: 2d array [K x d] for linear constraint coefficients
      | ``b``: 1d array [K] of constraint intercepts
-   - | ``loss={'name': 'custom', 'A': A, 'b': b}``
+   - | ``constraint=[{'name': 'custom', 'A': A, 'b': b}]``
 
 Related Examples
 ----------------
