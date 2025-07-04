@@ -90,8 +90,8 @@ def plqERM_Ridge_path_sol(
     n_iters : list of int
         Number of iterations used by the solver at each regularization value.
 
-    loss_values : list of float
-        Final loss values (including regularization term) at each `C`.
+    obj_values : list of float
+        Final objective values (including loss and regularization terms) at each `C`.
 
     L2_norms : list of float
         L2 norm of the coefficients (excluding bias) at each `C`.
@@ -134,7 +134,7 @@ def plqERM_Ridge_path_sol(
     coefs = np.zeros((n_features, n_Cs))
     n_iters = []
     times = []
-    loss_values = []
+    obj_values = []
     L2_norms = []
 
 
@@ -150,7 +150,8 @@ def plqERM_Ridge_path_sol(
 
     clf = plqERM_Ridge(
         loss=loss, constraint=constraint, C=Cs[0],
-        max_iter=max_iter, tol=tol, shrink=shrink, verbose=verbose,
+        max_iter=max_iter, tol=tol, shrink=shrink, 
+        verbose=1*(verbose>=2), # ben: if verbose is 1, then the fit function will not show the progress
         warm_start=warm_start
     )
 
@@ -177,8 +178,8 @@ def plqERM_Ridge_path_sol(
         # Compute loss function parameters for ReHLoss
         l2_norm = np.linalg.norm(clf.coef_) ** 2
         score = clf.decision_function(X)
-        total_loss = loss_obj(score) + 0.5*l2_norm
-        loss_values.append(round(total_loss, 4))
+        total_obj = loss_obj(score) + 0.5*l2_norm
+        obj_values.append(round(total_obj, 4))
         L2_norms.append(round(np.linalg.norm(clf.coef_), 4))
 
         # if warm_start:
@@ -203,7 +204,7 @@ def plqERM_Ridge_path_sol(
         print(f"{'C Value':<15}{'Iterations':<15}{'Time (s)':<20}{'Loss':<20}{'L2 Norm':<20}")
         print("-" * 90)
 
-        for C, iters, t, loss_val, l2 in zip(Cs, n_iters, times, loss_values, L2_norms):
+        for C, iters, t, loss_val, l2 in zip(Cs, n_iters, times, obj_values, L2_norms):
             if return_time:
                 print(f"{C:<15.4g}{iters:<15}{t:<20.6f}{loss_val:<20.6f}{l2:<20.6f}")
             else:
@@ -214,20 +215,22 @@ def plqERM_Ridge_path_sol(
         print(f"{'Avg Time/Iter':<12}{avg_time_per_iter:.6f} sec")
         print("=" * 90)
 
-    if verbose >= 2:
-        import matplotlib.pyplot as plt
-        plt.figure(figsize=(10, 6))
-        for i in range(n_features):
-            plt.plot(Cs, coefs[i, :], label=f'Feature {i+1}')
-        plt.xscale('log')
-        plt.xlabel('C')
-        plt.ylabel('Coefficient Value')
-        plt.title('Regularization Path')
-        plt.legend()
-        plt.show()
+    # ben: remove the plot part, when d is large, the figure will be too large to show
+    # if verbose >= 2:
+    #     # it's better to load the matplotlib.pyplot before the function
+    #     import matplotlib.pyplot as plt 
+    #     plt.figure(figsize=(10, 6))
+    #     for i in range(n_features):
+    #         plt.plot(Cs, coefs[i, :], label=f'Feature {i+1}')
+    #     plt.xscale('log')
+    #     plt.xlabel('C')
+    #     plt.ylabel('Coefficient Value')
+    #     plt.title('Regularization Path')
+    #     plt.legend()
+    #     plt.show()
 
     if return_time:
-        return Cs, times, n_iters, loss_values, L2_norms, coefs
+        return Cs, times, n_iters, obj_values, L2_norms, coefs
     else:
-        return Cs, n_iters, loss_values, L2_norms, coefs
+        return Cs, n_iters, obj_values, L2_norms, coefs
 
