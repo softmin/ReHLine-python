@@ -298,6 +298,36 @@ def CQR_Ridge_path_sol(
 
     fit_times : list of float, optional
         Elapsed fit times (if `return_time=True`).
+
+        
+    Example
+    -------
+    >>> from sklearn.datasets import make_friedman1
+    >>> from sklearn.preprocessing import StandardScaler
+    >>> import numpy as np
+    >>> from rehline import CQR_Ridge_path_sol
+
+    >>> # Generate the data
+    >>> X, y = make_friedman1(n_samples=500, n_features=6, noise=1.0, random_state=42)
+    >>> X = StandardScaler().fit_transform(X)
+    >>> y = y / y.std()
+
+    >>> # Set quantiles and Cs
+    >>> quantiles = [0.1, 0.5, 0.9]
+    >>> Cs = np.logspace(-5, 0, 30)
+
+    >>> # Fit CQR path
+    >>> Cs, models, coefs, intercepts, fit_times = CQR_Ridge_path_sol(
+    ...     X, y,
+    ...     quantiles=quantiles,
+    ...     Cs=Cs,
+    ...     max_iter=100000,
+    ...     tol=1e-4,
+    ...     verbose=1,
+    ...     warm_start=True,
+    ...     return_time=True
+    ... )
+    
     """
 
     if Cs is None:
