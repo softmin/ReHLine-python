@@ -1,10 +1,10 @@
 import time
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 from ._base import _make_loss_rehline_param
 from ._class import plqERM_Ridge
+from ._class import CQR_Ridge
 from ._loss import ReHLoss
 
 
@@ -215,22 +215,140 @@ def plqERM_Ridge_path_sol(
         print(f"{'Avg Time/Iter':<12}{avg_time_per_iter:.6f} sec")
         print("=" * 90)
 
-    # ben: remove the plot part, when d is large, the figure will be too large to show
-    # if verbose >= 2:
-    #     # it's better to load the matplotlib.pyplot before the function
-    #     import matplotlib.pyplot as plt 
-    #     plt.figure(figsize=(10, 6))
-    #     for i in range(n_features):
-    #         plt.plot(Cs, coefs[i, :], label=f'Feature {i+1}')
-    #     plt.xscale('log')
-    #     plt.xlabel('C')
-    #     plt.ylabel('Coefficient Value')
-    #     plt.title('Regularization Path')
-    #     plt.legend()
-    #     plt.show()
 
     if return_time:
         return Cs, times, n_iters, obj_values, L2_norms, coefs
     else:
         return Cs, n_iters, obj_values, L2_norms, coefs
 
+
+
+def CQR_Ridge_path_sol(
+    X,
+    y,
+    *,
+    quantiles,
+    eps=1e-5,
+    n_Cs=50,
+    Cs=None,
+    max_iter=5000,
+    tol=1e-4,
+    verbose=0,
+    shrink=1,
+    warm_start=False,
+    return_time=True,
+):
+    """
+    Compute the regularization path for Composite Quantile Regression (CQR) with ridge penalty.
+
+    This function fits a series of CQR models using different values of the regularization parameter `C`.
+    It reuses a single estimator and modifies `C` in-place before refitting.
+
+    Parameters
+    ----------
+    X : ndarray of shape (n_samples, n_features)
+        Feature matrix.
+
+    y : ndarray of shape (n_samples,)
+        Response vector.
+
+    quantiles : list of float
+        Quantile levels (e.g. [0.1, 0.5, 0.9]).
+
+    eps : float, default=1e-5
+        Log-scaled lower bound for generated `C` values (used if `Cs` is None).
+
+    n_Cs : int, default=50
+        Number of `C` values to generate.
+
+    Cs : array-like or None, default=None
+        Explicit values of regularization strength. If None, use `eps` and `n_Cs` to generate them.
+
+    max_iter : int, default=5000
+        Maximum number of solver iterations.
+
+    tol : float, default=1e-4
+        Solver convergence tolerance.
+
+    verbose : int, default=0
+        Verbosity level.
+
+    shrink : float, default=1
+        Shrinkage parameter passed to solver.
+
+    warm_start : bool, default=False
+        Use previous dual solution to initialize the next fit.
+
+    return_time : bool, default=True
+        Whether to return a list of fit durations.
+
+    Returns
+    -------
+    Cs : ndarray
+        List of regularization strengths.
+
+    models : list
+        List of fitted model objects.
+
+    coefs : ndarray of shape (n_Cs, n_quantiles, n_features)
+        Coefficient matrices per quantile and `C`.
+
+    intercepts : ndarray of shape (n_Cs, n_quantiles)
+        Intercepts per quantile and `C`.
+
+    fit_times : list of float, optional
+        Elapsed fit times (if `return_time=True`).
+    """
+
+    if Cs is None:
+        log_Cs = np.linspace(np.log10(eps), np.log10(10), n_Cs)
+        Cs = np.power(10.0, log_Cs)
+    else:
+        Cs = np.array(Cs)
+
+    models = []
+    fit_times = []
+    coefs = []
+    intercepts = []
+
+    clf = CQR_Ridge(
+        quantiles=quantiles,
+        C=Cs[0],
+        max_iter=max_iter,
+        tol=tol,
+        shrink=shrink,
+        verbose=verbose,
+        warm_start=warm_start,
+    )
+
+    for i, C in enumerate(Cs):
+        clf.C = C  
+
+        if return_time:
+            start = time.time()
+
+        clf.fit(X, y)
+
+        d = X.shape[1]
+        n_qt = len(quantiles)
+
+        coef_matrix = np.tile(clf.coef_, (n_qt, 1))
+        intercept_vector = clf.intercept_
+
+        models.append(clf)
+        coefs.append(coef_matrix)
+        intercepts.append(intercept_vector)
+
+        if return_time:
+            elapsed = time.time() - start
+            fit_times.append(elapsed)
+            if verbose >= 1:
+                print(f"[OK] C={C:.3e}, time={elapsed:.3f}s")
+
+    coefs = np.array(coefs)       # (n_Cs, n_quantiles, n_features)
+    intercepts = np.array(intercepts)  # (n_Cs, n_quantiles)
+
+    if return_time:
+        return Cs, models, coefs, intercepts, fit_times
+    else:
+        return Cs, models, coefs, intercepts
