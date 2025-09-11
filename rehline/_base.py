@@ -410,7 +410,7 @@ def _make_constraint_rehline_param(constraint, X, y=None):
         Each dictionary must contain a 'name' key, which specifies the type of constraint.
         The following constraint types are supported:
             * 'nonnegative' or '>=0': A non-negativity constraint.
-            * 'fair' or 'fairness': A fairness constraint.
+            * 'fair' or 'fairness': A fairness constraint using 'sen_idx' and 'tol_sen'.
             * 'custom': A custom constraint, where the user must provide the constraint matrix 'A' and vector 'b'.
 
     X : array-like of shape (n_samples, n_features)
@@ -424,43 +424,39 @@ def _make_constraint_rehline_param(constraint, X, y=None):
     A : array-like of shape (n_constraints, n_features)
         The constraint matrix.
 
-    b : array-like of shape (n_constraints,)
+    B : array-like of shape (n_constraints,)
         The constraint vector.
-
-    Notes
-    -----
-    This function iterates over the list of constraints and generates the constraint matrix 'A' and vector 'b' accordingly.
-    For 'nonnegative' and 'fair' constraints, the function generates the constraint parameters automatically.
-    For 'custom' constraints, the user must provide the constraint matrix 'A' and vector 'b' explicitly.    
     """
 
     n, d = X.shape
 
     ## initialization
-    A=np.empty(shape=(0, 0))
-    b=np.empty(shape=(0))
+    A = np.empty(shape=(0, 0))
+    b = np.empty(shape=(0))
 
     for constr_tmp in constraint:
         if (constr_tmp['name'] == 'nonnegative') or (constr_tmp['name'] == '>=0'):
             A_tmp = np.identity(d)
             b_tmp = np.zeros(d)
+
         elif (constr_tmp['name'] == 'fair') or (constr_tmp['name'] == 'fairness'):
-            X_sen = constr_tmp['X_sen']
+            sen_idx = constr_tmp['sen_idx']   # list of indices
             tol_sen = constr_tmp['tol_sen']
             tol_sen = np.array(tol_sen).reshape(-1)
 
-            assert len(X_sen) == len(X), "X and X_sen must have the same length"
-            X_sen = X_sen.reshape(n,-1)
+            X_sen = X[:, sen_idx]
+            X_sen = X_sen.reshape(n, -1)
 
             assert X_sen.shape[1] == len(tol_sen), "dim of X_sen and len of tol_sen must be equal"
-            d_sen = X_sen.shape[1]
 
             A_tmp = np.repeat(X_sen.T @ X, repeats=[2], axis=0) / n
             A_tmp[::2] = -A_tmp[::2]
             b_tmp = np.repeat(tol_sen, repeats=[2], axis=0)
+
         elif (constr_tmp['name'] == 'custom'):
             A_tmp = constr_tmp['A']
             b_tmp = constr_tmp['b']
+
         else:
             raise Exception("Sorry, ReHLine currently does not support this constraint, \
                         but you can add it by manually setting A and b via {'name': 'custom', 'A': A, 'b': b}")
@@ -469,6 +465,7 @@ def _make_constraint_rehline_param(constraint, X, y=None):
         b = np.hstack([b, b_tmp]) if b.size else b_tmp
 
     return A, b
+
 
 def _make_penalty_rehline_param(self, penalty=None, X=None):
     """The `_make_penalty_rehline_param` function generates penalty parameters for the ReHLine solver.
