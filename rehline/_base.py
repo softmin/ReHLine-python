@@ -424,7 +424,7 @@ def _make_constraint_rehline_param(constraint, X, y=None):
     A : array-like of shape (n_constraints, n_features)
         The constraint matrix.
 
-    B : array-like of shape (n_constraints,)
+    b : array-like of shape (n_constraints,)
         The constraint vector.
     """
 
