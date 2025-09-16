@@ -28,9 +28,9 @@ Usage
 
  * - **fair**
    - | ``name``: 'fair' or 'fairness'
-     | ``X_sen``: 2d array [n x p] for sensitive attributes
+     | ``sen_idx``: a list contains column indices for sensitive attributes
      | ``tol_sen``: 1d array [p] of tolerance for fairness
-   - | ``constraint=[{'name': 'fair', 'X_sen': X_sen, 'tol_sen': tol_sen}]``
+   - | ``constraint=[{'name': 'fair', 'sen_idx': sen_idx, 'tol_sen': tol_sen}]``
 
  * - **custom**
    - | ``name``: 'custom'

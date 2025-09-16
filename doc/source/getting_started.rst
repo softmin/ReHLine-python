@@ -126,7 +126,7 @@ With `rehline`, you can easily add a `fairness constraint` to your ERM.
     from scipy.stats import pearsonr
     # Define a Huber estimator with fairness constraint
     clf = plqERM_Ridge(loss={'name': 'huber', 'tau': 0.5},
-                       constraint=[{'name': 'fair', 'X_sen': X_train[:, 0], 'tol_sen': 0.1}], 
+                       constraint=[{'name': 'fair', 'sen_idx': [0], 'tol_sen': 0.1}], 
                        C=1.0,
                        max_iter=10000)
     clf.fit(X=X_train, y=y_train)
