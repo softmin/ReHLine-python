@@ -275,7 +275,7 @@ class plq_Ridge_Regressor(plqERM_Ridge, RegressorMixin):
     - **Intercept handling**: if ``fit_intercept=True``, a constant column (value = ``intercept_scaling``)
       is appended to the right of the design matrix before calling the base solver. The last learned
       coefficient is then split out as ``intercept_``.
-      → The column indeices of the original features reamin; therefore, ``sen_idx`` in the constraint ``fair`` follow the original index.
+      → The column indices of the original features reamin; therefore, ``sen_idx`` in the constraint ``fair`` follow the original index.
     - **Constraint handling**: constraints are passed through unchanged; the base class will call
       ``_make_constraint_rehline_param(constraint, X, y)`` on the matrix given to `fit`.
       With your updated implementation, ``fair`` must be specified as
