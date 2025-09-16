@@ -473,6 +473,143 @@ def _make_penalty_rehline_param(self, penalty=None, X=None):
     raise Exception("Sorry, `_make_penalty_rehline_param` feature is currently under development.")
 
 
+def _cast_sample_bias(U, V, Tau, S, T, sample_bias=None):
+    """Cast sample bias to ReHLine parameters by injecting bias into V and T.
+    
+    This function modifies the ReHLine parameters to incorporate individual
+    sample biases through linear transformations of the intercept parameters.
+
+    Parameters
+    ----------
+    U : array-like of shape (L, n_samples)
+        ReLU coefficient matrix.
+
+    V : array-like of shape (L, n_samples)
+        ReLU intercept vector.
+
+    Tau : array-like of shape (H, n_samples)
+        ReHU cutpoint matrix.
+
+    S : array-like of shape (H, n_samples)
+        ReHU coefficient vector.
+
+    T : array-like of shape (H, n_samples)
+        ReHU intercept vector.
+
+    sample_bias : array-like of shape (n_samples, 1)
+        Individual sample bias vector. If None, parameters are returned unchanged.
+
+    Returns
+    -------
+    U_bias : array-like of shape (L, n_samples)
+        Biased coefficient matrix, actually doesn't change
+
+    V_bias : array-like of shape (L, n_samples)
+        Biased ReLU intercept vector: V + U * sample_bias
+
+    Tau_bias : array-like of shape (H, n_samples)    
+        Biased ReHU cutpoint matrix, actually doesn't change
+
+    S_bias : array-like of shape (H, n_samples)
+        Biased ReHU coefficient vector, actually doesn't change
+
+    T_bias : array-like of shape (H, n_samples)
+        Biased ReHU intercept vector: T + S * sample_bias
+
+    Notes
+    -----
+    The transformation applies the sample bias through:
+    - V_bias = V + U ⊙ sample_bias
+    - T_bias = T + S ⊙ sample_bias
+    
+    where ⊙ denotes element-wise multiplication with broadcasting.
+    """
+    if sample_bias is None:
+        return U, V, Tau, S, T
+    
+    else:
+        sample_bias = sample_bias.reshape(1, -1)
+        U_bias = U
+        V_bias = V + (U * sample_bias if U.shape[0] > 0 else 0)
+        Tau_bias = Tau
+        S_bias = S
+        T_bias = T + (S * sample_bias if S.shape[0] > 0 else 0)
+
+        return U_bias, V_bias, Tau_bias, S_bias, T_bias
+
+
+def _cast_sample_weight(U, V, Tau, S, T, C=1.0, sample_weight=None):
+    """Apply sample weights and regularization to ReHLine parameters.
+
+    Parameters
+    ----------
+    U : array-like of shape (L, n_samples)
+        ReLU coefficient matrix.
+
+    V : array-like of shape (L, n_samples)
+        ReLU intercept vector.
+
+    Tau : array-like of shape (H, n_samples)
+        ReHU cutpoint matrix.
+
+    S : array-like of shape (H, n_samples)
+        ReHU coefficient vector.
+
+    T : array-like of shape (H, n_samples)
+        ReHU intercept vector.
+
+    C : float, default=1.0
+        Regularization parameter. The strength of the regularization is
+        inversely proportional to C. Must be strictly positive. 
+
+    sample_weight : array-like of shape (n_samples,), default=None
+        Individual sample weight. If None, then samples are equally weighted.
+
+    Returns
+    -------
+    U_weight : array-like of shape (L, n_samples)
+        Weighted ReLU coefficient matrix.
+
+    V_weight : array-like of shape (L, n_samples)
+        Weighted ReLU intercept vector.
+
+    Tau_weight : array-like of shape (H, n_samples)
+        Weighted ReHU cutpoint matrix.
+
+    S_weight : array-like of shape (H, n_samples)
+        Weighted ReHU coefficient vector.
+
+    T_weight : array-like of shape (H, n_samples)
+        Weighted ReHU intercept vector.
+
+    Notes
+    -----
+    This function casts the sample weight to the ReHLine parameters by multiplying
+    the sample weight with the ReLU and ReHU parameters. If sample_weight is None,
+    then the sample weight is set to the regularization parameter C.
+    """
+    sample_weight = C * sample_weight
+
+    if U.shape[0] > 0:
+        U_weight = U * sample_weight
+        V_weight = V * sample_weight
+    else:
+        U_weight = U
+        V_weight = V
+
+    if S.shape[0] > 0:
+        sqrt_sample_weight = np.sqrt(sample_weight)
+        Tau_weight = Tau * sqrt_sample_weight
+        S_weight = S * sqrt_sample_weight
+        T_weight = T * sqrt_sample_weight
+    else:
+        Tau_weight = Tau
+        S_weight = S
+        T_weight = T
+
+    return U_weight, V_weight, Tau_weight, S_weight, T_weight
+
+
 # def append_l1(self, X, l1_pen=1.0):
 #     r"""
 #     This function appends the l1 penalty to the ReHLine problem. The formulation becomes:
