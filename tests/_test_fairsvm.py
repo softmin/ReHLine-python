@@ -1,19 +1,25 @@
 ## Test SVM on simulated dataset
 import numpy as np
-
-from rehline import make_fair_classification, plqERM_Ridge
+from sklearn.datasets import make_classification
+from sklearn.preprocessing import StandardScaler
+from rehline import plqERM_Ridge
 
 np.random.seed(1024)
 # simulate classification dataset
-X, y, X_sen = make_fair_classification()
-n, d = X.shape
-C = 0.5
+n, d, C = 100, 5, 0.5
+X, y = make_classification(n, d)
+y = 2*y - 1
+
+scaler = StandardScaler()
+X = scaler.fit_transform(X)
+sen_idx = [0]
 
 ## solution provided by ReHLine
 # build-in hinge loss for svm
 clf = plqERM_Ridge(loss={'name': 'svm'}, C=C)
 
 # specific the param of FairSVM
+X_sen = X[:,sen_idx]
 A = np.repeat([X_sen @ X], repeats=[2], axis=0) / n
 A[1] = -A[1]
 # suppose the fair tolerance is 0.01
