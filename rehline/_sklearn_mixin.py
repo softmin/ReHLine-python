@@ -410,7 +410,6 @@ class plq_Ridge_Regressor(plqERM_Ridge, RegressorMixin):
             col = np.full((X.shape[0], 1), self.intercept_scaling, dtype=X.dtype)
             X_aug = np.hstack([X, col])
 
-        # Delegate to base solver (it will build loss/constraints from the X we pass)
         super().fit(X_aug, y, sample_weight=sample_weight)
 
         # Split intercept from coefficients to match sklearn's linear model API
