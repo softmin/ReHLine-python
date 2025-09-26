@@ -39,14 +39,14 @@ class plq_Ridge_Classifier(plqERM_Ridge, ClassifierMixin):
     C : float, default=1.0
         Inverse regularization strength.
 
-    U, V, Tau, S, T : ndarray, default empty
+    _U, _V, _Tau, _S, _T : ndarray, default empty
         Parameters for the PLQ representation of the loss function.
         Typically built internally by helper functions.
 
-    A : ndarray of shape (K, n_features), default empty
+    _A : ndarray of shape (K, n_features), default empty
         Linear-constraint coefficient matrix.
 
-    b : ndarray of shape (K,), default empty
+    _b : ndarray of shape (K,), default empty
         Linear-constraint intercept vector.
 
     max_iter : int, default=1000
@@ -297,9 +297,9 @@ class plq_Ridge_Regressor(plqERM_Ridge, RegressorMixin):
         since you index sensitive columns by ``sen_idx`` on the *original* features, indices stay valid.
     C : float, default=1.0
         Regularization parameter (absorbed by ReHLine parameters inside the solver).
-    U, V, Tau, S, T : ndarray, default empty
+    _U, _V, _Tau, _S, _T : ndarray, default empty
         Advanced PLQ parameters for the underlying ReHLine formulation (usually left as defaults).
-    A, b : ndarray, default empty
+    _A, _b : ndarray, default empty
         Optional linear constraint matrices (used only if ``constraint`` contains ``{'name': 'custom'}``).
         (Your `_make_constraint_rehline_param` is responsible for validating their shapes.)
     max_iter : int, default=1000
