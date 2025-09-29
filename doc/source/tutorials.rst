@@ -42,7 +42,8 @@ List of Tutorials
    - | Empirical Risk Minimization (ERM) with a piecewise linear-quadratic (PLQ) objective with a ridge penalty.
 
  * - `ReHLine: Scikit-learn Compatible Estimators Powered by ReHLine <./examples/Sklearn_Mixin.ipynb>`_
-   - | `plqERM_Ridge <./autoapi/rehline/index.html#rehline.plqERM_Ridge>`_
+   - | `plqERM_Ridge <./autoapi/rehline/index.html#rehline.plq_Ridge_Classifier>`_
+   - | `plqERM_Ridge <./autoapi/rehline/index.html#rehline.plq_Ridge_Regressor>`_
    - | Scikit-learn compatible estimators framework for empirical risk minimization problem.
 
  * - `ReHLine: Ridge Composite Quantile Regression <./examples/CQR.ipynb>`_

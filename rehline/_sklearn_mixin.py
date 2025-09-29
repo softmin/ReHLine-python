@@ -16,12 +16,12 @@ class plq_Ridge_Classifier(plqERM_Ridge, ClassifierMixin):
     and ridge penalty, compatible with the scikit-learn API.
 
     This wrapper makes ``plqERM_Ridge`` behave as a classifier:
-    - Accepts arbitrary binary labels in the original label space.
-    - Computes class weights on original labels (if ``class_weight`` is set).
-    - Encodes labels with ``LabelEncoder`` into {0,1}, then maps to {-1,+1} for training.
-    - Supports optional intercept fitting (via an augmented constant feature).
-    - Provides standard methods ``fit``, ``predict``, and ``decision_function``.
-    - Integrates with scikit-learn ecosystem (e.g., GridSearchCV, Pipeline).
+        - Accepts arbitrary binary labels in the original label space.
+        - Computes class weights on original labels (if ``class_weight`` is set).
+        - Encodes labels with ``LabelEncoder`` into {0,1}, then maps to {-1,+1} for training.
+        - Supports optional intercept fitting (via an augmented constant feature).
+        - Provides standard methods ``fit``, ``predict``, and ``decision_function``.
+        - Integrates with scikit-learn ecosystem (e.g., GridSearchCV, Pipeline).
 
     Parameters
     ----------
