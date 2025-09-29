@@ -48,6 +48,16 @@ The proposed **ReHLine** solver has appealing exhibits appealing properties:
     * - **Super-Efficient**
       - The optimization algorithm has a provable **LINEAR** convergence rate, and the per-iteration computational complexity is **LINEAR** in the sample size.
 
+✨ New Features: Scikit-Learn Compatible Estimators
+---------------------------------------------------
+
+We are excited to introduce full scikit-learn compatibility! `ReHLine` now provides `plq_Ridge_Classifier` and `plq_Ridge_Regressor` estimators that integrate seamlessly with the entire scikit-learn ecosystem.
+
+This means you can:
+   - Drop `ReHLine` estimators directly into your existing scikit-learn `Pipeline`.
+   - Perform robust hyperparameter tuning using `GridSearchCV`.
+   - Use standard scikit-learn evaluation metrics and cross-validation tools.
+
 🔨 Installation
 ---------------
 

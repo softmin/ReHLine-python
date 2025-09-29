@@ -9,7 +9,6 @@
 - Paper: [NeurIPS | 2023](https://openreview.net/pdf?id=3pEBW2UPAD)
 <!-- - Open Source: [MIT license](https://opensource.org/licenses/MIT) -->
 
-
 The **ReHLine** solver has four appealing
 "linear properties":
 
@@ -17,6 +16,16 @@ The **ReHLine** solver has four appealing
 - In addition, it supports linear equality and inequality constraints on the parameter vector.
 - The optimization algorithm has a provable linear convergence rate.
 - The per-iteration computational complexity is linear in the sample size.
+
+
+## ✨ New Features: Scikit-Learn Compatible Estimators
+
+We are excited to introduce full scikit-learn compatibility! `ReHLine` now provides `plq_Ridge_Classifier` and `plq_Ridge_Regressor` estimators that integrate seamlessly with the entire scikit-learn ecosystem.
+
+This means you can:
+- Drop `ReHLine` estimators directly into your existing scikit-learn `Pipeline`.
+- Perform robust hyperparameter tuning using `GridSearchCV`.
+- Use standard scikit-learn evaluation metrics and cross-validation tools.
 
 <!-- 
 ## 📝 Formulation
@@ -57,7 +66,3 @@ benchmark code and results at the
 |[RidgeHuber](https://github.com/softmin/ReHLine-benchmark/tree/main/benchmark_Huber) | [Result](https://rehline-python.readthedocs.io/en/latest/_static/benchmark/benchmark_Huber.html)|
 |[SVM](https://github.com/softmin/ReHLine-benchmark/tree/main/benchmark_SVM) | [Result](https://rehline-python.readthedocs.io/en/latest/_static/benchmark/benchmark_SVM.html)|
 |[Smoothed SVM](https://github.com/softmin/ReHLine-benchmark/tree/main/benchmark_sSVM) | [Result](https://rehline-python.readthedocs.io/en/latest/_static/benchmark/benchmark_sSVM.html)|
-
-## 🧾 Overview of Results
-
-![](./figs/res.png)

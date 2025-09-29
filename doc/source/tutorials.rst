@@ -41,9 +41,8 @@ List of Tutorials
    - | `plqERM_Ridge <./autoapi/rehline/index.html#rehline.plqERM_Ridge>`_
    - | Empirical Risk Minimization (ERM) with a piecewise linear-quadratic (PLQ) objective with a ridge penalty.
 
- * - `ReHLine: Scikit-learn Compatible Estimators Powered by ReHLine <./examples/Sklearn_Mixin.ipynb>`_
-   - | `plqERM_Ridge <./autoapi/rehline/index.html#rehline.plq_Ridge_Classifier>`_
-   - | `plqERM_Ridge <./autoapi/rehline/index.html#rehline.plq_Ridge_Regressor>`_
+ * - `ReHLine: Scikit-learn Compatible Estimators <./tutorials/ReHLine_sklearn.rst>`_
+   - | `plq_Ridge_Classifier <./autoapi/rehline/index.html#rehline.plq_Ridge_Classifier>`_ `plq_Ridge_Regressor <./autoapi/rehline/index.html#rehline.plq_Ridge_Regressor>`_
    - | Scikit-learn compatible estimators framework for empirical risk minimization problem.
 
  * - `ReHLine: Ridge Composite Quantile Regression <./examples/CQR.ipynb>`_
@@ -51,7 +50,7 @@ List of Tutorials
    - | Composite Quantile Regression (CQR) with a ridge penalty.
 
  * - `ReHLine: Matrix Factorization <./tutorials/ReHLine_MF.rst>`_
-   - | `plqMF_Ridge <./autoapi/rehline/index.html#rehline.plqERM_Ridge>`_
+   - | `plqMF_Ridge <./autoapi/rehline/index.html#rehline.plqMF_Ridge>`_
    - | Matrix Factorization (MF) with a piecewise linear-quadratic (PLQ) objective with a ridge penalty.
 
 .. toctree::
@@ -62,5 +61,6 @@ List of Tutorials
    ./tutorials/ReHLine_ERM
    ./tutorials/loss
    ./tutorials/constraint
+   ./tutorials/ReHLine_sklearn
    ./tutorials/warmstart
 
