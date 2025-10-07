@@ -6,8 +6,8 @@ from ._internal import rehline_internal, rehline_result
 from ._path_sol import plqERM_Ridge_path_sol
 from ._sklearn_mixin import plq_Ridge_Classifier, plq_Ridge_Regressor
 
-__all__ = ("ReHLine_solver",
-           "_BaseReHLine",
+__all__ = ("_BaseReHLine",
+           "ReHLine_solver",
            "ReHLine",
            "plqERM_Ridge",
            "CQR_Ridge",
