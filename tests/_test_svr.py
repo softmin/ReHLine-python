@@ -1,7 +1,7 @@
 ## Test SVR on simulated dataset
 import numpy as np
 
-from rehline import ReHLine
+from rehline import ReHLine, plqERM_Ridge
 
 np.random.seed(1024)
 # simulate regression dataset

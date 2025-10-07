@@ -76,9 +76,6 @@ def plqERM_Ridge_path_sol(
     return_time : bool, default=True
         If True, return timing information for each value of `C`.
 
-    plot_path : bool, default=False
-        If True, generate a plot of the coefficient paths as a function of `C`.
-
     Returns
     -------
     Cs : ndarray of shape (n_Cs,)

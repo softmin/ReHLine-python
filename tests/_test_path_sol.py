@@ -24,7 +24,6 @@ Cs = np.logspace(-20, 10, 50, base=2)  # Define a range of C values for the path
 #     warm_start=False,
 #     constraint=[],
 #     return_time=True,
-#     plot_path=True
 # )
 
 # calculate with warm_start=True
@@ -38,7 +37,6 @@ Cs_values_warm, times_warm, n_iters_warm, loss_values_warm, L2_norms_warm, coefs
     warm_start=True,
     constraint=[],
     return_time=True,
-    plot_path=True
 )
 
 

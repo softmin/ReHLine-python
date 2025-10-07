@@ -20,7 +20,7 @@ clf = plqERM_Ridge(loss={'name': 'svm'}, C=C)
 
 # specific the param of FairSVM
 X_sen = X[:,sen_idx]
-A = np.repeat([X_sen @ X], repeats=[2], axis=0) / n
+A = np.repeat([X_sen.flatten() @ X], repeats=[2], axis=0) / n
 A[1] = -A[1]
 # suppose the fair tolerance is 0.01
 b = np.array([.01, .01])
