@@ -1,7 +1,7 @@
 # ReHLine <a href="https://github.com/softmin/ReHLine"><img src="doc/source/figs/logo.png" align="right" height="138" /></a>
 
 **ReHLine** is designed to be a computationally efficient and practically useful software package for large-scale empirical risk minimization (ERM) problems.
-
+ 
 - Documentation: [https://rehline-python.readthedocs.io](https://rehline-python.readthedocs.io)
 - Project homepage: [https://rehline.github.io](https://rehline.github.io)
 - GitHub repo: [https://github.com/softmin/ReHLine-python](https://github.com/softmin/ReHLine-python) 
