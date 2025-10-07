@@ -1,6 +1,6 @@
 [project]
 name = "rehline"
-version = "0.1.0"
+version = "0.1.1"
 description = "Regularized Composite ReLU-ReHU Loss Minimization with Linear Computation and Linear Convergence"
 authors = [
   {name = "Ben Dai", email = "bendai@cuhk.edu.hk"},
