@@ -141,13 +141,7 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
 
     sample_weight : ndarray of shape (n_ratings,)
         Sample weights used during fitting. Available after fitting.
-
-    coef_ : ndarray of shape (n_users + n_items, rank)
-        Combined user and item latent factors (for scikit-learn compatibility).
-
-    n_iter_ : int
-        Actual number of coordinate descent iterations performed.
-
+        
     Methods
     -------
     fit(X, y, sample_weight=None)

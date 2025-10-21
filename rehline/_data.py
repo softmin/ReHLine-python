@@ -1,9 +1,7 @@
+
 import numpy as np
-import pandas as pd
-from pathlib import Path
 from sklearn.datasets import make_classification
 from sklearn.preprocessing import StandardScaler
-
 
 
 def make_fair_classification(n_samples=100, n_features=5, ind_sensitive=0):
@@ -44,69 +42,38 @@ def make_fair_classification(n_samples=100, n_features=5, ind_sensitive=0):
     return X, y, X_sen
 
 
-
-def load_dataset(name, return_X_y=False):
-    """
-    Load a CSV dataset from the rehline/datasets directory.
-
-    This function follows scikit-learn's dataset loading conventions, providing
-    flexible return formats and metadata.
-
-    Parameters
-    ----------
-    name : str
-        Name of the dataset (without the .csv extension, e.g., "ml-100k").
-    return_X_y : bool, default=False
-        If True, returns a tuple (X, y) instead of a dictionary.
-
-    Returns
-    -------
-    data : dict
-        When return_X_y=False, a dictionary containing:
-        - data: Feature matrix X
-        - target: Target vector y
-        - feature_names: List of feature column names
-        - target_names: List containing the target column name
-        - DESCR: Dataset description
-    X, y : tuple of ndarrays
-        When return_X_y=True, returns the feature matrix and target vector.
-
-    Raises
-    ------
-    FileNotFoundError
-        If the specified dataset file does not exist in rehline/datasets.
-    """
-    # Determine dataset path
-    data_dir = Path(__file__).parent / "datasets"
-    file_path = data_dir / f"{name}.csv"
-
-    # Validate file existence
-    if not file_path.exists():
-        raise FileNotFoundError(
-            f"Dataset file {file_path} not found. Please check the name or ensure "
-            "the file is placed in the rehline/datasets directory."
-        )
-
-    # Load CSV (assumes last column is target, others are features)
-    df = pd.read_csv(file_path)
-    X = df.iloc[:, :-1].values  # Feature matrix
-    y = df.iloc[:, -1].values   # Target vector (last column)
-
-    # Prepare metadata
-    feature_names = df.columns[:-1].tolist()
-    target_name = df.columns[-1] if len(df.columns) > 0 else "target"
+def make_ratings(n_users, n_items, n_factors=20,
+             n_interactions=None, density=0.01, 
+             noise_std=0.1, seed=None, 
+             rating_min=1.0, rating_max=5.0, return_params=True):
+    """Generate synthetic rating data."""
+    rng = np.random.RandomState(seed)
     
-    # Construct return dictionary
-    data_dict = {
-        "data": X,
-        "target": y,
-        "feature_names": feature_names,
-        "target_names": [target_name],
-        "DESCR": f"Dataset {name} loaded from rehline/datasets/{name}.csv"
-    }
+    # Calculate interactions
+    total_pairs = n_users * n_items
+    n_interactions = n_interactions or int(total_pairs * density)
+    n_interactions = min(n_interactions, total_pairs)
+    
+    # Generate factors and biases
+    scale = 1 / np.sqrt(n_factors)
+    P = rng.normal(0, scale, (n_users, n_factors))
+    Q = rng.normal(0, scale, (n_items, n_factors))
+    bu = rng.normal(0, 0.5, n_users)
+    bi = rng.normal(0, 0.5, n_items)
+    
+    # Sample interactions
+    flat_idx = rng.choice(total_pairs, n_interactions, False)
+    users, items = flat_idx // n_items, flat_idx % n_items
+    
+    # Compute ratings
+    dot_vals = (P[users] * Q[items]).sum(axis=1)
+    noise = rng.normal(0, noise_std, n_interactions)
+    mu = (rating_min + rating_max) / 2
+    y = np.clip(mu + bu[users] + bi[items] + dot_vals + noise, rating_min, rating_max)
+    
+    # Return results
+    result = {"X": np.column_stack([users, items]), "y": y}
+    if return_params:
+        result["params"] = {"P": P, "Q": Q, "bu": bu, "bi": bi, "mu": mu}
 
-    # Return appropriate format based on flag
-    if return_X_y:
-        return X, y
-    else:
-        return data_dict
+return result

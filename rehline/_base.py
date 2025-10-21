@@ -393,6 +393,20 @@ def _make_loss_rehline_param(loss, X, y):
         U = np.array([[1.0] * n, [-1.0] * n])
         V = np.array([-y , y])
 
+    elif (loss['name'] == 'SVM square') \
+            or (loss['name'] == 'svm square') \
+            or (loss['name'] == 'hinge square'):
+        Tau = np.inf * np.ones((1, n)) 
+        S = - np.sqrt(2) * y.reshape(1,-1)
+        T = np.sqrt(2) * np.ones((1, n)) 
+
+    elif (loss['name'] == 'MSE') \
+            or (loss['name'] == 'mse') \
+            or (loss['name'] == 'mean square error'):
+        Tau = np.inf * np.ones((2, n)) 
+        S = np.array([[np.sqrt(2)] * n, [-np.sqrt(2)] * n])
+        T = np.array([-np.sqrt(2) * y , np.sqrt(2) * y])
+
     
     else:
         raise Exception("Sorry, ReHLine currently does not support this loss function, \
