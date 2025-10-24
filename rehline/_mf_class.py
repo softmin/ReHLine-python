@@ -34,6 +34,8 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
     The function supports various loss functions, including:
         - 'hinge', 'svm' or 'SVM'
         - 'MAE' or 'mae' or 'mean absolute error'
+        - 'hinge square' or 'svm square' or 'SVM square'
+        - 'MSE' or 'mse' or 'mean square error'
 
     The following constraint types are supported:
         * 'nonnegative' or '>=0': A non-negativity constraint.
@@ -80,16 +82,16 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
         Random seed for reproducible initialization of latent factors.
 
     max_iter : int, default=1000
-        The maximum number of iterations to be run.
+        The maximum number of iterations to be run for the ReHLine solver.
     
     tol : float, default=1e-4
-        The tolerance for the stopping criterion.
+        The tolerance for the stopping criterion for the ReHLine solver.
 
     shrink : float, default=1
-        The shrinkage of dual variables for the ReHLine algorithm.
+        The shrinkage of dual variables for the ReHLine solver.
 
     trace_freq : int, default=100
-        The frequency at which to print the optimization trace.
+        The frequency at which to print the optimization trace for the ReHLine solver.
 
     max_iter_CD : int, default=10
         Maximum number of iterations for coordinate descent steps.
@@ -100,17 +102,17 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
     verbose : int, default=0
         Verbosity level:
         - 0: No output
-        - 1: CD algorithm progress information
-        - 2: ReHLine Solver optimization information
+        - 1: CD iteration progress information
+        - 2: ReHLine solver optimization information
         - 3: All information of CD and ReHLine
 
     Attributes
     ----------
     n_users : int
-        Number of users in the training data.
+        Number of unique users in the dataset(or number of rows in target sparse matrix).
 
     n_items : int
-        Number of items in the training data.
+        Number of unique items in the dataset(or number of columns in target sparse matrix).
 
     n_ratings : int
         Number of ratings in the training data (available after fitting).
@@ -122,10 +124,10 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
         Item latent factor matrix. Learned during fitting.
 
     bu : ndarray of shape (n_users,) or None
-        User bias terms. Only available if `biased=True`.
+        User bias terms. Learned during fitting. Only available if `biased=True`.
 
     bi : ndarray of shape (n_items,) or None
-        Item bias terms. Only available if `biased=True`.
+        Item bias terms. Learned during fitting. Only available if `biased=True`.
 
     Iu : list of ndarray
         List where each element contains indices of items rated by the corresponding user.
@@ -137,7 +139,7 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
 
     history : ndarray of shape (max_iter_CD + 1, 2)
         Optimization history containing loss and objective values at each coordinate descent iteration.
-        First column: loss term values, Second column: objective function values.
+        First column: loss term values, Second column: objective function values (with penalty).
 
     sample_weight : ndarray of shape (n_ratings,)
         Sample weights used during fitting. Available after fitting.
@@ -160,7 +162,7 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
     """
 
     def __init__(self, n_users, n_items, loss, constraint=[], biased=True,
-                    rank=10, C=1, rho=0.5,
+                    rank=10, C=1.0, rho=0.5,
                     init_mean=0, init_sd=0.1, random_state=None,
                     max_iter=10000, tol=1e-3, shrink=1, trace_freq=100, 
                     max_iter_CD=10, tol_CD=1e-3, verbose=0):
@@ -276,7 +278,7 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
                 bias_tmp = self.bi[item_tmp] if self.biased  else None
                 weight_tmp = self.sample_weight[index_tmp]
 
-                ### prepare rehline parameter
+                ### prepare rehline parameters
                 U, V, Tau, S, T = _make_loss_rehline_param(loss=self.loss, X=Q_tmp, y=y_tmp)
                 U_bias, V_bias, Tau_bias, S_bias,  T_bias = _cast_sample_bias(U, V, Tau, S, T, sample_bias=bias_tmp)
                 U_weight, V_weight, Tau_weight, S_weight, T_weight = _cast_sample_weight(U_bias, V_bias, Tau_bias, S_bias, T_bias, C=C_user, sample_weight=weight_tmp)
@@ -327,7 +329,7 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
                 weight_tmp = self.sample_weight[index_tmp]
                 bias_tmp = self.bu[user_tmp] if self.biased else None
                 
-                ### prepare rehline parameter
+                ### prepare rehline parameters
                 U, V, Tau, S, T = _make_loss_rehline_param(loss=self.loss, X=P_tmp, y=y_tmp)
                 U_bias, V_bias, Tau_bias, S_bias,  T_bias = _cast_sample_bias(U, V, Tau, S, T, sample_bias=bias_tmp)
                 U_weight, V_weight, Tau_weight, S_weight, T_weight = _cast_sample_weight(U_bias, V_bias, Tau_bias, S_bias, T_bias, C=C_item, sample_weight=weight_tmp)
@@ -380,7 +382,7 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
         Parameters
         ----------
         X : array-like of shape (n_samples, 2)
-            Training data where first column contains user id and 
+            Input data where first column contains user id and 
             second column contains item id.
 
         Returns
