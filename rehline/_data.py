@@ -76,4 +76,4 @@ def make_ratings(n_users, n_items, n_factors=20,
     if return_params:
         result["params"] = {"P": P, "Q": Q, "bu": bu, "bi": bi, "mu": mu}
 
-return result
+    return result
