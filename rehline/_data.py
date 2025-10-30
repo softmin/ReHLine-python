@@ -122,7 +122,9 @@ def make_ratings(n_users, n_items, n_factors=20,
     dot_vals = (P[users] * Q[items]).sum(axis=1)
     noise = rng.normal(0, noise_std, n_interactions)
     mu = (rating_min + rating_max) / 2
-    y = np.clip(mu + bu[users] + bi[items] + dot_vals + noise, rating_min, rating_max)
+    y = mu + bu[users] + bi[items] + dot_vals + noise
+    y_rounded = np.round(y * 2) / 2
+    y_clipped = np.clip(y_rounded, rating_min, rating_max)
     
     # Return results
     result = {"X": np.column_stack([users, items]), "y": y}

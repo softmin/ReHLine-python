@@ -15,21 +15,32 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
     r"""Matrix Factorization (MF) with a piecewise linear-quadratic objective and ridge penalty.
 
     .. math::
-
         \min_{\substack{
-            \mathbf{P} \in \mathbb{R}^{n \times r}, 
-            \mathbf{a} \in \mathbb{R}^n \\
-            \mathbf{Q} \in \mathbb{R}^{m \times r}, 
-            \mathbf{b} \in \mathbb{R}^m
+            \mathbf{P} \in \mathbb{R}^{n \times r}\ 
+            \pmb{\alpha} \in \mathbb{R}^n \\
+            \mathbf{Q} \in \mathbb{R}^{m \times r}\ 
+            \pmb{\beta} \in \mathbb{R}^m
         }} 
         \left[
-            \sum_{(u,i)\in \Omega} C \cdot \phi(\mathbf{p}_u^\top \mathbf{q}_i + a_u + b_i) 
+            \sum_{(u,i)\in \Omega} C \cdot \text{PLQ}(r_{ui}, \ \mathbf{p}_u^T \mathbf{q}_i + \alpha_u + \beta_i) 
         \right]  
         + 
         \left[ 
-            \frac{\rho}{n}\sum_{u=1}^n(\|\mathbf{p}_u\|_2^2 + a_u^2) 
-            + \frac{1-\rho}{m}\sum_{i=1}^m(\|\mathbf{q}_i\|_2^2 + b_i^2) 
+            \frac{\rho}{n}\sum_{u=1}^n(\|\mathbf{p}_u\|_2^2 + \alpha_u^2) 
+            + \frac{1-\rho}{m}\sum_{i=1}^m(\|\mathbf{q}_i\|_2^2 + \beta_i^2) 
         \right]
+
+    .. math::
+        \ \text{ s.t. } \ 
+        \mathbf{A} \begin{bmatrix}
+                        \pmb{\alpha} & \mathbf{P}
+                    \end{bmatrix}^T + 
+                    \mathbf{b}\mathbf{1}_{n}^T \geq \mathbf{0}
+        \ \text{ and } \ 
+        \mathbf{A} \begin{bmatrix}
+                        \pmb{\beta} & \mathbf{Q}
+                    \end{bmatrix}^T + 
+                    \mathbf{b}\mathbf{1}_{m}^T \geq \mathbf{0}
         
     The function supports various loss functions, including:
         - 'hinge', 'svm' or 'SVM'
@@ -45,10 +56,10 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
     Parameters
     ----------
     n_users : int
-        Number of unique users in the dataset(or number of rows in target sparse matrix).
+        Number of unique users in the dataset (or number of rows in target sparse matrix).
 
     n_items : int
-        Number of unique items in the dataset(or number of columns in target sparse matrix).
+        Number of unique items in the dataset (or number of columns in target sparse matrix).
 
     loss : dict
         A dictionary specifying the loss function parameters. 
@@ -65,12 +76,11 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
 
     C : float, default=1.0
         Regularization parameter. The strength of the regularization is
-        inversely proportional to C. Must be strictly positive. 
+        inversely proportional to `C`. Must be strictly positive. 
         `C` will be absorbed by the ReHLine parameters when `_cast_sample_weight()` is conducted.
 
     rho : float, default=0.5
         Regularization strength ratio between user and item factors. Must be within the range of (0,1).
-        user_reg = rho / n_users, item_reg = (1 - rho) / n_items
 
     init_mean : float, default=0.0
         Mean of the Gaussian distribution for initializing latent factors.
@@ -81,7 +91,7 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
     random_state : int or RandomState, default=None
         Random seed for reproducible initialization of latent factors.
 
-    max_iter : int, default=1000
+    max_iter : int, default=10000
         The maximum number of iterations to be run for the ReHLine solver.
     
     tol : float, default=1e-4
@@ -96,26 +106,26 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
     max_iter_CD : int, default=10
         Maximum number of iterations for coordinate descent steps.
 
-    tol_CD : float, default=1e-3
-        Tolerance for convergence checking in coordinate descent steps.
+    tol_CD : float, default=1e-4
+        The tolerance for the stopping criterion for coordinate descent steps.
 
     verbose : int, default=0
-        Verbosity level:
-        - 0: No output
-        - 1: CD iteration progress information
-        - 2: ReHLine solver optimization information
-        - 3: All information of CD and ReHLine
+        Verbosity level.
+          0: No output
+          1: CD iteration progress information
+          2: ReHLine solver optimization information
+          3: All information of CD and ReHLine
 
     Attributes
     ----------
     n_users : int
-        Number of unique users in the dataset(or number of rows in target sparse matrix).
+        Number of unique users in the dataset (or number of rows in target sparse matrix).
 
     n_items : int
-        Number of unique items in the dataset(or number of columns in target sparse matrix).
+        Number of unique items in the dataset (or number of columns in target sparse matrix).
 
     n_ratings : int
-        Number of ratings in the training data (available after fitting).
+        Number of ratings in the training data. Available after fitting.
 
     P : ndarray of shape (n_users, rank)
         User latent factor matrix. Learned during fitting.
@@ -139,7 +149,7 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
 
     history : ndarray of shape (max_iter_CD + 1, 2)
         Optimization history containing loss and objective values at each coordinate descent iteration.
-        First column: loss term values, Second column: objective function values (with penalty).
+        First column: cumulative loss term values. Second column: objective function values (with penalty).
 
     sample_weight : ndarray of shape (n_ratings,)
         Sample weights used during fitting. Available after fitting.
@@ -163,9 +173,9 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
 
     def __init__(self, n_users, n_items, loss, constraint=[], biased=True,
                     rank=10, C=1.0, rho=0.5,
-                    init_mean=0, init_sd=0.1, random_state=None,
-                    max_iter=10000, tol=1e-3, shrink=1, trace_freq=100, 
-                    max_iter_CD=10, tol_CD=1e-3, verbose=0):
+                    init_mean=0.0, init_sd=0.1, random_state=None,
+                    max_iter=10000, tol=1e-4, shrink=1, trace_freq=100, 
+                    max_iter_CD=10, tol_CD=1e-4, verbose=0):
         # check input
         errors = []
         checks = [
@@ -218,8 +228,8 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
         Parameters
         ----------
         X : array-like of shape (n_ratings, 2)
-            Input data where first column contains user id and 
-            second column contains item id.
+            Input data where first column contains user ID and 
+            second column contains item ID.
 
         y : array-like of shape (n_ratings,)
             Target rating values.
@@ -228,7 +238,7 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
             Array of weights that are assigned to individual samples.
             If not provided, then each sample is given unit weight.
             
-         Returns
+        Returns
         -------
         self : object
             An instance of the estimator.
@@ -382,8 +392,8 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
         Parameters
         ----------
         X : array-like of shape (n_samples, 2)
-            Input data where first column contains user id and 
-            second column contains item id.
+            Training data where first column contains user ID and 
+            second column contains item ID.
 
         Returns
         -------
