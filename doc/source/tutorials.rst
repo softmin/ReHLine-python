@@ -63,4 +63,5 @@ List of Tutorials
    ./tutorials/constraint
    ./tutorials/ReHLine_sklearn
    ./tutorials/warmstart
+   ./tutorials/ReHLine_MF
 
