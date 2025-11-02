@@ -42,10 +42,10 @@ def make_fair_classification(n_samples=100, n_features=5, ind_sensitive=0):
     return X, y, X_sen
 
 
-def make_ratings(n_users, n_items, n_factors=20,
-             n_interactions=None, density=0.01, 
-             noise_std=0.1, seed=None, 
-             rating_min=1.0, rating_max=5.0, return_params=True):
+def make_mf_dataset(n_users, n_items, n_factors=20,
+                     n_interactions=None, density=0.01, 
+                     noise_std=0.1, seed=None, 
+                     rating_min=1.0, rating_max=5.0, return_params=True):
     """
     Generate synthetic rating data using matrix factorization model.
 

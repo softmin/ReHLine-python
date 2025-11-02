@@ -1,6 +1,6 @@
 '''Test MF on simulated dataset'''
 import numpy as np
-from rehline import plqMF_Ridge, make_ratings
+from rehline import plqMF_Ridge, make_mf_dataset
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from joblib import Parallel, delayed
@@ -9,7 +9,7 @@ import itertools
 
 ## Data Preparation
 user_num, item_num = 1200, 4000
-ratings = make_ratings(n_users=user_num, n_items=item_num, n_interactions=50000, seed=42)
+ratings = make_mf_dataset(n_users=user_num, n_items=item_num, n_interactions=50000, seed=42)
 X_train, X_test, y_train, y_test = train_test_split(ratings['X'], ratings['y'], test_size=0.3, random_state=42)
 n_jobs = -1
 verbose = 0
@@ -197,4 +197,5 @@ print("Optimal Parameters:")
 for param, value in best_params.items():
     print(f"  {param:12}: {value}")
 print(f"\nBest Validation Accuracy: {best_acc:.4f}")
+
 print("="*50)
