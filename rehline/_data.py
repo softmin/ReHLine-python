@@ -42,62 +42,80 @@ def make_fair_classification(n_samples=100, n_features=5, ind_sensitive=0):
     return X, y, X_sen
 
 
-def make_ratings(n_users, n_items, n_factors=20,
-             n_interactions=None, density=0.01, 
-             noise_std=0.1, seed=None, 
-             rating_min=1.0, rating_max=5.0, return_params=True):
+def make_mf_dataset(n_users, n_items, n_factors=20,
+                     n_interactions=None, density=0.01, 
+                     noise_std=0.1, seed=None, 
+                     rating_min=1.0, rating_max=5.0, return_params=True):
     """
     Generate synthetic rating data using matrix factorization model.
-    
+
     Creates synthetic user-item rating data based on the matrix factorization
     approach commonly used in recommender systems. The ratings are generated
     as: rating = mu + user_bias + item_bias + user_factor * item_factor + noise
-    
+
     Parameters
     ----------
     n_users : int
         Number of users in the synthetic dataset
+
     n_items : int
         Number of items in the synthetic dataset
+
     n_factors : int, default=20
         Number of latent factors for user and item embeddings
+
     n_interactions : int, optional
         Exact number of user-item interactions. If None, calculated as density * total_pairs
+
     density : float, default=0.01
         Density of the rating matrix (ignored if n_interactions is specified)
+
     noise_std : float, default=0.1
         Standard deviation of Gaussian noise added to ratings
+
     seed : int, optional
         Random seed for reproducible results
+
     rating_min : float, default=1.0
         Minimum possible rating value
+
     rating_max : float, default=5.0
         Maximum possible rating value
+
     return_params : bool, default=True
         If True, returns the underlying model parameters (P, Q, bu, bi, mu)
-    
+
     Returns
     -------
     dict
         Dictionary containing:
-        - 'X' : ndarray of shape (n_interactions, 2)
+        
+        - **X** : ndarray of shape (n_interactions, 2)
             User-item pairs where X[:, 0] are user indices and X[:, 1] are item indices
-        - 'y' : ndarray of shape (n_interactions,)
+        - **y** : ndarray of shape (n_interactions,)
             Synthetic ratings for each user-item pair
-        - 'params' : dict, optional
+        - **params** : dict, optional
             Only returned if return_params=True. Contains:
-            * 'P' : ndarray of shape (n_users, n_factors) - User factor matrix
-            * 'Q' : ndarray of shape (n_items, n_factors) - Item factor matrix  
-            * 'bu' : ndarray of shape (n_users,) - User biases
-            * 'bi' : ndarray of shape (n_items,) - Item biases
-            * 'mu' : float - Global mean rating
-    
+            
+            * **P** : ndarray of shape (n_users, n_factors)
+                User factor matrix
+            * **Q** : ndarray of shape (n_items, n_factors)
+                Item factor matrix  
+            * **bu** : ndarray of shape (n_users,)
+                User biases
+            * **bi** : ndarray of shape (n_items,)
+                Item biases
+            * **mu** : float
+                Global mean rating
+
     Notes
     -----
     The rating generation follows the standard matrix factorization model:
+
         r_ui = μ + b_u + b_i + p_u · q_i^T + ε
-    where ε ~ N(0, noise_std²)
-    
+
+        where ε ~ N(0, noise_std²)
+
     The generated ratings are clipped to stay within [rating_min, rating_max] range.
     """
     rng = np.random.RandomState(seed)

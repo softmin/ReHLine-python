@@ -90,7 +90,7 @@ Basic Usage
 
    # 1. Necessary Packages
    import numpy as np
-   from rehline import plqMF_Ridge, make_ratings
+   from rehline import plqMF_Ridge, make_mf_dataset
    from sklearn.model_selection import train_test_split
    from sklearn.metrics import mean_absolute_error
 
@@ -98,8 +98,8 @@ Basic Usage
    # 2. Data Preparation
    # Generate synthetic data (replace with your own data in practice)
    user_num, item_num = 1200, 4000 
-   ratings = make_ratings(n_users=user_num, n_items=item_num, 
-                         n_interactions=50000, seed=42)
+   ratings = make_mf_dataset(n_users=user_num, n_items=item_num, 
+                             n_interactions=50000, seed=42)
    
    # Split into training and testing sets
    X_train, X_test, y_train, y_test = train_test_split(

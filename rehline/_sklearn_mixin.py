@@ -84,13 +84,13 @@ class plq_Ridge_Classifier(plqERM_Ridge, ClassifierMixin):
 
     Attributes
     ----------
-    coef_ : ndarray of shape (n_features,)
+    coef\_ : ndarray of shape (n_features,)
         Coefficients excluding the intercept.
 
-    intercept_ : float
+    intercept\_ : float
         Intercept term. 0.0 if ``fit_intercept=False``.
 
-    classes_ : ndarray of shape (2,)
+    classes\_ : ndarray of shape (2,)
         Unique class labels in the original label space.
 
     _label_encoder : LabelEncoder
@@ -293,6 +293,7 @@ class plq_Ridge_Regressor(plqERM_Ridge, RegressorMixin):
           - ``{'name': 'nonnegative'}`` or ``{'name': '>=0'}``
           - ``{'name': 'fair', 'sen_idx': list[int], 'tol_sen': list[float]}``
           - ``{'name': 'custom', 'A': ndarray[K, d], 'b': ndarray[K]}``
+          
         Note: when ``fit_intercept=True``, a constant column is appended **as the last column**;
         since you index sensitive columns by ``sen_idx`` on the *original* features, indices stay valid.
     C : float, default=1.0
@@ -322,11 +323,11 @@ class plq_Ridge_Regressor(plqERM_Ridge, RegressorMixin):
 
     Attributes
     ----------
-    coef_ : ndarray of shape (n_features,)
+    coef\_ : ndarray of shape (n_features,)
         Learned linear coefficients (excluding the intercept term).
-    intercept_ : float
+    intercept\_ : float
         Intercept term extracted from the last coefficient when ``fit_intercept=True``, otherwise 0.0.
-    n_features_in_ : int
+    n_features_in\_ : int
         Number of input features seen during :meth:`fit` (before intercept augmentation).
 
     Notes
@@ -389,9 +390,9 @@ class plq_Ridge_Regressor(plqERM_Ridge, RegressorMixin):
         X : ndarray of shape (n_samples, n_features)
             Training design matrix (dense). Sparse inputs are not supported.
         y : ndarray of shape (n_samples,)
-        Target values.
+            Target values.
         sample_weight : ndarray of shape (n_samples,), default=None
-        Optional per-sample weights; forwarded to the underlying solver.
+            Optional per-sample weights; forwarded to the underlying solver.
 
         Returns
         -------
@@ -422,7 +423,7 @@ class plq_Ridge_Regressor(plqERM_Ridge, RegressorMixin):
         return self
 
     def decision_function(self, X):
-        """Compute f(X) = X @ coef_ + intercept_.
+        """Compute f(X) = X @ coef\_ + intercept\_.
 
         Parameters
         ----------
