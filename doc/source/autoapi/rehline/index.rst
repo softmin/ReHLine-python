@@ -23,6 +23,8 @@ Overview
      - Empirical Risk Minimization (ERM) Classifier with a Piecewise Linear-Quadratic (PLQ) loss
    * - :py:obj:`plq_Ridge_Regressor <rehline.plq_Ridge_Regressor>`
      - Empirical Risk Minimization (ERM) regressor with a Piecewise Linear-Quadratic (PLQ) loss
+   * - :py:obj:`plqMF_Ridge <rehline.plqMF_Ridge>`
+     - Matrix Factorization (MF) with a piecewise linear-quadratic objective and ridge penalty.
 
 
 .. list-table:: Function
@@ -34,6 +36,8 @@ Overview
      - \-
    * - :py:obj:`plqERM_Ridge_path_sol <rehline.plqERM_Ridge_path_sol>`\ (X, y, \*None, loss, constraint, eps, n_Cs, Cs, max_iter, tol, verbose, shrink, warm_start, return_time)
      - Compute the PLQ Empirical Risk Minimization (ERM) path over a range of regularization parameters.
+   * - :py:obj:`make_mf_dataset <rehline.make_mf_dataset>`\ (n_users, n_items, n_factors, n_interactions, density, noise_std, seed, rating_min, rating_max, return_params)
+     - Generate synthetic rating data using matrix factorization model.
 
 
 
@@ -569,13 +573,13 @@ Classes
 
    Attributes
    ----------
-   coef_ : ndarray of shape (n_features,)
+   coef\_ : ndarray of shape (n_features,)
        Coefficients excluding the intercept.
 
-   intercept_ : float
+   intercept\_ : float
        Intercept term. 0.0 if ``fit_intercept=False``.
 
-   classes_ : ndarray of shape (2,)
+   classes\_ : ndarray of shape (2,)
        Unique class labels in the original label space.
 
    _label_encoder : LabelEncoder
@@ -688,6 +692,7 @@ Classes
          - ``{'name': 'nonnegative'}`` or ``{'name': '>=0'}``
          - ``{'name': 'fair', 'sen_idx': list[int], 'tol_sen': list[float]}``
          - ``{'name': 'custom', 'A': ndarray[K, d], 'b': ndarray[K]}``
+         
        Note: when ``fit_intercept=True``, a constant column is appended **as the last column**;
        since you index sensitive columns by ``sen_idx`` on the *original* features, indices stay valid.
    C : float, default=1.0
@@ -717,11 +722,11 @@ Classes
 
    Attributes
    ----------
-   coef_ : ndarray of shape (n_features,)
+   coef\_ : ndarray of shape (n_features,)
        Learned linear coefficients (excluding the intercept term).
-   intercept_ : float
+   intercept\_ : float
        Intercept term extracted from the last coefficient when ``fit_intercept=True``, otherwise 0.0.
-   n_features_in_ : int
+   n_features_in\_ : int
        Number of input features seen during :meth:`fit` (before intercept augmentation).
 
    Notes
@@ -743,7 +748,7 @@ Classes
       * - :py:obj:`fit <rehline.plq_Ridge_Regressor.fit>`\ (X, y, sample_weight)
         - If ``fit_intercept=True``, a constant column (value = ``intercept_scaling``) is appended
       * - :py:obj:`decision_function <rehline.plq_Ridge_Regressor.decision_function>`\ (X)
-        - Compute f(X) = X @ coef_ + intercept_.
+        - Compute f(X) = X @ coef\_ + intercept\_.
       * - :py:obj:`predict <rehline.plq_Ridge_Regressor.predict>`\ (X)
         - Predict targets as the linear decision function.
 
@@ -764,9 +769,9 @@ Classes
       X : ndarray of shape (n_samples, n_features)
           Training design matrix (dense). Sparse inputs are not supported.
       y : ndarray of shape (n_samples,)
-      Target values.
+          Target values.
       sample_weight : ndarray of shape (n_samples,), default=None
-      Optional per-sample weights; forwarded to the underlying solver.
+          Optional per-sample weights; forwarded to the underlying solver.
 
       Returns
       -------
@@ -777,7 +782,7 @@ Classes
 
    .. py:method:: decision_function(X)
 
-      Compute f(X) = X @ coef_ + intercept_.
+      Compute f(X) = X @ coef\_ + intercept\_.
 
       Parameters
       ----------
@@ -802,6 +807,256 @@ Classes
       -------
       y_pred : ndarray of shape (n_samples,)
       Predicted target values (real-valued).
+
+
+
+
+.. py:class:: plqMF_Ridge(n_users, n_items, loss, constraint=[], biased=True, rank=10, C=1.0, rho=0.5, init_mean=0.0, init_sd=0.1, random_state=None, max_iter=10000, tol=0.0001, shrink=1, trace_freq=100, max_iter_CD=10, tol_CD=0.0001, verbose=0)
+
+   Bases: :py:obj:`rehline._base._BaseReHLine`, :py:obj:`sklearn.base.BaseEstimator`
+
+   Matrix Factorization (MF) with a piecewise linear-quadratic objective and ridge penalty.
+
+   .. math::
+       \min_{\substack{
+           \mathbf{P} \in \mathbb{R}^{n \times r}\ 
+           \pmb{\alpha} \in \mathbb{R}^n \\
+           \mathbf{Q} \in \mathbb{R}^{m \times r}\ 
+           \pmb{\beta} \in \mathbb{R}^m
+       }} 
+       \left[
+           \sum_{(u,i)\in \Omega} C \cdot \text{PLQ}(r_{ui}, \ \mathbf{p}_u^T \mathbf{q}_i + \alpha_u + \beta_i) 
+       \right]  
+       + 
+       \left[ 
+           \frac{\rho}{n}\sum_{u=1}^n(\|\mathbf{p}_u\|_2^2 + \alpha_u^2) 
+           + \frac{1-\rho}{m}\sum_{i=1}^m(\|\mathbf{q}_i\|_2^2 + \beta_i^2) 
+       \right]
+
+   .. math::
+       \ \text{ s.t. } \ 
+       \mathbf{A} \begin{bmatrix}
+                       \pmb{\alpha} & \mathbf{P}
+                   \end{bmatrix}^T + 
+                   \mathbf{b}\mathbf{1}_{n}^T \geq \mathbf{0}
+       \ \text{ and } \ 
+       \mathbf{A} \begin{bmatrix}
+                       \pmb{\beta} & \mathbf{Q}
+                   \end{bmatrix}^T + 
+                   \mathbf{b}\mathbf{1}_{m}^T \geq \mathbf{0}
+       
+   The function supports various loss functions, including:
+       - 'hinge', 'svm' or 'SVM'
+       - 'MAE' or 'mae' or 'mean absolute error'
+       - 'hinge square' or 'svm square' or 'SVM square'
+       - 'MSE' or 'mse' or 'mean square error'
+
+   The following constraint types are supported:
+       * 'nonnegative' or '>=0': A non-negativity constraint.
+       * 'fair' or 'fairness': A fairness constraint.
+       * 'custom': A custom constraint, where the user must provide the constraint matrix 'A' and vector 'b'.
+
+   Parameters
+   ----------
+   n_users : int
+       Number of unique users in the dataset (or number of rows in target sparse matrix).
+
+   n_items : int
+       Number of unique items in the dataset (or number of columns in target sparse matrix).
+
+   loss : dict
+       A dictionary specifying the loss function parameters. 
+
+   constraint : list of dict
+       A list of dictionaries, where each dictionary represents a constraint.
+       Each dictionary must contain a 'name' key, which specifies the type of constraint.
+
+   biased : bool, default=True
+           Whether to include user and item bias terms in the model.
+
+   rank : int, default=10
+       Dimensionality of the latent factor vectors (number of factors).
+
+   C : float, default=1.0
+       Regularization parameter. The strength of the regularization is
+       inversely proportional to `C`. Must be strictly positive. 
+       `C` will be absorbed by the ReHLine parameters when `_cast_sample_weight()` is conducted.
+
+   rho : float, default=0.5
+       Regularization strength ratio between user and item factors. Must be within the range of (0,1).
+
+   init_mean : float, default=0.0
+       Mean of the Gaussian distribution for initializing latent factors.
+
+   init_sd : float, default=0.1
+       Standard deviation of the Gaussian distribution for initializing latent factors. 
+
+   random_state : int or RandomState, default=None
+       Random seed for reproducible initialization of latent factors.
+
+   max_iter : int, default=10000
+       The maximum number of iterations to be run for the ReHLine solver.
+
+   tol : float, default=1e-4
+       The tolerance for the stopping criterion for the ReHLine solver.
+
+   shrink : float, default=1
+       The shrinkage of dual variables for the ReHLine solver.
+
+   trace_freq : int, default=100
+       The frequency at which to print the optimization trace for the ReHLine solver.
+
+   max_iter_CD : int, default=10
+       Maximum number of iterations for coordinate descent steps.
+
+   tol_CD : float, default=1e-4
+       The tolerance for the stopping criterion for coordinate descent steps.
+
+   verbose : int, default=0
+       Verbosity level.
+         0: No output
+         1: CD iteration progress information
+         2: ReHLine solver optimization information
+         3: All information of CD and ReHLine
+
+   Attributes
+   ----------
+   n_users : int
+       Number of unique users in the dataset (or number of rows in target sparse matrix).
+
+   n_items : int
+       Number of unique items in the dataset (or number of columns in target sparse matrix).
+
+   n_ratings : int
+       Number of ratings in the training data. Available after fitting.
+
+   P : ndarray of shape (n_users, rank)
+       User latent factor matrix. Learned during fitting.
+
+   Q : ndarray of shape (n_items, rank)  
+       Item latent factor matrix. Learned during fitting.
+
+   bu : ndarray of shape (n_users,) or None
+       User bias terms. Learned during fitting. Only available if `biased=True`.
+
+   bi : ndarray of shape (n_items,) or None
+       Item bias terms. Learned during fitting. Only available if `biased=True`.
+
+   Iu : list of ndarray
+       List where each element contains indices of items rated by the corresponding user.
+       Available after fitting.
+
+   Ui : list of ndarray  
+       List where each element contains indices of users who rated the corresponding item.
+       Available after fitting.
+
+   history : ndarray of shape (max_iter_CD + 1, 2)
+       Optimization history containing loss and objective values at each coordinate descent iteration.
+       First column: cumulative loss term values. Second column: objective function values (with penalty).
+
+   sample_weight : ndarray of shape (n_ratings,)
+       Sample weights used during fitting. Available after fitting.
+       
+   Methods
+   -------
+   fit(X, y, sample_weight=None)
+       Fit the model based on the given training data.
+
+   decision_function(X)
+       The decision function evaluated on the given dataset.
+
+   obj(X, y, loss))
+       Compute the values of loss term and objective function.
+
+   Notes
+   -----
+   The `plqMF_Ridge` class is a subclass of `_BaseReHLine` and `BaseEstimator`, which suggests that it is part of a larger framework for implementing ReHLine algorithms.
+
+
+
+   Overview
+   ========
+
+
+   .. list-table:: Methods
+      :header-rows: 0
+      :widths: auto
+      :class: summarytable
+
+      * - :py:obj:`fit <rehline.plqMF_Ridge.fit>`\ (X, y, sample_weight)
+        - Fit the model based on the given training data.
+      * - :py:obj:`decision_function <rehline.plqMF_Ridge.decision_function>`\ (X)
+        - The decision function evaluated on the given dataset
+      * - :py:obj:`obj <rehline.plqMF_Ridge.obj>`\ (X, y, loss)
+        - Compute the values of loss term and objective function.
+
+
+   Members
+   =======
+
+   .. py:method:: fit(X, y, sample_weight=None)
+
+      Fit the model based on the given training data.
+
+      Parameters
+      ----------
+      X : array-like of shape (n_ratings, 2)
+          Input data where first column contains user ID and 
+          second column contains item ID.
+
+      y : array-like of shape (n_ratings,)
+          Target rating values.
+
+      sample_weight : array-like of shape (n_samples,), default=None
+          Array of weights that are assigned to individual samples.
+          If not provided, then each sample is given unit weight.
+          
+      Returns
+      -------
+      self : object
+          An instance of the estimator.
+          
+
+
+   .. py:method:: decision_function(X)
+
+      The decision function evaluated on the given dataset
+
+      Parameters
+      ----------
+      X : array-like of shape (n_samples, 2)
+          Training data where first column contains user ID and 
+          second column contains item ID.
+
+      Returns
+      -------
+      prediction : ndarray of shape (n_samples,)
+          Predicted ratings for the input pairs.
+
+
+   .. py:method:: obj(X, y, loss)
+
+      Compute the values of loss term and objective function.
+
+      Parameters
+      ----------
+      X : array-like of shape (n_ratings, 2)
+          User-item rating pairs.
+
+      y : array-like of shape (n_ratings,)
+          Actual rating values.
+
+      loss : dict
+          A dictionary specifying the loss function parameters. 
+          
+      Returns
+      -------
+      loss_term : float
+          The data fitting term (sum of loss values).
+          
+      objective_value : float
+          The total objective value including regularization.
+
 
 
 
@@ -863,9 +1118,6 @@ Functions
    return_time : bool, default=True
        If True, return timing information for each value of `C`.
 
-   plot_path : bool, default=False
-       If True, generate a plot of the coefficient paths as a function of `C`.
-
    Returns
    -------
    Cs : ndarray of shape (n_Cs,)
@@ -907,6 +1159,80 @@ Functions
    ...     warm_start=False, constraint=constraint, return_time=True
    ... )
 
+
+
+.. py:function:: make_mf_dataset(n_users, n_items, n_factors=20, n_interactions=None, density=0.01, noise_std=0.1, seed=None, rating_min=1.0, rating_max=5.0, return_params=True)
+
+   Generate synthetic rating data using matrix factorization model.
+
+   Creates synthetic user-item rating data based on the matrix factorization
+   approach commonly used in recommender systems. The ratings are generated
+   as: rating = mu + user_bias + item_bias + user_factor * item_factor + noise
+
+   Parameters
+   ----------
+   n_users : int
+       Number of users in the synthetic dataset
+
+   n_items : int
+       Number of items in the synthetic dataset
+
+   n_factors : int, default=20
+       Number of latent factors for user and item embeddings
+
+   n_interactions : int, optional
+       Exact number of user-item interactions. If None, calculated as density * total_pairs
+
+   density : float, default=0.01
+       Density of the rating matrix (ignored if n_interactions is specified)
+
+   noise_std : float, default=0.1
+       Standard deviation of Gaussian noise added to ratings
+
+   seed : int, optional
+       Random seed for reproducible results
+
+   rating_min : float, default=1.0
+       Minimum possible rating value
+
+   rating_max : float, default=5.0
+       Maximum possible rating value
+
+   return_params : bool, default=True
+       If True, returns the underlying model parameters (P, Q, bu, bi, mu)
+
+   Returns
+   -------
+   dict
+       Dictionary containing:
+       
+       - **X** : ndarray of shape (n_interactions, 2)
+           User-item pairs where X[:, 0] are user indices and X[:, 1] are item indices
+       - **y** : ndarray of shape (n_interactions,)
+           Synthetic ratings for each user-item pair
+       - **params** : dict, optional
+           Only returned if return_params=True. Contains:
+           
+           * **P** : ndarray of shape (n_users, n_factors)
+               User factor matrix
+           * **Q** : ndarray of shape (n_items, n_factors)
+               Item factor matrix  
+           * **bu** : ndarray of shape (n_users,)
+               User biases
+           * **bi** : ndarray of shape (n_items,)
+               Item biases
+           * **mu** : float
+               Global mean rating
+
+   Notes
+   -----
+   The rating generation follows the standard matrix factorization model:
+
+       r_ui = μ + b_u + b_i + p_u · q_i^T + ε
+
+       where ε ~ N(0, noise_std²)
+
+   The generated ratings are clipped to stay within [rating_min, rating_max] range.
 
 
 

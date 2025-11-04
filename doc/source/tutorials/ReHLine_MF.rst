@@ -2,14 +2,6 @@ ReHLine: Matrix Factorization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This tutorial illustrates how to conduct Matrix Factorization (MF) with multiple PLQ loss functions through ReHLine. 
-We provide 2 versions of prediction methods:
-
-.. math::
-    \begin{aligned}
-    &\text{Including bias terms:}     && \hat{r}_{ui} = \mathbf{p}_u^T \mathbf{q}_i + \alpha_u + \beta_i \\
-    &\text{Excluding bias terms:}   && \hat{r}_{ui} = \mathbf{p}_u^T \mathbf{q}_i \\
-    \end{aligned}
-
 
 Mathematical Formulation
 ------------------------
@@ -159,7 +151,7 @@ Choosing different `loss functions <./loss.rst>`_ through :code:`loss`:
         constraint=[{'name': '>=0'}]   ## Use nonnegative constraint
     )
   
-The algorithm includes bias terms by default. To disable them, set: :code:`biased=False`:
+The algorithm includes bias terms :math:`\mathbf{\alpha}` and :math:`\mathbf{\beta}` by default. To disable them, that is, :math:`\mathbf{\alpha} = \mathbf{0}` and :math:`\mathbf{\beta} = \mathbf{0}`, set: :code:`biased=False`:
 
 .. code-block:: python
 
