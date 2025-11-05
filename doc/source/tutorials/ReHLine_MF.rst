@@ -10,9 +10,9 @@ Considering a User-Item-Rating triplet dataset :math:`(u, i, r_{ui})` derived fr
 
 .. math::
         \min_{\substack{
-            \mathbf{P} \in \mathbb{R}^{n \times r}\ 
+            \mathbf{P} \in \mathbb{R}^{n \times k}\ 
             \pmb{\alpha} \in \mathbb{R}^n \\
-            \mathbf{Q} \in \mathbb{R}^{m \times r}\ 
+            \mathbf{Q} \in \mathbb{R}^{m \times k}\ 
             \pmb{\beta} \in \mathbb{R}^m
         }} 
         \left[
@@ -26,31 +26,24 @@ Considering a User-Item-Rating triplet dataset :math:`(u, i, r_{ui})` derived fr
 
 .. math::
         \ \text{ s.t. } \ 
-        \mathbf{A} \begin{bmatrix}
-                        \pmb{\alpha} & \mathbf{P}
-                    \end{bmatrix}^T + 
-                    \mathbf{b}\mathbf{1}_{n}^T \geq \mathbf{0}
-        \ \text{ and } \ 
-        \mathbf{A} \begin{bmatrix}
-                        \pmb{\beta} & \mathbf{Q}
-                    \end{bmatrix}^T + 
-                    \mathbf{b}\mathbf{1}_{m}^T \geq \mathbf{0}
-
+        \mathbf{A} \begin{pmatrix} \alpha_u \\ \mathbf{p}_u \end{pmatrix} + \mathbf{b} \geq \mathbf{0},\ \forall u \in [n]
+        \quad \text{and} \quad
+        \mathbf{A} \begin{pmatrix} \beta_i \\ \mathbf{q}_i \end{pmatrix} + \mathbf{b} \geq \mathbf{0},\ \forall i \in [m]
 
 where
 
 - :math:`\text{PLQ}(\cdot , \cdot)` 
   is a convex piecewise linear-quadratic loss function. You can find built-in loss functions in the `Loss <./loss.rst>`_ section.
   
-- :math:`\mathbf{A}` is a :math:`K \times r` matrix and :math:`\mathbf{b}` is a :math:`K`-dimensional vector 
-  representing :math:`K` linear constraints. See `Constraints <./constraint.rst>`_ for more details.
+- :math:`\mathbf{A}` is a :math:`d \times (k+1)` matrix and :math:`\mathbf{b}` is a :math:`d`-dimensional vector 
+  representing :math:`d` linear constraints. See `Constraints <./constraint.rst>`_ for more details.
 
 - :math:`\Omega`
   is a user-item collection that records all training data
 
 - :math:`n` is number of users, :math:`m` is number of items
 
-- :math:`r` is length of latent factors (rank of MF) 
+- :math:`k` is length of latent factors (rank of MF) 
 
 - :math:`C` is regularization parameter, :math:`\rho` balances regularization strength between user and item
 
@@ -214,68 +207,12 @@ The model complexity is mainly controlled by :code:`C` and :code:`rank`.
        mae = mean_absolute_error(y_test, y_pred)
        print(f"rank={rank_value}: MAE = {mae:.3f}")
 
-Convergence Tracking
-^^^^^^^^^^^^^^^^^^^^
-
-You can customize the optimization process by setting your preferred iteration counts and tolerance levels. 
-Training progress can be monitored either by enabling :code:`verbose` output during fitting or by examining the :code:`history` attribute after fitting.
-
-.. code-block:: python
-
-    clf = plqMF_Ridge(
-        C=0.001,               
-        rank=6,                
-        loss={'name': 'mae'},  
-        n_users=user_num,     
-        n_items=item_num,  
-        max_iter_CD=15,                ## Outer CD iterations
-        tol_CD=1e-5,                   ## Outer CD tolerance  
-        max_iter=8000,                 ## ReHLine solver iterations
-        tol=1e-2,                      ## ReHLine solver tolerance
-        verbose=1,                     ## Enable progress output
-    )
-    clf.fit(X_train, y_train)
-
-    print(clf.history)                 ## Check training trace of cumulative loss and objection value
-
-Different Gaussian initial conditions can be manually set by :code:`init_mean` and :code:`init_sd`:
-
-.. code-block:: python
-
-    # Initialize model with positive shifted normal 
-    clf = plqMF_Ridge(
-        C=0.001,
-        rank=6,
-        loss={'name': 'mae'},
-        n_users=user_num,
-        n_items=item_num,
-        init_mean=1.0,                 ## Manually set mean of normal distribution
-        init_sd=0.5                    ## Manually set sd of normal distribution
-    )
-
 Practical Guidance
 ^^^^^^^^^^^^^^^^^^
 
 - The first column of :code:`X` corresponds to **users**, and the second column corresponds to **items**. Please ensure this aligns with your :code:`n_users` and :code:`n_items` parameters.
 - The default penalty strength is relatively weak; it is recommended to set a relatively small :code:`C` value initially.
 - When using larger :code:`C` values, consider increasing :code:`max_iter` to avoid ConvergenceWarning.
-
-
-Regularization Conversion
--------------------------
-The regularization in this algorithm is tuned via :math:`C` and :math:`\rho`. For users who prefer to set the penalty strength directly, you may achieve conversion through the following formula:
-
-.. math::
-        \lambda_{\text{user}} = \frac{\rho}{Cn}
-        \quad\text{and}\quad  
-        \lambda_{\text{item}} = \frac{(1 - \rho)}{Cm}
-
-
-.. math::
-        C = \frac{1}{m \cdot \lambda_{\text{item}} + n \cdot \lambda_{\text{user}}}
-        \quad\text{and}\quad  
-        \rho = \frac{1}{\frac{m \cdot \lambda_{\text{item}}}{ n \cdot \lambda_{\text{user}}}+1}
-
 
 Example
 -------

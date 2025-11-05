@@ -34,6 +34,9 @@ Classification loss
    - | ``name``: 'sSVM' / 'smooth SVM' / 'smooth hinge'
    - | ``loss={'name': 'sSVM'}``
 
+ * - **Squared SVM**
+   - | ``name``: 'squared SVM' / 'squared svm' / 'squared hinge'
+   - | ``loss={'name': 'squared SVM'}``
 
 Regression loss
 ~~~~~~~~~~~~~~~
@@ -60,6 +63,14 @@ Regression loss
    - | ``name``: 'SVR' / 'svr'
      | ``epsilon`` (*float*): 0.1
    - | ``loss={'name': 'svr', 'epsilon': 0.1}``
+
+ * - **MAE**
+   - | ``name``: 'MAE' / 'mae' / 'mean absolute error'
+   - | ``loss={'name': 'mae'}``
+
+ * - **MSE**
+   - | ``name``: 'MSE' / 'mse' / 'mean squared error'
+   - | ``loss={'name': 'mse'}``
 
 Related Examples
 ----------------

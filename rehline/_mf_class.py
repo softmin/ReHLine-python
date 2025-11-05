@@ -45,8 +45,8 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
     The function supports various loss functions, including:
         - 'hinge', 'svm' or 'SVM'
         - 'MAE' or 'mae' or 'mean absolute error'
-        - 'hinge square' or 'svm square' or 'SVM square'
-        - 'MSE' or 'mse' or 'mean square error'
+        - 'squared hinge' or 'squared svm' or 'squared SVM'
+        - 'MSE' or 'mse' or 'mean squared error'
 
     The following constraint types are supported:
         * 'nonnegative' or '>=0': A non-negativity constraint.
@@ -454,7 +454,7 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
 
         elif (loss['name'] == 'MSE') \
             or (loss['name'] == 'mse') \
-            or (loss['name'] == 'mean square error'):
+            or (loss['name'] == 'mean squared error'):
             loss_term =  np.sum( (self.decision_function(X) - y) ** 2 )
             
         elif (loss['name'] == 'hinge') \
@@ -462,13 +462,13 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
             or (loss['name'] == 'SVM'):
             loss_term = np.sum( np.maximum(0, 1 - y * self.decision_function(X)) )
         
-        elif (loss['name'] == 'hinge square') \
-            or (loss['name'] == 'svm square') \
-            or (loss['name'] == 'SVM square'):
+        elif (loss['name'] == 'squared hinge') \
+            or (loss['name'] == 'squared svm') \
+            or (loss['name'] == 'squared SVM'):
             loss_term = np.sum( np.maximum(0, 1 - y * self.decision_function(X)) ** 2 )
 
         else:
             raise ValueError(f"Unsupported loss function: {loss['name']}. "
-                            f"Supported losses are: 'mae', 'mse', 'hinge', 'hinge square'")
+                            f"Supported losses are: 'mae', 'mse', 'hinge', 'squared hinge'")
 
         return loss_term, self.C * loss_term + penalty
