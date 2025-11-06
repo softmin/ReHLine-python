@@ -16,9 +16,9 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
 
     .. math::
         \min_{\substack{
-            \mathbf{P} \in \mathbb{R}^{n \times r}\ 
+            \mathbf{P} \in \mathbb{R}^{n \times k}\ 
             \pmb{\alpha} \in \mathbb{R}^n \\
-            \mathbf{Q} \in \mathbb{R}^{m \times r}\ 
+            \mathbf{Q} \in \mathbb{R}^{m \times k}\ 
             \pmb{\beta} \in \mathbb{R}^m
         }} 
         \left[
@@ -32,15 +32,9 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
 
     .. math::
         \ \text{ s.t. } \ 
-        \mathbf{A} \begin{bmatrix}
-                        \pmb{\alpha} & \mathbf{P}
-                    \end{bmatrix}^T + 
-                    \mathbf{b}\mathbf{1}_{n}^T \geq \mathbf{0}
-        \ \text{ and } \ 
-        \mathbf{A} \begin{bmatrix}
-                        \pmb{\beta} & \mathbf{Q}
-                    \end{bmatrix}^T + 
-                    \mathbf{b}\mathbf{1}_{m}^T \geq \mathbf{0}
+        \mathbf{A} \begin{pmatrix} \alpha_u \\ \mathbf{p}_u \end{pmatrix} + \mathbf{b} \geq \mathbf{0},\ u = 1,\dots,n
+        \quad \text{and} \quad
+        \mathbf{A} \begin{pmatrix} \beta_i \\ \mathbf{q}_i \end{pmatrix} + \mathbf{b} \geq \mathbf{0},\ i = 1,\dots,m
         
     The function supports various loss functions, including:
         - 'hinge', 'svm' or 'SVM'

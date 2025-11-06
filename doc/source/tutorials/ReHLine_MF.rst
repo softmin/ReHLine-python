@@ -26,9 +26,9 @@ Considering a User-Item-Rating triplet dataset :math:`(u, i, r_{ui})` derived fr
 
 .. math::
         \ \text{ s.t. } \ 
-        \mathbf{A} \begin{pmatrix} \alpha_u \\ \mathbf{p}_u \end{pmatrix} + \mathbf{b} \geq \mathbf{0},\ \forall u \in [n]
+        \mathbf{A} \begin{pmatrix} \alpha_u \\ \mathbf{p}_u \end{pmatrix} + \mathbf{b} \geq \mathbf{0},\ u = 1,\dots,n
         \quad \text{and} \quad
-        \mathbf{A} \begin{pmatrix} \beta_i \\ \mathbf{q}_i \end{pmatrix} + \mathbf{b} \geq \mathbf{0},\ \forall i \in [m]
+        \mathbf{A} \begin{pmatrix} \beta_i \\ \mathbf{q}_i \end{pmatrix} + \mathbf{b} \geq \mathbf{0},\ i = 1,\dots,m
 
 where
 
