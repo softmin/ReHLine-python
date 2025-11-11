@@ -442,6 +442,7 @@ class plq_Ridge_Regressor(plqERM_Ridge, RegressorMixin):
     def predict(self, X):
         """
         Predict targets as the linear decision function.
+        
         Parameters
         ----------
         X : ndarray of shape (n_samples, n_features)

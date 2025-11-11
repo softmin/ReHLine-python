@@ -178,9 +178,9 @@ print(f"\nBest Validation Accuracy: {best_acc:.4f}")
 print("="*50)
 
 
-## Choose Hinge Square Loss
+## Choose Squared Hinge Loss
 fixed_params = {
-    'loss': {'name': 'svm square'},       
+    'loss': {'name': 'squared svm'},       
     'n_users': user_num,            
     'n_items': item_num,            
     'max_iter': 100000,
@@ -191,7 +191,7 @@ fixed_params = {
 
 best_params, best_score, best_acc, all_results = parallel_grid_search(plqMF_Ridge, param_grid, fixed_params, X_train, y_train_bin, X_test, y_test_bin, n_jobs)
 print("\n" + "="*50)
-print("BEST RESULTS(Using Hinge Square Loss)")
+print("BEST RESULTS(Using Squared Hinge Loss)")
 print("="*50)
 print("Optimal Parameters:")
 for param, value in best_params.items():

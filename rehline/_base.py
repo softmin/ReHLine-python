@@ -278,8 +278,8 @@ def _make_loss_rehline_param(loss, X, y):
     """The `_make_loss_rehline_param` function generates parameters for the ReHLine solver, based on the provided training data.
 
     The function supports various loss functions, including:
-        - 'hinge'
-        - 'svm' or 'SVM'
+        - 'hinge' or 'svm' or 'SVM'
+        - 'squared hinge' or 'squared svm' or 'squared SVM'
         - 'mae' or 'MAE' or 'mean absolute error'
         - 'check' or 'quantile' or 'quantile regression' or 'QR'
         - 'sSVM' or 'smooth SVM' or 'smooth hinge'
@@ -393,16 +393,16 @@ def _make_loss_rehline_param(loss, X, y):
         U = np.array([[1.0] * n, [-1.0] * n])
         V = np.array([-y , y])
 
-    elif (loss['name'] == 'SVM square') \
-            or (loss['name'] == 'svm square') \
-            or (loss['name'] == 'hinge square'):
+    elif (loss['name'] == 'squared SVM') \
+            or (loss['name'] == 'squared svm') \
+            or (loss['name'] == 'squared hinge'):
         Tau = np.inf * np.ones((1, n)) 
         S = - np.sqrt(2) * y.reshape(1,-1)
         T = np.sqrt(2) * np.ones((1, n)) 
 
     elif (loss['name'] == 'MSE') \
             or (loss['name'] == 'mse') \
-            or (loss['name'] == 'mean square error'):
+            or (loss['name'] == 'mean squared error'):
         Tau = np.inf * np.ones((2, n)) 
         S = np.array([[np.sqrt(2)] * n, [-np.sqrt(2)] * n])
         T = np.array([-np.sqrt(2) * y , np.sqrt(2) * y])
