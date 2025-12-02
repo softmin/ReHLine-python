@@ -16,7 +16,7 @@ Example Gallery
    examples/Path_solution.ipynb
    examples/Warm_start.ipynb
    examples/Sklearn_Mixin.ipynb   
-   examples/MF.ipynb  
+   examples/NMF.ipynb
 
 List of Examples
 ----------------
@@ -32,4 +32,4 @@ List of Examples
    examples/Path_solution.ipynb
    examples/Warm_start.ipynb
    examples/Sklearn_Mixin.ipynb 
-   examples/MF.ipynb  
+   examples/NMF.ipynb

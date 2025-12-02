@@ -77,7 +77,7 @@ def parallel_grid_search(model_class, param_grid, fixed_params,  X_train, y_trai
             y_pred = model.decision_function(X_val)
             y_pred_classes = np.where(y_pred > 0, 1, -1)
             accuracy = accuracy_score(y_val, y_pred_classes)
-        score = model.obj(X_val, y_val, loss=model.loss)[0] / len(y_val)
+        score = model.obj(X_val, y_val)[0] / len(y_val)
         return {'params': param_dict, 'score': score, 'accuracy':accuracy}
     
     
@@ -94,11 +94,13 @@ def parallel_grid_search(model_class, param_grid, fixed_params,  X_train, y_trai
 
 ## Parameters to be selected
 param_grid = {
-    'constraint': [[], [{'name': '>=0'}]],
+    'constraint_user': [[], [{'name': '>=0'}]],
+    'constraint_item': [[], [{'name': '>=0'}]],
     'biased': [True, False],
     'rank': [5, 10],
     'C': [0.0006, 0.0002],
     'rho': [0.3, 0.6],
+    'tol': [0.01]
 }
 
 

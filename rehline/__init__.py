@@ -7,6 +7,7 @@ from ._path_sol import plqERM_Ridge_path_sol
 from ._sklearn_mixin import plq_Ridge_Classifier, plq_Ridge_Regressor
 from ._mf_class import plqMF_Ridge
 from ._data import make_mf_dataset 
+from ._loss import ReHLoss
 
 __all__ = ("_BaseReHLine",
            "ReHLine_solver",
