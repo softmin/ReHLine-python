@@ -26,17 +26,20 @@ Considering a User-Item-Rating triplet dataset :math:`(u, i, r_{ui})` derived fr
 
 .. math::
         \ \text{ s.t. } \ 
-        \mathbf{A} \begin{pmatrix} \alpha_u \\ \mathbf{p}_u \end{pmatrix} + \mathbf{b} \geq \mathbf{0},\ u = 1,\dots,n
+        \mathbf{A}_{\text{user}} \begin{pmatrix} \alpha_u \\ \mathbf{p}_u \end{pmatrix} + \mathbf{b}_{\text{user}} \geq \mathbf{0},\ u = 1,\dots,n
         \quad \text{and} \quad
-        \mathbf{A} \begin{pmatrix} \beta_i \\ \mathbf{q}_i \end{pmatrix} + \mathbf{b} \geq \mathbf{0},\ i = 1,\dots,m
+        \mathbf{A}_{\text{item}} \begin{pmatrix} \beta_i \\ \mathbf{q}_i \end{pmatrix} + \mathbf{b}_{\text{item}} \geq \mathbf{0},\ i = 1,\dots,m
 
 where
 
 - :math:`\text{PLQ}(\cdot , \cdot)` 
   is a convex piecewise linear-quadratic loss function. You can find built-in loss functions in the `Loss <./loss.rst>`_ section.
   
-- :math:`\mathbf{A}` is a :math:`d \times (k+1)` matrix and :math:`\mathbf{b}` is a :math:`d`-dimensional vector 
-  representing :math:`d` linear constraints. See `Constraints <./constraint.rst>`_ for more details.
+- :math:`\mathbf{A}_{\text{user}}` is a :math:`d \times (k+1)` matrix and :math:`\mathbf{b}_{\text{user}}` is a :math:`d`-dimensional vector 
+  representing :math:`d` linear constraints to user side parameters. See `Constraints <./constraint.rst>`_ for more details.
+
+- :math:`\mathbf{A}_{\text{item}}` is a :math:`d \times (k+1)` matrix and :math:`\mathbf{b}_{\text{item}}` is a :math:`d`-dimensional vector 
+  representing :math:`d` linear constraints to item side parameters. See `Constraints <./constraint.rst>`_ for more details.
 
 - :math:`\Omega`
   is a user-item collection that records all training data
@@ -93,11 +96,11 @@ Basic Usage
 
    # 3. Model Construction
    clf = plqMF_Ridge(
-       C=0.001,                        ## Regularization strength
-       rank=6,                         ## Latent factor dimension
-       loss={'name': 'mae'},           ## Use absolute loss
-       n_users=user_num,               ## Number of users
-       n_items=item_num,               ## Number of items
+       C=0.001,                             ## Regularization strength
+       rank=6,                              ## Latent factor dimension
+       loss={'name': 'mae'},                ## Use absolute loss
+       n_users=user_num,                    ## Number of users
+       n_items=item_num,                    ## Number of items
    )
    clf.fit(X_train, y_train)
 
@@ -118,7 +121,7 @@ Choosing different `loss functions <./loss.rst>`_ through :code:`loss`:
    clf_mse = plqMF_Ridge(
         C=0.001, 
         rank=6, 
-        loss={'name': 'mse'},          ## Choose square loss
+        loss={'name': 'mse'},               ## Choose square loss
         n_users=user_num, 
         n_items=item_num)
    
@@ -126,11 +129,11 @@ Choosing different `loss functions <./loss.rst>`_ through :code:`loss`:
    clf_hinge = plqMF_Ridge(
         C=0.001, 
         rank=6, 
-        loss={'name': 'hinge'},        ## Choose hinge loss
+        loss={'name': 'hinge'},             ## Choose hinge loss
         n_users=user_num, 
         n_items=item_num)
 
-`Linear constraints <./constraint.rst>`_ can be applied via :code:`constraint`:
+`Linear constraints <./constraint.rst>`_ can be applied via :code:`constraint_user` and :code:`constraint_item`:
 
 .. code-block:: python
 
@@ -141,7 +144,8 @@ Choosing different `loss functions <./loss.rst>`_ through :code:`loss`:
         loss={'name': 'mae'},
         n_users=user_num, 
         n_items=item_num,
-        constraint=[{'name': '>=0'}]   ## Use nonnegative constraint
+        constraint_user=[{'name': '>=0'}],  ## Use nonnegative constraint
+        constraint_item=[{'name': '>=0'}]
     )
   
 The algorithm includes bias terms :math:`\mathbf{\alpha}` and :math:`\mathbf{\beta}` by default. To disable them, that is, :math:`\mathbf{\alpha} = \mathbf{0}` and :math:`\mathbf{\beta} = \mathbf{0}`, set: :code:`biased=False`:
@@ -155,7 +159,7 @@ The algorithm includes bias terms :math:`\mathbf{\alpha}` and :math:`\mathbf{\be
         loss={'name': 'mae'},
         n_users=user_num, 
         n_items=item_num,
-        biased=False                   ## Disable bias terms
+        biased=False                        ## Disable bias terms
     )
   
 Imposing different strengths of regularization on items/users through :code:`rho`:
@@ -169,7 +173,7 @@ Imposing different strengths of regularization on items/users through :code:`rho
         loss={'name': 'mae'},
         n_users=user_num, 
         n_items=item_num,
-        rho=0.7                        ## Add heavier penalties for user parameters
+        rho=0.7                             ## Add heavier penalties for user parameters
     )
 
 Parameter Tuning
@@ -182,7 +186,7 @@ The model complexity is mainly controlled by :code:`C` and :code:`rank`.
    
    for C_value in [0.0002, 0.001, 0.005]:
        clf = plqMF_Ridge(
-            C=C_value,                 ## Try different regularization strengths
+            C=C_value,                      ## Try different regularization strengths
             rank=6, 
             loss={'name': 'mae'},
             n_users=user_num, 
@@ -197,7 +201,7 @@ The model complexity is mainly controlled by :code:`C` and :code:`rank`.
    for rank_value in [4, 8, 12]:
        clf = plqMF_Ridge(
             C=0.001, 
-            rank=rank_value,           ## Try different latent factor dimensions
+            rank=rank_value,                ## Try different latent factor dimensions
             loss={'name': 'mae'},
             n_users=user_num, 
             n_items=item_num
@@ -221,4 +225,4 @@ Example
    :caption: Empirical Risk Minimization
    :name: rst-link-gallery
 
-   ../examples/MF.ipynb
+   ../examples/NMF.ipynb

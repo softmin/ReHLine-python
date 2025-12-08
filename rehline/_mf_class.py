@@ -6,6 +6,7 @@ import pandas as pd
 from sklearn.base import BaseEstimator
 from sklearn.utils.validation import _check_sample_weight
 from sklearn.exceptions import ConvergenceWarning
+from ._loss import ReHLoss
 from ._base import  (_BaseReHLine, ReHLine_solver,
                     _make_loss_rehline_param,  _make_constraint_rehline_param,
                     _cast_sample_bias, _cast_sample_weight)
@@ -32,9 +33,9 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
 
     .. math::
         \ \text{ s.t. } \ 
-        \mathbf{A} \begin{pmatrix} \alpha_u \\ \mathbf{p}_u \end{pmatrix} + \mathbf{b} \geq \mathbf{0},\ u = 1,\dots,n
+        \mathbf{A}_{\text{user}} \begin{pmatrix} \alpha_u \\ \mathbf{p}_u \end{pmatrix} + \mathbf{b}_{\text{user}} \geq \mathbf{0},\ u = 1,\dots,n
         \quad \text{and} \quad
-        \mathbf{A} \begin{pmatrix} \beta_i \\ \mathbf{q}_i \end{pmatrix} + \mathbf{b} \geq \mathbf{0},\ i = 1,\dots,m
+        \mathbf{A}_{\text{item}} \begin{pmatrix} \beta_i \\ \mathbf{q}_i \end{pmatrix} + \mathbf{b}_{\text{item}} \geq \mathbf{0},\ i = 1,\dots,m
         
     The function supports various loss functions, including:
         - 'hinge', 'svm' or 'SVM'
@@ -58,8 +59,12 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
     loss : dict
         A dictionary specifying the loss function parameters. 
     
-    constraint : list of dict
-        A list of dictionaries, where each dictionary represents a constraint.
+    constraint_user : list of dict
+        A list of dictionaries, where each dictionary represents a constraint to user side parameters.
+        Each dictionary must contain a 'name' key, which specifies the type of constraint.
+
+    constraint_item : list of dict
+        A list of dictionaries, where each dictionary represents a constraint to item side parameters.
         Each dictionary must contain a 'name' key, which specifies the type of constraint.
 
     biased : bool, default=True
@@ -156,7 +161,7 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
     decision_function(X)
         The decision function evaluated on the given dataset.
 
-    obj(X, y, loss))
+    obj(X, y)
         Compute the values of loss term and objective function.
 
     Notes
@@ -165,7 +170,8 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
 
     """
 
-    def __init__(self, n_users, n_items, loss, constraint=[], biased=True,
+    def __init__(self, n_users, n_items, loss, biased=True,
+                    constraint_user=[], constraint_item=[],  
                     rank=10, C=1.0, rho=0.5,
                     init_mean=0.0, init_sd=0.1, random_state=None,
                     max_iter=10000, tol=1e-4, shrink=1, trace_freq=100, 
@@ -189,7 +195,8 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
         self.n_users = n_users 
         self.n_items = n_items 
         self.loss = loss
-        self.constraint = constraint
+        self.constraint_user = constraint_user
+        self.constraint_item = constraint_item
         self.biased = biased
         ## -----------------------------hyper perameters-----------------------------
         self.rank = rank
@@ -259,7 +266,7 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
 
 
         # CD algorithm
-        self.history[0] = self.obj(X, y, loss=self.loss)
+        self.history[0] = self.obj(X, y)
         for l in range(self.max_iter_CD):
             ## User side update
             for user in range(self.n_users):
@@ -286,7 +293,7 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
                 U, V, Tau, S, T = _make_loss_rehline_param(loss=self.loss, X=Q_tmp, y=y_tmp)
                 U_bias, V_bias, Tau_bias, S_bias,  T_bias = _cast_sample_bias(U, V, Tau, S, T, sample_bias=bias_tmp)
                 U_weight, V_weight, Tau_weight, S_weight, T_weight = _cast_sample_weight(U_bias, V_bias, Tau_bias, S_bias, T_bias, C=C_user, sample_weight=weight_tmp)
-                A, b = _make_constraint_rehline_param(constraint=self.constraint, X=Q_tmp, y=y_tmp)
+                A, b = _make_constraint_rehline_param(constraint=self.constraint_user, X=Q_tmp, y=y_tmp)
 
                 ### solve and update
                 result_tmp = ReHLine_solver(X=Q_tmp, 
@@ -337,7 +344,7 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
                 U, V, Tau, S, T = _make_loss_rehline_param(loss=self.loss, X=P_tmp, y=y_tmp)
                 U_bias, V_bias, Tau_bias, S_bias,  T_bias = _cast_sample_bias(U, V, Tau, S, T, sample_bias=bias_tmp)
                 U_weight, V_weight, Tau_weight, S_weight, T_weight = _cast_sample_weight(U_bias, V_bias, Tau_bias, S_bias, T_bias, C=C_item, sample_weight=weight_tmp)
-                A, b = _make_constraint_rehline_param(constraint=self.constraint, X=P_tmp, y=y_tmp)
+                A, b = _make_constraint_rehline_param(constraint=self.constraint_item, X=P_tmp, y=y_tmp)
                 
                 ### solve and update
                 result_tmp = ReHLine_solver(X=P_tmp, 
@@ -364,7 +371,7 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
 
 
             ## Check convergence
-            self.history[l+1] = self.obj(X, y, loss=self.loss)
+            self.history[l+1] = self.obj(X, y)
             obj_diff = (self.history[l] - self.history[l+1])[1]
 
             
@@ -407,7 +414,7 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
 
 
 
-    def obj(self, X, y, loss):
+    def obj(self, X, y):
         """
         Compute the values of loss term and objective function.
         
@@ -418,9 +425,6 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
 
         y : array-like of shape (n_ratings,)
             Actual rating values.
-
-        loss : dict
-            A dictionary specifying the loss function parameters. 
             
         Returns
         -------
@@ -441,28 +445,9 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
             item_penalty = np.sum(self.Q ** 2) * (1 - self.rho) / self.n_items
             penalty = user_penalty + item_penalty
 
-        if (loss['name'] == 'mae') \
-            or (loss['name'] == 'MAE') \
-            or (loss['name'] == 'mean absolute error'):
-            loss_term =  np.sum( np.abs(self.decision_function(X) - y) )
-
-        elif (loss['name'] == 'MSE') \
-            or (loss['name'] == 'mse') \
-            or (loss['name'] == 'mean squared error'):
-            loss_term =  np.sum( (self.decision_function(X) - y) ** 2 )
-            
-        elif (loss['name'] == 'hinge') \
-            or (loss['name'] == 'svm') \
-            or (loss['name'] == 'SVM'):
-            loss_term = np.sum( np.maximum(0, 1 - y * self.decision_function(X)) )
-        
-        elif (loss['name'] == 'squared hinge') \
-            or (loss['name'] == 'squared svm') \
-            or (loss['name'] == 'squared SVM'):
-            loss_term = np.sum( np.maximum(0, 1 - y * self.decision_function(X)) ** 2 )
-
-        else:
-            raise ValueError(f"Unsupported loss function: {loss['name']}. "
-                            f"Supported losses are: 'mae', 'mse', 'hinge', 'squared hinge'")
+        y_pred = self.decision_function(X)
+        U, V, Tau, S, T = _make_loss_rehline_param(loss=self.loss, X=X, y=y)
+        loss = ReHLoss(U, V, S, T, Tau)
+        loss_term = loss(y_pred)
 
         return loss_term, self.C * loss_term + penalty

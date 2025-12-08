@@ -46,3 +46,4 @@ Related Examples
    :name: rst-link-gallery
 
    ../examples/FairSVM.ipynb
+   ../examples/NMF.ipynb
