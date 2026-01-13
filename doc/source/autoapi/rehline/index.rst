@@ -669,8 +669,8 @@ Classes
    This wrapper adds standard sklearn conveniences while delegating loss/constraint construction
    to :class:`plqERM_Ridge` (via `_make_loss_rehline_param` / `_make_constraint_rehline_param`).
 
-   Key behavior
-   ------------
+   Notes
+   -----
    - **Intercept handling**: if ``fit_intercept=True``, a constant column (value = ``intercept_scaling``)
      is appended to the right of the design matrix before calling the base solver. The last learned
      coefficient is then split out as ``intercept_``.

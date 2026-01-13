@@ -27,7 +27,7 @@
 .. _downloads: https://pepy.tech/project/rehline
 
 
-**ReHLine** is designed to be a computationally efficient and practically useful software package for large-scale ERMs. 
+**ReHLine** is designed to be a computationally efficient and practically useful software package for large-scale ERMs.
 
 - Homepage: `https://rehline.github.io/ <https://rehline.github.io/>`_
 - GitHub repo: `https://github.com/softmin/ReHLine-python <https://github.com/softmin/ReHLine-python>`_
@@ -48,15 +48,12 @@ The proposed **ReHLine** solver has appealing exhibits appealing properties:
     * - **Super-Efficient**
       - The optimization algorithm has a provable **LINEAR** convergence rate, and the per-iteration computational complexity is **LINEAR** in the sample size.
 
-✨ New Features: Scikit-Learn Compatible Estimators
----------------------------------------------------
+📰 News
+-------
 
-We are excited to introduce full scikit-learn compatibility! `ReHLine` now provides `plq_Ridge_Classifier` and `plq_Ridge_Regressor` estimators that integrate seamlessly with the entire scikit-learn ecosystem.
+- **[2026-01] Monotonic Constraints**: We added support for monotonic constraints (both increasing and decreasing) in our solvers. See :doc:`tutorials/constraint` for details.
+- **[2025-11] Scikit-Learn Compatibility**: We introduced full scikit-learn compatibility! `ReHLine` now provides `plq_Ridge_Classifier` and `plq_Ridge_Regressor` estimators that integrate seamlessly with the entire scikit-learn ecosystem. This means you can drop `ReHLine` estimators directly into your existing scikit-learn `Pipeline`, perform robust hyperparameter tuning using `GridSearchCV`, and use standard evaluation metrics. See :doc:`tutorials/ReHLine_sklearn` for details.
 
-This means you can:
-   - Drop `ReHLine` estimators directly into your existing scikit-learn `Pipeline`.
-   - Perform robust hyperparameter tuning using `GridSearchCV`.
-   - Use standard scikit-learn evaluation metrics and cross-validation tools.
 
 🔨 Installation
 ---------------
