@@ -573,13 +573,13 @@ Classes
 
    Attributes
    ----------
-   coef\_ : ndarray of shape (n_features,)
+   coef_ : ndarray of shape (n_features,)
        Coefficients excluding the intercept.
 
-   intercept\_ : float
+   intercept_ : float
        Intercept term. 0.0 if ``fit_intercept=False``.
 
-   classes\_ : ndarray of shape (2,)
+   classes_ : ndarray of shape (2,)
        Unique class labels in the original label space.
 
    _label_encoder : LabelEncoder
@@ -692,7 +692,7 @@ Classes
          - ``{'name': 'nonnegative'}`` or ``{'name': '>=0'}``
          - ``{'name': 'fair', 'sen_idx': list[int], 'tol_sen': list[float]}``
          - ``{'name': 'custom', 'A': ndarray[K, d], 'b': ndarray[K]}``
-         
+
        Note: when ``fit_intercept=True``, a constant column is appended **as the last column**;
        since you index sensitive columns by ``sen_idx`` on the *original* features, indices stay valid.
    C : float, default=1.0
@@ -722,11 +722,11 @@ Classes
 
    Attributes
    ----------
-   coef\_ : ndarray of shape (n_features,)
+   coef_ : ndarray of shape (n_features,)
        Learned linear coefficients (excluding the intercept term).
-   intercept\_ : float
+   intercept_ : float
        Intercept term extracted from the last coefficient when ``fit_intercept=True``, otherwise 0.0.
-   n_features_in\_ : int
+   n_features_in_ : int
        Number of input features seen during :meth:`fit` (before intercept augmentation).
 
    Notes
@@ -748,7 +748,7 @@ Classes
       * - :py:obj:`fit <rehline.plq_Ridge_Regressor.fit>`\ (X, y, sample_weight)
         - If ``fit_intercept=True``, a constant column (value = ``intercept_scaling``) is appended
       * - :py:obj:`decision_function <rehline.plq_Ridge_Regressor.decision_function>`\ (X)
-        - Compute f(X) = X @ coef\_ + intercept\_.
+        - Compute f(X) = X @ coef_ + intercept_.
       * - :py:obj:`predict <rehline.plq_Ridge_Regressor.predict>`\ (X)
         - Predict targets as the linear decision function.
 
@@ -782,7 +782,7 @@ Classes
 
    .. py:method:: decision_function(X)
 
-      Compute f(X) = X @ coef\_ + intercept\_.
+      Compute f(X) = X @ coef_ + intercept_.
 
       Parameters
       ----------
@@ -798,6 +798,7 @@ Classes
    .. py:method:: predict(X)
 
       Predict targets as the linear decision function.
+
       Parameters
       ----------
       X : ndarray of shape (n_samples, n_features)
@@ -811,7 +812,7 @@ Classes
 
 
 
-.. py:class:: plqMF_Ridge(n_users, n_items, loss, constraint=[], biased=True, rank=10, C=1.0, rho=0.5, init_mean=0.0, init_sd=0.1, random_state=None, max_iter=10000, tol=0.0001, shrink=1, trace_freq=100, max_iter_CD=10, tol_CD=0.0001, verbose=0)
+.. py:class:: plqMF_Ridge(n_users, n_items, loss, biased=True, constraint_user=[], constraint_item=[], rank=10, C=1.0, rho=0.5, init_mean=0.0, init_sd=0.1, random_state=None, max_iter=10000, tol=0.0001, shrink=1, trace_freq=100, max_iter_CD=10, tol_CD=0.0001, verbose=0)
 
    Bases: :py:obj:`rehline._base._BaseReHLine`, :py:obj:`sklearn.base.BaseEstimator`
 
@@ -819,9 +820,9 @@ Classes
 
    .. math::
        \min_{\substack{
-           \mathbf{P} \in \mathbb{R}^{n \times r}\ 
+           \mathbf{P} \in \mathbb{R}^{n \times k}\ 
            \pmb{\alpha} \in \mathbb{R}^n \\
-           \mathbf{Q} \in \mathbb{R}^{m \times r}\ 
+           \mathbf{Q} \in \mathbb{R}^{m \times k}\ 
            \pmb{\beta} \in \mathbb{R}^m
        }} 
        \left[
@@ -835,21 +836,15 @@ Classes
 
    .. math::
        \ \text{ s.t. } \ 
-       \mathbf{A} \begin{bmatrix}
-                       \pmb{\alpha} & \mathbf{P}
-                   \end{bmatrix}^T + 
-                   \mathbf{b}\mathbf{1}_{n}^T \geq \mathbf{0}
-       \ \text{ and } \ 
-       \mathbf{A} \begin{bmatrix}
-                       \pmb{\beta} & \mathbf{Q}
-                   \end{bmatrix}^T + 
-                   \mathbf{b}\mathbf{1}_{m}^T \geq \mathbf{0}
+       \mathbf{A}_{\text{user}} \begin{pmatrix} \alpha_u \\ \mathbf{p}_u \end{pmatrix} + \mathbf{b}_{\text{user}} \geq \mathbf{0},\ u = 1,\dots,n
+       \quad \text{and} \quad
+       \mathbf{A}_{\text{item}} \begin{pmatrix} \beta_i \\ \mathbf{q}_i \end{pmatrix} + \mathbf{b}_{\text{item}} \geq \mathbf{0},\ i = 1,\dots,m
        
    The function supports various loss functions, including:
        - 'hinge', 'svm' or 'SVM'
        - 'MAE' or 'mae' or 'mean absolute error'
-       - 'hinge square' or 'svm square' or 'SVM square'
-       - 'MSE' or 'mse' or 'mean square error'
+       - 'squared hinge' or 'squared svm' or 'squared SVM'
+       - 'MSE' or 'mse' or 'mean squared error'
 
    The following constraint types are supported:
        * 'nonnegative' or '>=0': A non-negativity constraint.
@@ -867,8 +862,12 @@ Classes
    loss : dict
        A dictionary specifying the loss function parameters. 
 
-   constraint : list of dict
-       A list of dictionaries, where each dictionary represents a constraint.
+   constraint_user : list of dict
+       A list of dictionaries, where each dictionary represents a constraint to user side parameters.
+       Each dictionary must contain a 'name' key, which specifies the type of constraint.
+
+   constraint_item : list of dict
+       A list of dictionaries, where each dictionary represents a constraint to item side parameters.
        Each dictionary must contain a 'name' key, which specifies the type of constraint.
 
    biased : bool, default=True
@@ -965,7 +964,7 @@ Classes
    decision_function(X)
        The decision function evaluated on the given dataset.
 
-   obj(X, y, loss))
+   obj(X, y)
        Compute the values of loss term and objective function.
 
    Notes
@@ -987,7 +986,7 @@ Classes
         - Fit the model based on the given training data.
       * - :py:obj:`decision_function <rehline.plqMF_Ridge.decision_function>`\ (X)
         - The decision function evaluated on the given dataset
-      * - :py:obj:`obj <rehline.plqMF_Ridge.obj>`\ (X, y, loss)
+      * - :py:obj:`obj <rehline.plqMF_Ridge.obj>`\ (X, y)
         - Compute the values of loss term and objective function.
 
 
@@ -1034,7 +1033,7 @@ Classes
           Predicted ratings for the input pairs.
 
 
-   .. py:method:: obj(X, y, loss)
+   .. py:method:: obj(X, y)
 
       Compute the values of loss term and objective function.
 
@@ -1045,9 +1044,6 @@ Classes
 
       y : array-like of shape (n_ratings,)
           Actual rating values.
-
-      loss : dict
-          A dictionary specifying the loss function parameters. 
           
       Returns
       -------

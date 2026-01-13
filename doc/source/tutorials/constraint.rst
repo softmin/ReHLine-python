@@ -1,54 +1,103 @@
 Constraint
 **********
 
-Supported linear constraints in ReHLine are listed in the table below.
+ReHLine allows you to impose various linear constraints on the model coefficients.
 
-Usage
------
+Usage Pattern
+-------------
 
-.. code:: python
+Define constraints as a list of dictionaries:
 
-   # list of
-   # name (str): name of the custom linear constraints
-   # loss_kwargs: more keys and values for constraint parameters
-   constraint = [{'name': <constraint_name>, <**constraint_kwargs>}, ...]
+.. code-block:: python
 
-.. list-table::
- :align: left
- :widths: 5 20 15
- :header-rows: 1
+   # list of constraint dictionaries
+   constraint = [{'name': <constraint_name>, **kwargs}, ...]
 
- * - constraint
-   - | args
-   - | Example
 
- * - **nonnegative**
-   - | ``name``: 'nonnegative' or '>=0'
-   - | ``constraint=[{'name': '>=0'}]``
+Supported Constraints
+---------------------
 
- * - **fair**
-   - | ``name``: 'fair' or 'fairness'
-     | ``sen_idx``: a list contains column indices for sensitive attributes
-     | ``tol_sen``: 1d array [p] of tolerance for fairness
-   - | ``constraint=[{'name': 'fair', 'sen_idx': sen_idx, 'tol_sen': tol_sen}]``
+Non-negative
+^^^^^^^^^^^^
+Constrains all coefficients to be non-negative (:math:`\beta_j \ge 0`) [1]_.
 
- * - **monotonic**
-   - | ``name``: 'monotonic' or 'monotonicity'
-     | ``decreasing`` (*bool*): False (default)
-   - | ``constraint=[{'name': 'monotonic', 'decreasing': True}]``
+* **Names**: ``'nonnegative'``, ``'>=0'``
+* **Parameters**: None
 
- * - **custom**
-   - | ``name``: 'custom'
-     | ``A``: 2d array [K x d] for linear constraint coefficients
-     | ``b``: 1d array [K] of constraint intercepts
-   - | ``constraint=[{'name': 'custom', 'A': A, 'b': b}]``
+.. code-block:: python
 
-Related Examples
-----------------
+   constraint = [{'name': '>=0'}]
+
+**Related Example**
 
 .. nblinkgallery::
-   :caption: Constraints
-   :name: rst-link-gallery
+   :name: nmf-gallery
+
+   ../examples/NMF.ipynb
+
+Fairness
+^^^^^^^^
+Constrains the correlation between predictions and sensitive attributes to be within a tolerance [2]_.
+
+* **Names**: ``'fair'``, ``'fairness'``
+* **Parameters**:
+    * ``sen_idx`` (*list of int*): Column indices of sensitive attributes in ``X``.
+    * ``tol_sen`` (*list of float*): Tolerance thresholds for each sensitive attribute.
+
+.. code-block:: python
+
+   # Example: Constrain fairness w.r.t. feature at index 0 with tolerance 0.01
+   constraint = [{'name': 'fair', 'sen_idx': [0], 'tol_sen': [0.01]}]
+
+**Related Example**
+
+.. nblinkgallery::
+   :name: fair-gallery
 
    ../examples/FairSVM.ipynb
-   ../examples/NMF.ipynb
+
+Monotonicity
+^^^^^^^^^^^^
+Constrains coefficients to be monotonically increasing or decreasing [3]_.
+Increasing: :math:`\beta_i \le \beta_{i+1}`. Decreasing: :math:`\beta_i \ge \beta_{i+1}`.
+
+* **Names**: ``'monotonic'``, ``'monotonicity'``
+* **Parameters**:
+    * ``decreasing`` (*bool*, default=False): If ``True``, enforces decreasing monotonicity.
+
+.. code-block:: python
+
+   # Monotonically increasing
+   constraint = [{'name': 'monotonic'}]
+
+   # Monotonically decreasing
+   constraint = [{'name': 'monotonic', 'decreasing': True}]
+
+Custom Constraints
+^^^^^^^^^^^^^^^^^^
+Define arbitrary linear constraints of the form :math:`A\beta + b \ge 0`.
+
+* **Names**: ``'custom'``
+* **Parameters**:
+    * ``A`` (*ndarray*): Coefficient matrix of shape (K, d).
+    * ``b`` (*ndarray*): Intercept vector of shape (K,).
+
+.. code-block:: python
+
+   import numpy as np
+
+   # Example: beta_0 + beta_1 >= 1
+   A = np.zeros((1, d))
+   A[0, 0] = 1
+   A[0, 1] = 1
+   b = np.array([-1.0])
+
+   constraint = [{'name': 'custom', 'A': A, 'b': b}]
+
+
+References
+----------
+
+.. [1] `Lee, D. D., & Seung, H. S. (1999). Learning the parts of objects by non-negative matrix factorization. Nature, 401(6755), 788-791. <https://www.nature.com/articles/44565>`_
+.. [2] `Zafar, M. B., Valera, I., Gomez Rodriguez, M., & Gummadi, K. P. (2019). Fairness Constraints: A Flexible Approach for Fair Classification. Journal of Machine Learning Research, 20(75), 1-42. <https://www.jmlr.org/papers/v20/18-262.html>`_
+.. [3] `Nature Research Intelligence. Monotonicity Constraints in Machine Learning and Classification. <https://www.nature.com/research-intelligence/nri-topic-summaries/monotonicity-constraints-in-machine-learning-and-classification-micro-23773>`_
