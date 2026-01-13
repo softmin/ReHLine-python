@@ -7,8 +7,8 @@ Usage
 -----
 
 .. code:: python
-   
-   # list of 
+
+   # list of
    # name (str): name of the custom linear constraints
    # loss_kwargs: more keys and values for constraint parameters
    constraint = [{'name': <constraint_name>, <**constraint_kwargs>}, ...]
@@ -20,7 +20,7 @@ Usage
 
  * - constraint
    - | args
-   - | Example 
+   - | Example
 
  * - **nonnegative**
    - | ``name``: 'nonnegative' or '>=0'
@@ -31,6 +31,11 @@ Usage
      | ``sen_idx``: a list contains column indices for sensitive attributes
      | ``tol_sen``: 1d array [p] of tolerance for fairness
    - | ``constraint=[{'name': 'fair', 'sen_idx': sen_idx, 'tol_sen': tol_sen}]``
+
+ * - **monotonic**
+   - | ``name``: 'monotonic' or 'monotonicity'
+     | ``decreasing`` (*bool*): False (default)
+   - | ``constraint=[{'name': 'monotonic', 'decreasing': True}]``
 
  * - **custom**
    - | ``name``: 'custom'

@@ -1,13 +1,12 @@
 import numpy as np
 from sklearn.base import ClassifierMixin, RegressorMixin
-from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
-from sklearn.utils.multiclass import check_classification_targets
 from sklearn.preprocessing import LabelEncoder
-from sklearn.utils.class_weight import compute_class_weight
 from sklearn.utils._tags import ClassifierTags, RegressorTags
+from sklearn.utils.class_weight import compute_class_weight
+from sklearn.utils.multiclass import check_classification_targets
+from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
 
 from ._class import plqERM_Ridge
-
 
 
 class plq_Ridge_Classifier(plqERM_Ridge, ClassifierMixin):
@@ -84,32 +83,41 @@ class plq_Ridge_Classifier(plqERM_Ridge, ClassifierMixin):
 
     Attributes
     ----------
-    coef\_ : ndarray of shape (n_features,)
+    coef_ : ndarray of shape (n_features,)
         Coefficients excluding the intercept.
 
-    intercept\_ : float
+    intercept_ : float
         Intercept term. 0.0 if ``fit_intercept=False``.
 
-    classes\_ : ndarray of shape (2,)
+    classes_ : ndarray of shape (2,)
         Unique class labels in the original label space.
 
     _label_encoder : LabelEncoder
         Encodes original labels into {0,1} for internal training.
     """
 
-    def __init__(self, 
-                 loss,
-                 constraint=[],
-                 C=1.,
-                 U=np.empty((0, 0)), V=np.empty((0, 0)),
-                 Tau=np.empty((0, 0)), S=np.empty((0, 0)), T=np.empty((0, 0)),
-                 A=np.empty((0, 0)), b=np.empty((0,)),
-                 max_iter=1000, tol=1e-4, shrink=1, warm_start=0,
-                 verbose=0, trace_freq=100,
-                 fit_intercept=True,
-                 intercept_scaling=1.0,
-                 class_weight=None):
-        
+    def __init__(
+        self,
+        loss,
+        constraint=[],
+        C=1.0,
+        U=np.empty((0, 0)),
+        V=np.empty((0, 0)),
+        Tau=np.empty((0, 0)),
+        S=np.empty((0, 0)),
+        T=np.empty((0, 0)),
+        A=np.empty((0, 0)),
+        b=np.empty((0,)),
+        max_iter=1000,
+        tol=1e-4,
+        shrink=1,
+        warm_start=0,
+        verbose=0,
+        trace_freq=100,
+        fit_intercept=True,
+        intercept_scaling=1.0,
+        class_weight=None,
+    ):
         self.loss = loss
         self.constraint = constraint
         self.C = C
@@ -163,7 +171,8 @@ class plq_Ridge_Classifier(plqERM_Ridge, ClassifierMixin):
         """
         # Validate input (dense only) and set n_features_in_
         X, y = check_X_y(
-            X, y,
+            X,
+            y,
             accept_sparse=False,
             dtype=np.float64,
             order="C",
@@ -180,7 +189,7 @@ class plq_Ridge_Classifier(plqERM_Ridge, ClassifierMixin):
                 f"but received {self.classes_.size} classes: {self.classes_}."
             )
 
-        # Compute class weights on original labels 
+        # Compute class weights on original labels
         if self.class_weight is not None:
             cw_vec = compute_class_weight(
                 class_weight=self.class_weight,
@@ -189,7 +198,9 @@ class plq_Ridge_Classifier(plqERM_Ridge, ClassifierMixin):
             )
             cw_map = {c: w for c, w in zip(self.classes_, cw_vec)}
             sw_cw = np.asarray([cw_map[yi] for yi in y], dtype=np.float64)
-            sample_weight = sw_cw if sample_weight is None else (np.asarray(sample_weight) * sw_cw)
+            sample_weight = (
+                sw_cw if sample_weight is None else (np.asarray(sample_weight) * sw_cw)
+            )
 
         # Encode -> {0,1} -> {-1,+1}
         le = LabelEncoder().fit(self.classes_)
@@ -228,7 +239,9 @@ class plq_Ridge_Classifier(plqERM_Ridge, ClassifierMixin):
         ndarray of shape (n_samples,)
             Continuous scores for each sample.
         """
-        check_is_fitted(self, attributes=["coef_", "intercept_", "_label_encoder", "classes_"])
+        check_is_fitted(
+            self, attributes=["coef_", "intercept_", "_label_encoder", "classes_"]
+        )
         X = check_array(X, accept_sparse=False, dtype=np.float64, order="C")
         return X @ self.coef_ + self.intercept_
 
@@ -254,11 +267,11 @@ class plq_Ridge_Classifier(plqERM_Ridge, ClassifierMixin):
         """
         Return scikit-learn estimator tags for compatibility.
         """
-        tags = super().__sklearn_tags__() 
+        tags = super().__sklearn_tags__()
         tags.estimator_type = "classifier"
         tags.classifier_tags = ClassifierTags()
-        tags.target_tags.required = True   
-        tags.input_tags.sparse = False     
+        tags.target_tags.required = True
+        tags.input_tags.sparse = False
         return tags
 
 
@@ -270,8 +283,8 @@ class plq_Ridge_Regressor(plqERM_Ridge, RegressorMixin):
     This wrapper adds standard sklearn conveniences while delegating loss/constraint construction
     to :class:`plqERM_Ridge` (via `_make_loss_rehline_param` / `_make_constraint_rehline_param`).
 
-    Key behavior
-    ------------
+    Notes
+    -----
     - **Intercept handling**: if ``fit_intercept=True``, a constant column (value = ``intercept_scaling``)
       is appended to the right of the design matrix before calling the base solver. The last learned
       coefficient is then split out as ``intercept_``.
@@ -293,7 +306,7 @@ class plq_Ridge_Regressor(plqERM_Ridge, RegressorMixin):
           - ``{'name': 'nonnegative'}`` or ``{'name': '>=0'}``
           - ``{'name': 'fair', 'sen_idx': list[int], 'tol_sen': list[float]}``
           - ``{'name': 'custom', 'A': ndarray[K, d], 'b': ndarray[K]}``
-          
+
         Note: when ``fit_intercept=True``, a constant column is appended **as the last column**;
         since you index sensitive columns by ``sen_idx`` on the *original* features, indices stay valid.
     C : float, default=1.0
@@ -323,11 +336,11 @@ class plq_Ridge_Regressor(plqERM_Ridge, RegressorMixin):
 
     Attributes
     ----------
-    coef\_ : ndarray of shape (n_features,)
+    coef_ : ndarray of shape (n_features,)
         Learned linear coefficients (excluding the intercept term).
-    intercept\_ : float
+    intercept_ : float
         Intercept term extracted from the last coefficient when ``fit_intercept=True``, otherwise 0.0.
-    n_features_in\_ : int
+    n_features_in_ : int
         Number of input features seen during :meth:`fit` (before intercept augmentation).
 
     Notes
@@ -337,18 +350,27 @@ class plq_Ridge_Regressor(plqERM_Ridge, RegressorMixin):
     densifies data (at the cost of memory).
     """
 
-    def __init__(self,
-                 loss={'name': 'QR', 'qt': 0.5},
-                 constraint=[],
-                 C=1.,
-                 U=np.empty((0, 0)), V=np.empty((0, 0)),
-                 Tau=np.empty((0, 0)), S=np.empty((0, 0)), T=np.empty((0, 0)),
-                 A=np.empty((0, 0)), b=np.empty((0,)),
-                 max_iter=1000, tol=1e-4, shrink=1, warm_start=0,
-                 verbose=0, trace_freq=100,
-                 fit_intercept=True,
-                 intercept_scaling=1.0):
-
+    def __init__(
+        self,
+        loss={"name": "QR", "qt": 0.5},
+        constraint=[],
+        C=1.0,
+        U=np.empty((0, 0)),
+        V=np.empty((0, 0)),
+        Tau=np.empty((0, 0)),
+        S=np.empty((0, 0)),
+        T=np.empty((0, 0)),
+        A=np.empty((0, 0)),
+        b=np.empty((0,)),
+        max_iter=1000,
+        tol=1e-4,
+        shrink=1,
+        warm_start=0,
+        verbose=0,
+        trace_freq=100,
+        fit_intercept=True,
+        intercept_scaling=1.0,
+    ):
         self.loss = loss
         self.constraint = constraint
         self.C = C
@@ -375,7 +397,6 @@ class plq_Ridge_Regressor(plqERM_Ridge, RegressorMixin):
 
         self.fit_intercept = fit_intercept
         self.intercept_scaling = float(intercept_scaling)
-
 
     def fit(self, X, y, sample_weight=None):
         """
@@ -423,7 +444,7 @@ class plq_Ridge_Regressor(plqERM_Ridge, RegressorMixin):
         return self
 
     def decision_function(self, X):
-        """Compute f(X) = X @ coef\_ + intercept\_.
+        """Compute f(X) = X @ coef_ + intercept_.
 
         Parameters
         ----------
@@ -442,7 +463,7 @@ class plq_Ridge_Regressor(plqERM_Ridge, RegressorMixin):
     def predict(self, X):
         """
         Predict targets as the linear decision function.
-        
+
         Parameters
         ----------
         X : ndarray of shape (n_samples, n_features)

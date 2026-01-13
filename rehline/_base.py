@@ -20,26 +20,26 @@ class _BaseReHLine(BaseEstimator):
 
     .. math::
 
-        \min_{\mathbf{\beta} \in \mathbb{R}^d} \sum_{i=1}^n \sum_{l=1}^L \text{ReLU}( u_{li} \mathbf{x}_i^\intercal \mathbf{\beta} + v_{li}) + \sum_{i=1}^n \sum_{h=1}^H {\text{ReHU}}_{\tau_{hi}}( s_{hi} \mathbf{x}_i^\intercal \mathbf{\beta} + t_{hi}) + \frac{1}{2} \| \mathbf{\beta} \|_2^2, \\ \text{ s.t. } 
+        \min_{\mathbf{\beta} \in \mathbb{R}^d} \sum_{i=1}^n \sum_{l=1}^L \text{ReLU}( u_{li} \mathbf{x}_i^\intercal \mathbf{\beta} + v_{li}) + \sum_{i=1}^n \sum_{h=1}^H {\text{ReHU}}_{\tau_{hi}}( s_{hi} \mathbf{x}_i^\intercal \mathbf{\beta} + t_{hi}) + \frac{1}{2} \| \mathbf{\beta} \|_2^2, \\ \text{ s.t. }
         \mathbf{A} \mathbf{\beta} + \mathbf{b} \geq \mathbf{0},
-        
-    where :math:`\mathbf{U} = (u_{li}),\mathbf{V} = (v_{li}) \in \mathbb{R}^{L \times n}` 
-    and :math:`\mathbf{S} = (s_{hi}),\mathbf{T} = (t_{hi}),\mathbf{\tau} = (\tau_{hi}) \in \mathbb{R}^{H \times n}` 
+
+    where :math:`\mathbf{U} = (u_{li}),\mathbf{V} = (v_{li}) \in \mathbb{R}^{L \times n}`
+    and :math:`\mathbf{S} = (s_{hi}),\mathbf{T} = (t_{hi}),\mathbf{\tau} = (\tau_{hi}) \in \mathbb{R}^{H \times n}`
     are the ReLU-ReHU loss parameters, and :math:`(\mathbf{A},\mathbf{b})` are the constraint parameters.
-    
+
     Parameters
     ----------
 
     C : float, default=1.0
         Regularization parameter. The strength of the regularization is
-        inversely proportional to C. Must be strictly positive. 
+        inversely proportional to C. Must be strictly positive.
 
     U, V: array of shape (L, n_samples), default=np.empty(shape=(0, 0))
         The parameters pertaining to the ReLU part in the loss function.
 
     Tau, S, T: array of shape (H, n_samples), default=np.empty(shape=(0, 0))
         The parameters pertaining to the ReHU part in the loss function.
-    
+
     A: array of shape (K, n_features), default=np.empty(shape=(0, 0))
         The coefficient matrix in the linear constraint.
 
@@ -48,11 +48,18 @@ class _BaseReHLine(BaseEstimator):
 
     """
 
-    def __init__(self, *, C=1.,
-                       U=np.empty(shape=(0,0)), V=np.empty(shape=(0,0)),
-                       Tau=np.empty(shape=(0,0)),
-                       S=np.empty(shape=(0,0)), T=np.empty(shape=(0,0)),
-                       A=np.empty(shape=(0,0)), b=np.empty(shape=(0))):
+    def __init__(
+        self,
+        *,
+        C=1.0,
+        U=np.empty(shape=(0, 0)),
+        V=np.empty(shape=(0, 0)),
+        Tau=np.empty(shape=(0, 0)),
+        S=np.empty(shape=(0, 0)),
+        T=np.empty(shape=(0, 0)),
+        A=np.empty(shape=(0, 0)),
+        b=np.empty(shape=(0)),
+    ):
         self.C = C
         self._U = U
         self._V = V
@@ -67,15 +74,15 @@ class _BaseReHLine(BaseEstimator):
 
     def get_params(self, deep=True):
         """Get parameters for this estimator.
-        
+
         Override the default get_params to exclude computation-only parameters.
-        
+
         Parameters
         ----------
         deep : bool, default=True
             If True, will return the parameters for this estimator and
             contained subobjects that are estimators.
-            
+
         Returns
         -------
         params : dict
@@ -83,11 +90,26 @@ class _BaseReHLine(BaseEstimator):
         """
         out = dict()
         for key in self._get_param_names():
-            if key not in ['U', 'V', 'S', 'T', 'Tau', 'A', 'b', 'Lambda', 'Gamma', 'xi']:
+            if key not in [
+                "U",
+                "V",
+                "S",
+                "T",
+                "Tau",
+                "A",
+                "b",
+                "Lambda",
+                "Gamma",
+                "xi",
+            ]:
                 value = getattr(self, key)
-                if deep and hasattr(value, 'get_params') and not isinstance(value, type):
+                if (
+                    deep
+                    and hasattr(value, "get_params")
+                    and not isinstance(value, type)
+                ):
                     deep_items = value.get_params().items()
-                    out.update((key + '__' + k, val) for k, val in deep_items)
+                    out.update((key + "__" + k, val) for k, val in deep_items)
                 out[key] = value
         return out
 
@@ -131,10 +153,10 @@ class _BaseReHLine(BaseEstimator):
         the sample weight with the ReLU and ReHU parameters. If sample_weight is None,
         then the sample weight is set to the weight parameter C.
         """
-        
+
         self.auto_shape()
-        
-        sample_weight = self.C*sample_weight
+
+        sample_weight = self.C * sample_weight
 
         if self.L > 0:
             U_weight = self._U * sample_weight
@@ -173,9 +195,9 @@ class _BaseReHLine(BaseEstimator):
         relu_input = np.zeros((self.L, n))
         rehu_input = np.zeros((self.H, n))
         if self.L > 0:
-            relu_input = (self._U.T * score[:,np.newaxis]).T + self._V
+            relu_input = (self._U.T * score[:, np.newaxis]).T + self._V
         if self.H > 0:
-            rehu_input = (self._S.T * score[:,np.newaxis]).T + self._T
+            rehu_input = (self._S.T * score[:, np.newaxis]).T + self._T
         return np.sum(_relu(relu_input), 0) + np.sum(_rehu(rehu_input), 0)
 
     @abstractmethod
@@ -200,6 +222,7 @@ class _BaseReHLine(BaseEstimator):
         check_is_fitted(self)
 
         X = check_array(X)
+
 
 def _relu(x):
     """
@@ -236,7 +259,7 @@ def _rehu(x, cut=1):
 
     Returns
     -------
-    array of shape (n_samples, ) 
+    array of shape (n_samples, )
         The result of the ReHU function.
 
     """
@@ -246,31 +269,49 @@ def _rehu(x, cut=1):
     u = np.maximum(x, 0)
     return huber(cut, u)
 
+
 def _check_relu(relu_coef, relu_intercept):
-    assert relu_coef.shape == relu_intercept.shape, "`relu_coef` and `relu_intercept` should be the same shape!"
+    assert relu_coef.shape == relu_intercept.shape, (
+        "`relu_coef` and `relu_intercept` should be the same shape!"
+    )
+
 
 def _check_rehu(rehu_coef, rehu_intercept, rehu_cut):
-    assert rehu_coef.shape == rehu_intercept.shape, "`rehu_coef` and `rehu_intercept` should be the same shape!"
+    assert rehu_coef.shape == rehu_intercept.shape, (
+        "`rehu_coef` and `rehu_intercept` should be the same shape!"
+    )
     if len(rehu_coef) > 0:
         assert (rehu_cut >= 0.0).all(), "`rehu_cut` must be non-negative!"
 
 
-def ReHLine_solver(X, U, V,
-        Tau=np.empty(shape=(0, 0)),
-        S=np.empty(shape=(0, 0)), T=np.empty(shape=(0, 0)),
-        A=np.empty(shape=(0, 0)), b=np.empty(shape=(0)),
-        Lambda=np.empty(shape=(0, 0)),
-        Gamma=np.empty(shape=(0, 0)),
-        xi=np.empty(shape=(0, 0)),
-        max_iter=1000, tol=1e-4, shrink=1, verbose=1, trace_freq=100):
+def ReHLine_solver(
+    X,
+    U,
+    V,
+    Tau=np.empty(shape=(0, 0)),
+    S=np.empty(shape=(0, 0)),
+    T=np.empty(shape=(0, 0)),
+    A=np.empty(shape=(0, 0)),
+    b=np.empty(shape=(0)),
+    Lambda=np.empty(shape=(0, 0)),
+    Gamma=np.empty(shape=(0, 0)),
+    xi=np.empty(shape=(0, 0)),
+    max_iter=1000,
+    tol=1e-4,
+    shrink=1,
+    verbose=1,
+    trace_freq=100,
+):
     result = rehline_result()
-    if len(Lambda)>0:
+    if len(Lambda) > 0:
         result.Lambda = np.maximum(0, np.minimum(Lambda, 1.0))
-    if len(Gamma)>0:
+    if len(Gamma) > 0:
         result.Gamma = np.maximum(0, np.minimum(Gamma, Tau))
-    if len(xi)>0:
+    if len(xi) > 0:
         result.xi = np.maximum(xi, 0.0)
-    rehline_internal(result, X, A, b, U, V, S, T, Tau, max_iter, tol, shrink, verbose, trace_freq)
+    rehline_internal(
+        result, X, A, b, U, V, S, T, Tau, max_iter, tol, shrink, verbose, trace_freq
+    )
     return result
 
 
@@ -292,7 +333,7 @@ def _make_loss_rehline_param(loss, X, y):
     ----------
     loss : dict
         A dictionary containing the loss function parameters.
-        
+
         Keys:
             - 'name' : str, the name of the loss function (e.g. 'hinge', 'svm', 'QR', etc.)
             - 'loss_kwargs': more keys and values for loss parameters
@@ -308,33 +349,33 @@ def _make_loss_rehline_param(loss, X, y):
     n = len(y)
 
     ## initialization of ReHLine params
-    U=np.empty(shape=(0,0))
-    V=np.empty(shape=(0,0))
-    Tau=np.empty(shape=(0,0))
-    S=np.empty(shape=(0,0))
-    T=np.empty(shape=(0,0))
+    U = np.empty(shape=(0, 0))
+    V = np.empty(shape=(0, 0))
+    Tau = np.empty(shape=(0, 0))
+    S = np.empty(shape=(0, 0))
+    T = np.empty(shape=(0, 0))
 
     # _dummy_X = False
 
-    if (loss['name'] == 'hinge') or (loss['name'] == 'svm')\
-        or (loss['name'] == 'SVM'):
-        U = -y.reshape(1,-1)
-        V = (np.array(np.ones(n))).reshape(1,-1)
-    
-    elif (loss['name'] == 'check') \
-            or (loss['name'] == 'quantile') \
-            or (loss['name'] == 'quantile regression') \
-            or (loss['name'] == 'QR'):
+    if (loss["name"] == "hinge") or (loss["name"] == "svm") or (loss["name"] == "SVM"):
+        U = -y.reshape(1, -1)
+        V = (np.array(np.ones(n))).reshape(1, -1)
 
-        qt = loss['qt']
+    elif (
+        (loss["name"] == "check")
+        or (loss["name"] == "quantile")
+        or (loss["name"] == "quantile regression")
+        or (loss["name"] == "QR")
+    ):
+        qt = loss["qt"]
 
         U = np.ones((2, n))
         V = np.ones((2, n))
 
-        U[0] = - qt*U[0]
-        U[1] = (1-qt)*U[1]
-        V[0] = qt*V[0]*y
-        V[1] = -(1-qt)*V[1]*y
+        U[0] = -qt * U[0]
+        U[1] = (1 - qt) * U[1]
+        V[0] = qt * V[0] * y
+        V[1] = -(1 - qt) * V[1] * y
 
     # elif (loss['name'] == 'CQR') \
 
@@ -352,71 +393,81 @@ def _make_loss_rehline_param(loss, X, y):
 
     #         X_fake[l*n:(l+1)*n,:d] = X
     #         X_fake[l*n:(l+1)*n,d+l] = 1.
-        
-    elif (loss['name'] == 'sSVM') \
-            or (loss['name'] == 'smooth SVM') \
-            or (loss['name'] == 'smooth hinge'):
+
+    elif (
+        (loss["name"] == "sSVM")
+        or (loss["name"] == "smooth SVM")
+        or (loss["name"] == "smooth hinge")
+    ):
         S = np.ones((1, n))
         T = np.ones((1, n))
         Tau = np.ones((1, n))
-        S[0] = - y
+        S[0] = -y
 
-    elif loss['name'] == 'TV':
+    elif loss["name"] == "TV":
         U = np.ones((2, n))
         V = np.ones((2, n))
-        U[1] = - U[1]
+        U[1] = -U[1]
 
-        V[0] = - X.dot(y)
+        V[0] = -X.dot(y)
         V[1] = X.dot(y)
 
-    elif (loss['name'] == 'huber') or (loss['name'] == 'Huber'):
+    elif (loss["name"] == "huber") or (loss["name"] == "Huber"):
         S = np.ones((2, n))
         T = np.ones((2, n))
-        Tau = loss['tau'] * np.ones((2, n))
+        tau_tmp = loss.get("tau", 1.0)
+        Tau = tau_tmp * np.ones((2, n))
 
         S[0] = -S[0]
         T[0] = y
         T[1] = -y
 
-    elif (loss['name'] in ['SVR', 'svr']):
+    elif loss["name"] in ["SVR", "svr"]:
         U = np.ones((2, n))
         V = np.ones((2, n))
         U[1] = -U[1]
 
-        V[0] = -(y + loss['epsilon'])
-        V[1] =  (y - loss['epsilon'])
+        V[0] = -(y + loss["epsilon"])
+        V[1] = y - loss["epsilon"]
 
-    
-    elif (loss['name'] == 'MAE') \
-            or (loss['name'] == 'mae') \
-            or (loss['name'] == 'mean absolute error'):
+    elif (
+        (loss["name"] == "MAE")
+        or (loss["name"] == "mae")
+        or (loss["name"] == "mean absolute error")
+    ):
         U = np.array([[1.0] * n, [-1.0] * n])
-        V = np.array([-y , y])
+        V = np.array([-y, y])
 
-    elif (loss['name'] == 'squared SVM') \
-            or (loss['name'] == 'squared svm') \
-            or (loss['name'] == 'squared hinge'):
-        Tau = np.inf * np.ones((1, n)) 
-        S = - np.sqrt(2) * y.reshape(1,-1)
-        T = np.sqrt(2) * np.ones((1, n)) 
+    elif (
+        (loss["name"] == "squared SVM")
+        or (loss["name"] == "squared svm")
+        or (loss["name"] == "squared hinge")
+    ):
+        Tau = np.inf * np.ones((1, n))
+        S = -np.sqrt(2) * y.reshape(1, -1)
+        T = np.sqrt(2) * np.ones((1, n))
 
-    elif (loss['name'] == 'MSE') \
-            or (loss['name'] == 'mse') \
-            or (loss['name'] == 'mean squared error'):
-        Tau = np.inf * np.ones((2, n)) 
+    elif (
+        (loss["name"] == "MSE")
+        or (loss["name"] == "mse")
+        or (loss["name"] == "mean squared error")
+    ):
+        Tau = np.inf * np.ones((2, n))
         S = np.array([[np.sqrt(2)] * n, [-np.sqrt(2)] * n])
-        T = np.array([-np.sqrt(2) * y , np.sqrt(2) * y])
+        T = np.array([-np.sqrt(2) * y, np.sqrt(2) * y])
 
-    
     else:
-        raise Exception("Sorry, ReHLine currently does not support this loss function, \
-                        but you can manually set ReHLine params to solve the problem via `ReHLine` class.")
+        raise Exception(
+            "Sorry, ReHLine currently does not support this loss function, \
+                        but you can manually set ReHLine params to solve the problem via `ReHLine` class."
+        )
 
     return U, V, Tau, S, T
 
+
 def _make_constraint_rehline_param(constraint, X, y=None):
     """The `_make_constraint_rehline_param` function generates constraint parameters for the ReHLine solver.
-    
+
     Parameters
     ----------
     constraint : list of dict
@@ -449,31 +500,49 @@ def _make_constraint_rehline_param(constraint, X, y=None):
     b = np.empty(shape=(0))
 
     for constr_tmp in constraint:
-        if (constr_tmp['name'] == 'nonnegative') or (constr_tmp['name'] == '>=0'):
+        if (constr_tmp["name"] == "nonnegative") or (constr_tmp["name"] == ">=0"):
             A_tmp = np.identity(d)
             b_tmp = np.zeros(d)
 
-        elif (constr_tmp['name'] == 'fair') or (constr_tmp['name'] == 'fairness'):
-            sen_idx = constr_tmp['sen_idx']   # list of indices
-            tol_sen = constr_tmp['tol_sen']
+        elif (constr_tmp["name"] == "fair") or (constr_tmp["name"] == "fairness"):
+            sen_idx = constr_tmp["sen_idx"]  # list of indices
+            tol_sen = constr_tmp["tol_sen"]
             tol_sen = np.array(tol_sen).reshape(-1)
 
             X_sen = X[:, sen_idx]
             X_sen = X_sen.reshape(n, -1)
 
-            assert X_sen.shape[1] == len(tol_sen), "dim of X_sen and len of tol_sen must be equal"
+            assert X_sen.shape[1] == len(tol_sen), (
+                "dim of X_sen and len of tol_sen must be equal"
+            )
 
             A_tmp = np.repeat(X_sen.T @ X, repeats=[2], axis=0) / n
             A_tmp[::2] = -A_tmp[::2]
             b_tmp = np.repeat(tol_sen, repeats=[2], axis=0)
 
-        elif (constr_tmp['name'] == 'custom'):
-            A_tmp = constr_tmp['A']
-            b_tmp = constr_tmp['b']
+        elif (constr_tmp["name"] == "monotonic") or (
+            constr_tmp["name"] == "monotonicity"
+        ):
+            decreasing = constr_tmp.get("decreasing", False)
+            idx = np.arange(d - 1)
+            A_tmp = np.zeros((d - 1, d))
+            if decreasing:
+                A_tmp[idx, idx] = 1.0
+                A_tmp[idx, idx + 1] = -1.0
+            else:
+                A_tmp[idx, idx] = -1.0
+                A_tmp[idx, idx + 1] = 1.0
+            b_tmp = np.zeros(d - 1)
+
+        elif constr_tmp["name"] == "custom":
+            A_tmp = constr_tmp["A"]
+            b_tmp = constr_tmp["b"]
 
         else:
-            raise Exception("Sorry, ReHLine currently does not support this constraint, \
-                        but you can add it by manually setting A and b via {'name': 'custom', 'A': A, 'b': b}")
+            raise Exception(
+                "Sorry, ReHLine currently does not support this constraint, \
+                        but you can add it by manually setting A and b via {'name': 'custom', 'A': A, 'b': b}"
+            )
 
         A = np.vstack([A, A_tmp]) if A.size else A_tmp
         b = np.hstack([b, b_tmp]) if b.size else b_tmp
@@ -482,14 +551,15 @@ def _make_constraint_rehline_param(constraint, X, y=None):
 
 
 def _make_penalty_rehline_param(self, penalty=None, X=None):
-    """The `_make_penalty_rehline_param` function generates penalty parameters for the ReHLine solver.
-    """
-    raise Exception("Sorry, `_make_penalty_rehline_param` feature is currently under development.")
+    """The `_make_penalty_rehline_param` function generates penalty parameters for the ReHLine solver."""
+    raise Exception(
+        "Sorry, `_make_penalty_rehline_param` feature is currently under development."
+    )
 
 
 def _cast_sample_bias(U, V, Tau, S, T, sample_bias=None):
     """Cast sample bias to ReHLine parameters by injecting bias into V and T.
-    
+
     This function modifies the ReHLine parameters to incorporate individual
     sample biases through linear transformations of the intercept parameters.
 
@@ -521,7 +591,7 @@ def _cast_sample_bias(U, V, Tau, S, T, sample_bias=None):
     V_bias : array-like of shape (L, n_samples)
         Biased ReLU intercept vector: V + U * sample_bias
 
-    Tau_bias : array-like of shape (H, n_samples)    
+    Tau_bias : array-like of shape (H, n_samples)
         Biased ReHU cutpoint matrix, actually doesn't change
 
     S_bias : array-like of shape (H, n_samples)
@@ -535,12 +605,12 @@ def _cast_sample_bias(U, V, Tau, S, T, sample_bias=None):
     The transformation applies the sample bias through:
     - V_bias = V + U ⊙ sample_bias
     - T_bias = T + S ⊙ sample_bias
-    
+
     where ⊙ denotes element-wise multiplication with broadcasting.
     """
     if sample_bias is None:
         return U, V, Tau, S, T
-    
+
     else:
         sample_bias = sample_bias.reshape(1, -1)
         U_bias = U
@@ -574,7 +644,7 @@ def _cast_sample_weight(U, V, Tau, S, T, C=1.0, sample_weight=None):
 
     C : float, default=1.0
         Regularization parameter. The strength of the regularization is
-        inversely proportional to C. Must be strictly positive. 
+        inversely proportional to C. Must be strictly positive.
 
     sample_weight : array-like of shape (n_samples,), default=None
         Individual sample weight. If None, then samples are equally weighted.
@@ -630,7 +700,7 @@ def _cast_sample_weight(U, V, Tau, S, T, C=1.0, sample_weight=None):
 
 #     .. math::
 
-#         \min_{\mathbf{\beta} \in \mathbb{R}^d} \sum_{i=1}^n \sum_{l=1}^L \text{ReLU}( u_{li} \mathbf{x}_i^\intercal \mathbf{\beta} + v_{li}) + \sum_{i=1}^n \sum_{h=1}^H {\text{ReHU}}_{\tau_{hi}}( s_{hi} \mathbf{x}_i^\intercal \mathbf{\beta} + t_{hi}) + \frac{1}{2} \| \mathbf{\beta} \|_2^2 + \lambda_1 \| \mathbf{\beta} \|_1, \\ \text{ s.t. } 
+#         \min_{\mathbf{\beta} \in \mathbb{R}^d} \sum_{i=1}^n \sum_{l=1}^L \text{ReLU}( u_{li} \mathbf{x}_i^\intercal \mathbf{\beta} + v_{li}) + \sum_{i=1}^n \sum_{h=1}^H {\text{ReHU}}_{\tau_{hi}}( s_{hi} \mathbf{x}_i^\intercal \mathbf{\beta} + t_{hi}) + \frac{1}{2} \| \mathbf{\beta} \|_2^2 + \lambda_1 \| \mathbf{\beta} \|_1, \\ \text{ s.t. }
 #         \mathbf{A} \mathbf{\beta} + \mathbf{b} \geq \mathbf{0},
 
 #     where :math:`\lambda_1` is associated with `l1_pen`.
@@ -648,8 +718,8 @@ def _cast_sample_weight(U, V, Tau, S, T, C=1.0, sample_weight=None):
 #     -------
 
 #     X_fake: ndarray of shape (n_samples+n_features, n_features)
-#         The manipulated data matrix. It has been padded with 
-#         identity matrix, allowing the correctly structured data to be input 
+#         The manipulated data matrix. It has been padded with
+#         identity matrix, allowing the correctly structured data to be input
 #         into `self.fit` or other modelling processes.
 
 #     Examples

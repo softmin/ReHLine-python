@@ -7,7 +7,7 @@ Usage
 -----
 
 .. code:: python
-   
+
    # name (str): name of the custom loss function
    # loss_kwargs: more keys and values for loss parameters
    loss = {'name': <loss_name>, <**loss_kwargs>}
@@ -24,7 +24,7 @@ Classification loss
 
  * - loss
    - | args
-   - | Example 
+   - | Example
 
  * - **SVM**
    - | ``name``: 'hinge' / 'svm' / 'SVM'
@@ -48,7 +48,7 @@ Regression loss
 
  * - loss
    - | args
-   - | Example 
+   - | Example
 
  * - **Quantile Reg**
    - | ``name``: 'check' / 'quantile' / 'QR'
@@ -57,7 +57,8 @@ Regression loss
 
  * - **Huber**
    - | ``name``: 'huber' / 'Huber'
-   - | ``loss={'name': 'huber'}``
+     | ``tau`` (*float*): 1.0 (default)
+   - | ``loss={'name': 'huber', 'tau': 1.0}``
 
  * - **SVR**
    - | ``name``: 'SVR' / 'svr'

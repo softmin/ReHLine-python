@@ -2,7 +2,7 @@
 
 ## src
 - [x] warmstarting 
-- [ ] GridSearchCV
+- [x] GridSearchCV
 
 ## Class
 - [ ] sklearn Classifier and Regressor Estimator
