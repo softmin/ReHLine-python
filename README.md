@@ -33,6 +33,8 @@ pip install rehline
 
 ### Scikit-Learn Style API (Recommended)
 
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/12D2HLkCTFUAR8ZrfNcpqVf8hwf2Vzg3V?usp=sharing)
+
 ReHLine provides `plq_Ridge_Classifier` and `plq_Ridge_Regressor` that work seamlessly with scikit-learn:
 
 ```python
