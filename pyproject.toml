@@ -31,5 +31,5 @@ py-modules = ["build"]
 build = "cp*"
 
 [build-system]
-requires = ["requests ~= 2.31.0", "pybind11 ~= 2.13.0", "setuptools >= 69.0.0", "wheel >= 0.42.0"]
+requires = ["requests ~= 2.31.0", "pybind11 ~= 3.0.0", "setuptools >= 80.0.0", "wheel >= 0.42.0"]
 build-backend = "setuptools.build_meta"
