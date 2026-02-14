@@ -18,7 +18,7 @@ jobs:
     strategy:
       # macos-latest is Apple silicon, macos-latest-large is an Intel runner
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest, macos-latest-large]
+        os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
       - uses: actions/checkout@v6
