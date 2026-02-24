@@ -38,3 +38,6 @@ eigen3.zip
 # python checkpoint
 *-checkpoint.ipynb
 *-checkpoint.py
+
+# local
+local/

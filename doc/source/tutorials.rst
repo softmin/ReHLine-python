@@ -37,17 +37,9 @@ List of Tutorials
    - | `ReHLine <./autoapi/rehline/index.html#rehline.ReHLine>`_
    - | ReHLine minimization with manual parameter settings.
 
- * - `ReHLine: Empirical Risk Minimization <./tutorials/ReHLine_ERM.rst>`_
-   - | `plqERM_Ridge <./autoapi/rehline/index.html#rehline.plqERM_Ridge>`_
-   - | Empirical Risk Minimization (ERM) with a piecewise linear-quadratic (PLQ) objective with a ridge penalty.
-
  * - `ReHLine: Scikit-learn Compatible Estimators <./tutorials/ReHLine_sklearn.rst>`_
    - | `plq_Ridge_Classifier <./autoapi/rehline/index.html#rehline.plq_Ridge_Classifier>`_ `plq_Ridge_Regressor <./autoapi/rehline/index.html#rehline.plq_Ridge_Regressor>`_
    - | Scikit-learn compatible estimators framework for empirical risk minimization problem.
-
- * - `ReHLine: Ridge Composite Quantile Regression <./examples/CQR.ipynb>`_
-   - | `CQR_Ridge <./autoapi/rehline/index.html#rehline.CQR_Ridge>`_
-   - | Composite Quantile Regression (CQR) with a ridge penalty.
 
  * - `ReHLine: Matrix Factorization <./tutorials/ReHLine_MF.rst>`_
    - | `plqMF_Ridge <./autoapi/rehline/index.html#rehline.plqMF_Ridge>`_
@@ -58,10 +50,8 @@ List of Tutorials
    :hidden:
 
    ./tutorials/ReHLine_manual
-   ./tutorials/ReHLine_ERM
+   ./tutorials/ReHLine_sklearn
+   ./tutorials/ReHLine_MF
    ./tutorials/loss
    ./tutorials/constraint
-   ./tutorials/ReHLine_sklearn
-   ./tutorials/warmstart
-   ./tutorials/ReHLine_MF
 
