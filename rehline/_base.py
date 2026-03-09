@@ -293,9 +293,11 @@ def ReHLine_solver(
     T=np.empty(shape=(0, 0)),
     A=np.empty(shape=(0, 0)),
     b=np.empty(shape=(0)),
+    rho=0.0,
     Lambda=np.empty(shape=(0, 0)),
     Gamma=np.empty(shape=(0, 0)),
     xi=np.empty(shape=(0, 0)),
+    mu=np.empty(shape=(0, 0)),
     max_iter=1000,
     tol=1e-4,
     shrink=1,
@@ -309,8 +311,10 @@ def ReHLine_solver(
         result.Gamma = np.maximum(0, np.minimum(Gamma, Tau))
     if len(xi) > 0:
         result.xi = np.maximum(xi, 0.0)
+    if len(mu) > 0:
+        result.mu = np.maximum(0, np.minimum(mu, rho))
     rehline_internal(
-        result, X, A, b, U, V, S, T, Tau, max_iter, tol, shrink, verbose, trace_freq
+        result, X, A, b, U, V, S, T, Tau, max_iter, tol, rho, shrink, verbose, trace_freq
     )
     return result
 

@@ -89,6 +89,7 @@ void reset_fv_set(std::vector<std::pair<Index, Index>>& fvset, std::size_t n, st
 //   * xi    : [K]
 //   * Lambda: [L x n]
 //   * Gamma : [H x n]
+//   * mu    : [d]
 
 // Results of the optimization algorithm
 template <typename Matrix = Eigen::MatrixXd, typename Index = int>
@@ -101,6 +102,7 @@ struct ReHLineResult
     Vector              xi;             // Dual variables
     Matrix              Lambda;         // Dual variables
     Matrix              Gamma;          // Dual variables
+    Vector              mu;             // Dual variables
     Index               niter;          // Number of iterations
     std::vector<Scalar> dual_objfns;    // Recorded dual objective function values
     std::vector<Scalar> primal_objfns;  // Recorded primal objective function values
@@ -147,6 +149,7 @@ private:
     ConstRefMat m_Tau;
     RMatrix     m_A;
     ConstRefVec m_b;
+    Scalar      m_rho;   // l1_ratio / (1 - l1_ratio)
 
     // Pre-computed
     Vector m_gk_denom;   // ||a[k]||^2
@@ -160,9 +163,11 @@ private:
     Vector m_xi;
     Matrix m_Lambda;
     Matrix m_Gamma;
+    Vector m_mu;
 
     // Free variable sets
     std::vector<Index> m_fv_feas;
+    std::vector<Index> m_fv_l1mu;
     std::vector<std::pair<Index, Index>> m_fv_relu;
     std::vector<std::pair<Index, Index>> m_fv_rehu;
 
@@ -187,8 +192,10 @@ private:
         // [n x 1]
         if (m_H > 0)
             LHterm.noalias() += m_S.cwiseProduct(m_Gamma).colwise().sum().transpose();
-
         m_beta.noalias() -= m_X.transpose() * LHterm;
+
+        if (m_rho > 0)
+            m_beta.noalias() += Scalar(2.0) * m_mu - m_rho * Vector::Ones(m_d);
     }
 
     // =================== Evaluating objection function =================== //
@@ -216,6 +223,8 @@ private:
         }
         // Quadratic term
         result += Scalar(0.5) * m_beta.squaredNorm();
+        // L1 penalty term
+        result += m_rho * m_beta.template lpNorm<1>();
         return result;
     }
 
@@ -240,33 +249,42 @@ private:
             SG.noalias() = m_S.cwiseProduct(m_Gamma).colwise().sum().transpose();
             S3G.noalias() = m_X.transpose() * SG;
         }
-
+        // 2 * Mu - rho, [d x 1]
+        Vector MuR = Vector::Zero(m_d);
+        if (m_rho > 0)
+            MuR = Scalar(2.0) * m_mu - m_rho * Vector::Ones(m_d);
         // Compute dual objective function value
         Scalar obj = Scalar(0);
         // If K = 0, all terms that depend on A, xi, or b will be zero
         if (m_K > 0)
         {
-            // 0.5 * ||Atxi||^2 - Atxi' * U3L - Atxi' * S3G + xi' * b
+            // 0.5 * ||Atxi||^2 - Atxi' * U3L - Atxi' * S3G + Atxi' MuR + xi' * b 
             const Scalar Atxi_U3L = (m_L > 0) ? (Atxi.dot(U3L)) : Scalar(0);
             const Scalar Atxi_S3G = (m_H > 0) ? (Atxi.dot(S3G)) : Scalar(0);
-            obj += Scalar(0.5) * Atxi.squaredNorm() - Atxi_U3L - Atxi_S3G + m_xi.dot(m_b);
+            const Scalar Atxi_MuR = (m_rho > 0) ? (Atxi.dot(MuR)) : Scalar(0);
+            obj += Scalar(0.5) * Atxi.squaredNorm() - Atxi_U3L - Atxi_S3G + Atxi_MuR + m_xi.dot(m_b);
         }
         // If L = 0, all terms that depend on U, V, or Lambda will be zero
         if (m_L > 0)
         {
-            // 0.5 * ||U3L||^2 + U3L' * S3G - tr(Lambda * V')
+            // 0.5 * ||U3L||^2 + U3L' * S3G - U3L' * MuR - tr(Lambda * V')
             const Scalar U3L_S3G = (m_H > 0) ? (U3L.dot(S3G)) : Scalar(0);
-            obj += Scalar(0.5) * U3L.squaredNorm() + U3L_S3G -
+            const Scalar U3L_MuR = (m_rho > 0) ? (U3L.dot(MuR)) : Scalar(0);
+            obj += Scalar(0.5) * U3L.squaredNorm() + U3L_S3G - U3L_MuR -
                 m_Lambda.cwiseProduct(m_V).sum();
         }
         // If H = 0, all terms that depend on S, T, or Gamma will be zero
         if (m_H > 0)
         {
-            // 0.5 * ||S3G||^2 + 0.5 * ||Gamma||^2 - tr(Gamma * T')
-            obj += Scalar(0.5) * S3G.squaredNorm() + Scalar(0.5) * m_Gamma.squaredNorm() -
+            // 0.5 * ||S3G||^2 - S3G' * MuR + 0.5 * ||Gamma||^2 - tr(Gamma * T')
+            const Scalar S3G_MuR = (m_rho > 0) ? (S3G.dot(MuR)) : Scalar(0);
+            obj += Scalar(0.5) * S3G.squaredNorm() - S3G_MuR + Scalar(0.5) * m_Gamma.squaredNorm() -
                 m_Gamma.cwiseProduct(m_T).sum();
         }
-
+        // If rho = 0, all terms that depend on rho, or Mu will be zero
+        if (m_rho > 0)
+            obj += Scalar(2.0) * m_mu.squaredNorm() - Scalar(2.0) * m_rho * m_mu.sum() + 
+                Scalar(0.5) * m_d * m_rho * m_rho;
         return obj;
     }
 
@@ -346,6 +364,22 @@ private:
             }
         }
     }
+
+    // Update mu and beta
+    inline void update_mu_beta()
+    {
+        if (m_rho <= 0)
+            return;
+
+        // Save original Mu
+        const Vector preMu = m_mu;
+        // Compute new Mu
+        const Vector candid = preMu - m_beta * Scalar(0.5);
+        const Vector newMu = candid.cwiseMax(Scalar(0.0)).cwiseMin(m_rho);
+        // Update Mu and beta
+        m_mu = newMu;
+        m_beta.noalias() += Scalar(2.0) * (newMu - preMu);
+    }    
 
     // =================== Updating functions (free variable set) ================ //
 
@@ -549,15 +583,77 @@ private:
         fv_set.swap(new_set);
     }
 
+    // Determine whether to shrink mu, and compute the projected gradient (PG)
+    // Shrink if (mu=0 and grad>ub) or (mu=rho and grad<lb)
+    // PG is zero if (mu=0 and grad>=0) or (mu=rho and grad<=0)
+    inline bool pg_mu(Scalar mu, Scalar grad, Scalar rho, Scalar lb, Scalar ub, Scalar& pg) const
+    {
+        pg = ((mu == Scalar(0) && grad >= Scalar(0)) || (mu == rho && grad <= Scalar(0))) ?
+             Scalar(0) :
+             grad;
+        const bool shrink = (mu == Scalar(0) && grad > ub) || (mu == rho && grad < lb);
+        return shrink;
+    }
+    // Update mu and beta
+    // Overloaded version based on free variable set
+    inline void update_mu_beta(std::vector<Index>& fv_set, Scalar& min_pg, Scalar& max_pg)
+    {
+        if (m_rho <= 0)
+            return;
+
+        // Permutation
+        internal::random_shuffle(fv_set.begin(), fv_set.end(), m_rng);
+        // New free variable set
+        std::vector<Index> new_set;
+        new_set.reserve(fv_set.size());
+
+        // Compute shrinking thresholds lb and ub
+        // More details explained in update_xi_beta()
+        constexpr Scalar Inf = std::numeric_limits<Scalar>::infinity();
+        const Scalar lb = (min_pg < Scalar(0)) ? min_pg : -Inf;
+        const Scalar ub = (max_pg > Scalar(0)) ? max_pg : Inf;
+        // Compute minimum and maximum projected gradient (PG) for this round
+        min_pg = Inf;
+        max_pg = -Inf;
+        for (auto j: fv_set)
+        {
+            const Scalar mu_j = m_mu[j];
+
+            // Compute g_j
+            const Scalar g_j = m_beta[j];
+            // PG and shrink
+            Scalar pg;
+            const bool shrink = pg_mu(mu_j, g_j, m_rho, lb, ub, pg);
+            if (shrink)
+               continue;
+
+            // Update PG bounds
+            max_pg = std::max(max_pg, pg);
+            min_pg = std::min(min_pg, pg);
+            // Compute new mu_j
+            const Scalar candid = mu_j - g_j * Scalar(0.5);
+            const Scalar newmu = std::max(Scalar(0), std::min(m_rho, candid));
+            // Update mu and beta
+            m_mu[j] = newmu;
+            m_beta[j] += Scalar(2.0) * (newmu - mu_j);
+
+            // Add to new free variable set
+            new_set.push_back(j);
+        }
+        // Update free variable set
+        fv_set.swap(new_set);
+    }
 public:
     ReHLineSolver(ConstRefMat X, ConstRefMat U, ConstRefMat V,
                   ConstRefMat S, ConstRefMat T, ConstRefMat Tau,
-                  ConstRefMat A, ConstRefVec b) :
+                  ConstRefMat A, ConstRefVec b,
+                  Scalar rho) :
         m_n(X.rows()), m_d(X.cols()), m_L(U.rows()), m_H(S.rows()), m_K(A.rows()),
         m_X(X), m_U(U), m_V(V), m_S(S), m_T(T), m_Tau(Tau), m_A(A), m_b(b),
+        m_rho(rho),
         m_gk_denom(m_K), m_gli_denom(m_L, m_n), m_ghi_denom(m_H, m_n),
         m_beta(m_d),
-        m_xi(m_K), m_Lambda(m_L, m_n), m_Gamma(m_H, m_n)
+        m_xi(m_K), m_Lambda(m_L, m_n), m_Gamma(m_H, m_n), m_mu(m_d)
     {
         // A [K x d], K can be zero
         if (m_K > 0)
@@ -595,13 +691,17 @@ public:
             // Gamma.fill(std::min(1.0, 0.5 * tau));
         }
 
+        // Each element of Mu satisfies 0 <= mu_j <= rho,
+        // and we use min(0.5 * rho, 1) to initialize (rho can be Inf)
+        if (m_rho > 0)
+            m_mu.setConstant( std::min(Scalar(0.5) * m_rho, Scalar(1)) );
+
         // Set primal variable based on duals
         set_primal();
     }
 
-
     // Warm start: set dual variables to be the given ones
-    inline void warmstart_params(ConstRefVec xi_ws, ConstRefMat Lambda_ws, ConstRefMat Gamma_ws)
+    inline void warmstart_params(ConstRefVec xi_ws, ConstRefMat Lambda_ws, ConstRefMat Gamma_ws, ConstRefVec mu_ws)
     {
         // Warmstart parameters
         if (m_K > 0)
@@ -645,10 +745,23 @@ public:
             m_Gamma = Gamma_ws;
         }
 
+
+        if (m_rho > 0)
+        {
+            // Check shape of warmstart parameters
+            if (mu_ws.size() != m_d){
+                throw std::invalid_argument("mu_ws must have size d");
+            }
+            // Check values of warmstart parameters
+            if ((mu_ws.array() < Scalar(0)).any() || (mu_ws.array() > m_rho).any()){
+                throw std::invalid_argument("mu_ws must be in [0, rho]");
+            }
+            m_mu = mu_ws;
+        }
+
         // Set primal variable based on duals
         set_primal();
     }
-
 
     inline void set_seed(Index seed) { m_rng.seed(seed); }
 
@@ -669,6 +782,7 @@ public:
             update_xi_beta();
             update_Lambda_beta();
             update_Gamma_beta();
+            update_mu_beta();
 
             // Compute difference of xi and beta
             const Scalar xi_diff = (m_K > 0) ? (m_xi - old_xi).norm() : Scalar(0);
@@ -706,13 +820,14 @@ public:
         internal::reset_fv_set(m_fv_feas, m_K);
         internal::reset_fv_set(m_fv_relu, m_L, m_n);
         internal::reset_fv_set(m_fv_rehu, m_H, m_n);
+        internal::reset_fv_set(m_fv_l1mu, m_d);
 
         // Minimum and maximum projected gradients of dual variables in each outer iteration
         // These variables will be updated in update_*_beta() functions below
         // If some dual variables are not used, the corresponding pg variables
         // will always be zero, so that the related tests in pg_conv below return true values
-        Scalar xi_min_pg = Scalar(0), lambda_min_pg = Scalar(0), gamma_min_pg = Scalar(0);
-        Scalar xi_max_pg = Scalar(0), lambda_max_pg = Scalar(0), gamma_max_pg = Scalar(0);
+        Scalar xi_min_pg = Scalar(0), lambda_min_pg = Scalar(0), gamma_min_pg = Scalar(0), mu_min_pg = Scalar(0);
+        Scalar xi_max_pg = Scalar(0), lambda_max_pg = Scalar(0), gamma_max_pg = Scalar(0), mu_max_pg = Scalar(0);
 
         // Main iterations
         Index i = 0;
@@ -725,6 +840,7 @@ public:
             update_xi_beta(m_fv_feas, xi_min_pg, xi_max_pg);
             update_Lambda_beta(m_fv_relu, lambda_min_pg, lambda_max_pg);
             update_Gamma_beta(m_fv_rehu, gamma_min_pg, gamma_max_pg);
+            update_mu_beta(m_fv_l1mu, mu_min_pg, mu_max_pg);
 
             // Compute difference of xi and beta
             const Scalar xi_diff = (m_K > 0) ? (m_xi - old_xi).norm() : Scalar(0);
@@ -741,11 +857,15 @@ public:
                                  (std::abs(lambda_min_pg) < tol) &&
                                  (gamma_max_pg - gamma_min_pg < tol) &&
                                  (std::abs(gamma_max_pg) < tol) &&
-                                 (std::abs(gamma_min_pg) < tol);
+                                 (std::abs(gamma_min_pg) < tol) &&
+                                 (mu_max_pg - mu_min_pg < tol) &&
+                                 (std::abs(mu_max_pg) < tol) &&
+                                 (std::abs(mu_min_pg) < tol);
             // Whether we are using all variables
             const bool all_vars = (m_fv_feas.size() == static_cast<std::size_t>(m_K)) &&
                                   (m_fv_relu.size() == static_cast<std::size_t>(m_L * m_n)) &&
-                                  (m_fv_rehu.size() == static_cast<std::size_t>(m_H * m_n));
+                                  (m_fv_rehu.size() == static_cast<std::size_t>(m_H * m_n)) &&
+                                  (m_fv_l1mu.size() == static_cast<std::size_t>(m_d));
 
             // Print progress
             if (verbose && (i % trace_freq == 0))
@@ -781,8 +901,9 @@ public:
                 internal::reset_fv_set(m_fv_feas, m_K);
                 internal::reset_fv_set(m_fv_relu, m_L, m_n);
                 internal::reset_fv_set(m_fv_rehu, m_H, m_n);
-                xi_min_pg = lambda_min_pg = gamma_min_pg = Scalar(0);
-                xi_max_pg = lambda_max_pg = gamma_max_pg = Scalar(0);
+                internal::reset_fv_set(m_fv_l1mu, m_d);
+                xi_min_pg = lambda_min_pg = gamma_min_pg = mu_min_pg = Scalar(0);
+                xi_max_pg = lambda_max_pg = gamma_max_pg = mu_max_pg = Scalar(0);
                 // Also recompute beta to improve precision
                 // set_primal();
                 continue;
@@ -796,6 +917,7 @@ public:
 
     Vector& get_beta_ref() { return m_beta; }
     Vector& get_xi_ref() { return m_xi; }
+    Vector& get_mu_ref() { return m_mu; }
     Matrix& get_Lambda_ref() { return m_Lambda; }
     Matrix& get_Gamma_ref() { return m_Gamma; }
 };
@@ -809,19 +931,19 @@ void rehline_solver(
     const Eigen::MatrixBase<DerivedVec>& b,
     const Eigen::MatrixBase<DerivedMat>& U, const Eigen::MatrixBase<DerivedMat>& V,
     const Eigen::MatrixBase<DerivedMat>& S, const Eigen::MatrixBase<DerivedMat>& T, const Eigen::MatrixBase<DerivedMat>& Tau,
-    Index max_iter, typename DerivedMat::Scalar tol, Index shrink = 1,
-    Index verbose = 0, Index trace_freq = 100,
+    Index max_iter, typename DerivedMat::Scalar tol, typename DerivedMat::Scalar rho = 0, 
+    Index shrink = 1, Index verbose = 0, Index trace_freq = 100,
     std::ostream& cout = std::cout
 )
 {
     // Create solver
-    ReHLineSolver<typename DerivedMat::PlainObject, Index> solver(X, U, V, S, T, Tau, A, b);
+    ReHLineSolver<typename DerivedMat::PlainObject, Index> solver(X, U, V, S, T, Tau, A, b, rho);
 
     // Initialize parameters
     try {
         // Warm start parameters: if result contains warm start parameters then warm start
-        if (result.xi.size() > 0 || result.Lambda.size() > 0 || result.Gamma.size() > 0) {
-            solver.warmstart_params(result.xi, result.Lambda, result.Gamma);
+        if (result.xi.size() > 0 || result.Lambda.size() > 0 || result.Gamma.size() > 0 || result.mu.size() > 0) {
+            solver.warmstart_params(result.xi, result.Lambda, result.Gamma, result.mu);
         } else {
             solver.init_params();
         }
@@ -845,6 +967,7 @@ void rehline_solver(
     // Save result
     result.beta.swap(solver.get_beta_ref());
     result.xi.swap(solver.get_xi_ref());
+    result.mu.swap(solver.get_mu_ref());
     result.Lambda.swap(solver.get_Lambda_ref());
     result.Gamma.swap(solver.get_Gamma_ref());
     result.niter = niter;
