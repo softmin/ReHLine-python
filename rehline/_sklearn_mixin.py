@@ -83,10 +83,10 @@ class plq_Ridge_Classifier(plqERM_Ridge, ClassifierMixin):
 
     Attributes
     ----------
-    coef_ : ndarray of shape (n_features,)
+    ``coef_`` : ndarray of shape (n_features,)
         Coefficients excluding the intercept.
 
-    intercept_ : float
+    ``intercept_`` : float
         Intercept term. 0.0 if ``fit_intercept=False``.
 
     classes_ : ndarray of shape (2,)
@@ -336,11 +336,11 @@ class plq_Ridge_Regressor(plqERM_Ridge, RegressorMixin):
 
     Attributes
     ----------
-    coef_ : ndarray of shape (n_features,)
+    ``coef_`` : ndarray of shape (n_features,)
         Learned linear coefficients (excluding the intercept term).
-    intercept_ : float
+    ``intercept_`` : float
         Intercept term extracted from the last coefficient when ``fit_intercept=True``, otherwise 0.0.
-    n_features_in_ : int
+    ``n_features_in_`` : int
         Number of input features seen during :meth:`fit` (before intercept augmentation).
 
     Notes
@@ -444,7 +444,7 @@ class plq_Ridge_Regressor(plqERM_Ridge, RegressorMixin):
         return self
 
     def decision_function(self, X):
-        """Compute f(X) = X @ coef_ + intercept_.
+        """Compute f(X) = X @ ``coef_`` + ``intercept_``.
 
         Parameters
         ----------

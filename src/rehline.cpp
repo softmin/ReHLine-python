@@ -22,12 +22,12 @@ void rehline_internal(
     const MapMat& X, const MapMat& A, const MapVec& b,
     const MapMat& U, const MapMat& V,
     const MapMat& S, const MapMat& T, const MapMat& Tau,
-    int max_iter, double tol, int shrink = 1,
+    int max_iter, double tol, double rho = 0.0, int shrink = 1,
     int verbose = 0, int trace_freq = 100
 )
 {
     rehline::rehline_solver(result, X, A, b, U, V, S, T, Tau,
-                            max_iter, tol, shrink, verbose, trace_freq);
+                            max_iter, tol, rho, shrink, verbose, trace_freq);
 }
 
 PYBIND11_MODULE(_internal, m) {
@@ -37,6 +37,7 @@ PYBIND11_MODULE(_internal, m) {
         .def_readwrite("xi",            &ReHLineResult::xi)
         .def_readwrite("Lambda",        &ReHLineResult::Lambda)
         .def_readwrite("Gamma",         &ReHLineResult::Gamma)
+        .def_readwrite("mu",            &ReHLineResult::mu)
         .def_readwrite("niter",         &ReHLineResult::niter)
         .def_readwrite("dual_objfns",   &ReHLineResult::dual_objfns)
         .def_readwrite("primal_objfns", &ReHLineResult::primal_objfns);

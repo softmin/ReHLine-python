@@ -14,7 +14,7 @@ from sklearn.utils.validation import (_check_sample_weight, check_array,
                                       check_is_fitted, check_X_y)
 
 from ._base import (ReHLine_solver, _BaseReHLine,
-                    _make_constraint_rehline_param, _make_loss_rehline_param)
+                    _make_constraint_rehline_param, _make_loss_rehline_param, _cast_sample_weight)
 
 
 class ReHLine(_BaseReHLine, BaseEstimator):
@@ -410,6 +410,231 @@ class plqERM_Ridge(_BaseReHLine, BaseEstimator):
         self._Lambda = result.Lambda
         self._Gamma = result.Gamma
         self._xi = result.xi
+        # algo convergence
+        self.n_iter_ = result.niter
+        self.dual_obj_ = result.dual_objfns
+        self.primal_obj_ = result.primal_objfns
+
+        if self.n_iter_ >= self.max_iter:
+            warnings.warn(
+                "ReHLine failed to converge, increase the number of iterations: `max_iter`.",
+                ConvergenceWarning,
+            )
+
+        return self
+
+    def decision_function(self, X):
+        """The decision function evaluated on the given dataset
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            The data matrix.
+
+        Returns
+        -------
+        ndarray of shape (n_samples, )
+            Returns the decision function of the samples.
+        """
+        # Check if fit has been called
+        check_is_fitted(self)
+
+        X = check_array(X)
+        return np.dot(X, self.coef_)
+    
+
+class plqERM_ElasticNet(_BaseReHLine, BaseEstimator):
+    r"""Empirical Risk Minimization (ERM) with a piecewise linear-quadratic (PLQ) objective with a elastic net penalty.
+
+    .. math::
+
+        \min_{\mathbf{\beta} \in \mathbb{R}^d} C \sum_{i=1}^n \text{PLQ}(y_i, \mathbf{x}_i^T \mathbf{\beta}) + \text{l1_ratio} \| \mathbf{\beta} \|_1 + \frac{1}{2} (1 - \text{l1_ratio})  \| \mathbf{\beta} \|_2^2, \ \text{ s.t. } \ 
+        \mathbf{A} \mathbf{\beta} + \mathbf{b} \geq \mathbf{0},
+
+    The function supports various loss functions, including:
+        - 'hinge', 'svm' or 'SVM'
+        - 'check' or 'quantile' or 'quantile regression' or 'QR'
+        - 'sSVM' or 'smooth SVM' or 'smooth hinge'
+        - 'TV'
+        - 'huber' or 'Huber'
+        - 'SVR' or 'svr'
+
+    The following constraint types are supported:
+        * 'nonnegative' or '>=0': A non-negativity constraint.
+        * 'fair' or 'fairness': A fairness constraint.
+        * 'custom': A custom constraint, where the user must provide the constraint matrix 'A' and vector 'b'.
+
+    Parameters
+    ----------
+    loss : dict
+        A dictionary specifying the loss function parameters. 
+    
+    constraint : list of dict
+        A list of dictionaries, where each dictionary represents a constraint.
+        Each dictionary must contain a 'name' key, which specifies the type of constraint.
+
+    C : float, default=1.0
+        Regularization parameter. The strength of the regularization is
+        inversely proportional to C. Must be strictly positive. 
+        `C` will be absorbed by the ReHLine parameters when `self.make_ReLHLoss` is conducted.
+
+    l1_ratio : float, default=0.5
+        The ElasticNet mixing parameter, with 0 <= l1_ratio < 1. For l1_ratio = 0 the penalty 
+        is an L2 penalty. For 0 < l1_ratio < 1, the penalty is a combination of L1 and L2.
+
+    verbose : int, default=0
+        Enable verbose output. Note that this setting takes advantage of a
+        per-process runtime setting in liblinear that, if enabled, may not work
+        properly in a multithreaded context.
+
+    max_iter : int, default=1000
+        The maximum number of iterations to be run.
+
+    _U, _V: array of shape (L, n_samples), default=np.empty(shape=(0, 0))
+        The parameters pertaining to the ReLU part in the loss function.
+
+    _Tau, _S, _T: array of shape (H, n_samples), default=np.empty(shape=(0, 0))
+        The parameters pertaining to the ReHU part in the loss function.
+    
+    _A: array of shape (K, n_features), default=np.empty(shape=(0, 0))
+        The coefficient matrix in the linear constraint.
+
+    _b: array of shape (K, ), default=np.empty(shape=0)
+        The intercept vector in the linear constraint.
+    
+    Attributes
+    ----------
+    coef\_ : array-like
+        The optimized model coefficients.
+
+    n_iter\_ : int
+        The number of iterations performed by the ReHLine solver.
+
+    opt_result\_ : object
+        The optimization result object.
+
+    dual_obj\_ : array-like
+        The dual objective function values.
+
+    primal_obj\_ : array-like
+        The primal objective function values.
+
+    Methods
+    -------
+    fit(X, y, sample_weight=None)
+        Fit the model based on the given training data.
+
+    decision_function(X)
+        The decision function evaluated on the given dataset.
+
+    Notes
+    -----
+    The `plqERM_ElasticNet` class is a subclass of `_BaseReHLine` and `BaseEstimator`, which suggests that it is part of a larger framework for implementing ReHLine algorithms.
+
+    """
+
+    def __init__(self, loss,
+                       constraint=[],
+                       C=1.,
+                       l1_ratio=0.5,
+                       U=np.empty(shape=(0,0)), V=np.empty(shape=(0,0)),
+                       Tau=np.empty(shape=(0,0)),
+                       S=np.empty(shape=(0,0)), T=np.empty(shape=(0,0)),
+                       A=np.empty(shape=(0,0)), b=np.empty(shape=(0)), 
+                       max_iter=1000, tol=1e-4, shrink=1, warm_start=0,
+                       verbose=0, trace_freq=100):
+        self.loss = loss
+        self.constraint = constraint
+        self.C = C
+        self.l1_ratio = l1_ratio
+        self.rho = l1_ratio / (1 - l1_ratio)
+        self.C_eff = C / (1 - l1_ratio)
+        self._U = U
+        self._V = V
+        self._S = S
+        self._T = T
+        self._Tau = Tau
+        self._A = A
+        self._b = b
+        self.L = U.shape[0]
+        self.H = S.shape[0]
+        self.K = A.shape[0]
+        self.max_iter = max_iter
+        self.tol = tol
+        self.shrink = shrink
+        self.warm_start = warm_start
+        self.verbose = verbose
+        self.trace_freq = trace_freq
+        self._Lambda = np.empty(shape=(0, 0))
+        self._Gamma = np.empty(shape=(0, 0))
+        self._xi = np.empty(shape=(0, 0))
+        self._mu = np.empty(shape=(0, 0))
+        self.coef_ = None
+
+    def fit(self, X, y, sample_weight=None):
+        """Fit the model based on the given training data.
+
+        Parameters
+        ----------
+
+        X: {array-like} of shape (n_samples, n_features)
+            Training vector, where `n_samples` is the number of samples and
+            `n_features` is the number of features.
+
+        y : array-like of shape (n_samples,)
+            The target variable.
+
+        sample_weight : array-like of shape (n_samples,), default=None
+            Array of weights that are assigned to individual
+            samples. If not provided, then each sample is given unit weight.
+
+        Returns
+        -------
+        self : object
+            An instance of the estimator.
+
+
+        """
+        n, d = X.shape
+        
+        ## loss -> rehline params
+        self._U, self._V, self._Tau, self._S, self._T = _make_loss_rehline_param(loss=self.loss, X=X, y=y)
+        
+        ## constrain -> rehline params
+        self._A, self._b = _make_constraint_rehline_param(constraint=self.constraint, X=X, y=y)
+        self.auto_shape()
+
+        sample_weight = _check_sample_weight(sample_weight, X, dtype=X.dtype)
+
+        U_weight, V_weight, Tau_weight, S_weight, T_weight = _cast_sample_weight(self._U, self._V, self._Tau, self._S, self._T, 
+                                                                                 C=self.C_eff, sample_weight=sample_weight)
+
+        if not self.warm_start:
+            ## remove warm_start params
+            self._Lambda = np.empty(shape=(0, 0))
+            self._Gamma = np.empty(shape=(0, 0))
+            self._xi = np.empty(shape=(0, 0))
+            self._mu = np.empty(shape=(0, 0))
+
+        result = ReHLine_solver(X=X,
+                                U=U_weight, V=V_weight,
+                                Tau=Tau_weight,
+                                S=S_weight, T=T_weight,
+                                A=self._A, b=self._b,
+                                rho=self.rho,
+                                Lambda=self._Lambda, Gamma=self._Gamma, xi=self._xi, mu=self._mu,
+                                max_iter=self.max_iter, tol=self.tol,
+                                shrink=self.shrink, verbose=self.verbose,
+                                trace_freq=self.trace_freq)
+
+        self.opt_result_ = result
+        # primal solution
+        self.coef_ = result.beta
+        # dual solution
+        self._Lambda = result.Lambda
+        self._Gamma = result.Gamma
+        self._xi = result.xi
+        self._mu = result.mu
         # algo convergence
         self.n_iter_ = result.niter
         self.dual_obj_ = result.dual_objfns
