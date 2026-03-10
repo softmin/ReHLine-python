@@ -1,10 +1,13 @@
 import numpy as np
-from sklearn.base import ClassifierMixin, RegressorMixin
+from itertools import combinations
+from sklearn.base import ClassifierMixin, RegressorMixin, clone
 from sklearn.preprocessing import LabelEncoder
 from sklearn.utils._tags import ClassifierTags, RegressorTags
 from sklearn.utils.class_weight import compute_class_weight
 from sklearn.utils.multiclass import check_classification_targets
 from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
+from joblib import Parallel, delayed
+
 
 from ._class import plqERM_Ridge
 
@@ -21,6 +24,7 @@ class plq_Ridge_Classifier(plqERM_Ridge, ClassifierMixin):
         - Supports optional intercept fitting (via an augmented constant feature).
         - Provides standard methods ``fit``, ``predict``, and ``decision_function``.
         - Integrates with scikit-learn ecosystem (e.g., GridSearchCV, Pipeline).
+        - Supports multiclass classification via OvR or OvO method.
 
     Parameters
     ----------
@@ -81,20 +85,37 @@ class plq_Ridge_Classifier(plqERM_Ridge, ClassifierMixin):
         - 'balanced' uses n_samples / (n_classes * n_j).
         - dict maps label -> weight in the ORIGINAL label space.
 
+    multi_class : str or list, default=[]
+        Method for multiclass classification. Options:
+        - 'ovo': One-vs-One, trains K*(K-1)/2 binary classifiers.
+        - 'ovr': One-vs-Rest, trains K binary classifiers.
+        - [ ] or ignored when only 2 classes are present.
+        
+    n_jobs : int or None, default=None
+        Number of parallel jobs for multiclass fitting.
+        None means 1 (serial). -1 means use all available CPUs.
+        Passed directly to joblib.Parallel.
+
+
     Attributes
     ----------
-    ``coef_`` : ndarray of shape (n_features,)
-        Coefficients excluding the intercept.
+    ``coef_ ``: ndarray of shape (n_features,) for binary, (n_estimators, n_features) for multiclass
+        Coefficients of all fitted classifiers, excluding the intercept.
 
-    ``intercept_`` : float
-        Intercept term. 0.0 if ``fit_intercept=False``.
+    ``intercept_ ``: float for binary, ndarray of shape (n_estimators,) for multiclass
+        Intercept term(s). 0.0 if ``fit_intercept=False``.
 
-    classes_ : ndarray of shape (2,)
+    classes_ : ndarray of shape (n_classes,)
         Unique class labels in the original label space.
+    
+    estimators_ : list, only present for multiclass
+        For OvR: list of (coef, intercept) tuples, length K.
+        For OvO: list of (coef, intercept, cls_i, cls_j) tuples, length K*(K-1)/2.
 
     _label_encoder : LabelEncoder
         Encodes original labels into {0,1} for internal training.
     """
+
 
     def __init__(
         self,
@@ -117,6 +138,8 @@ class plq_Ridge_Classifier(plqERM_Ridge, ClassifierMixin):
         fit_intercept=True,
         intercept_scaling=1.0,
         class_weight=None,
+        multi_class=[],
+        n_jobs=None,
     ):
         self.loss = loss
         self.constraint = constraint
@@ -148,6 +171,68 @@ class plq_Ridge_Classifier(plqERM_Ridge, ClassifierMixin):
 
         self._label_encoder = None
         self.classes_ = None
+        self.multi_class = multi_class
+        self.n_jobs = n_jobs
+
+    @staticmethod
+    def _fit_subproblem(estimator, X_aug, y_pm, sample_weight, fit_intercept):
+        """
+        Train a plqERM_Ridge instance on a single multiclass subproblem.
+
+        Directly constructs plqERM_Ridge from estimator's hyperparameters,
+        bypassing plq_Ridge_Classifier.fit() preprocessing (LabelEncoder,
+        intercept augmentation) since X_aug and y_pm are already preprocessed.
+
+        Parameters
+        ----------
+        estimator : plq_Ridge_Classifier
+            Source estimator from which hyperparameters are extracted.
+            Only used to read parameters, never fitted directly.
+
+        X_aug : ndarray of shape (n_samples, n_features[+1])
+            Feature matrix, possibly already augmented with intercept column.
+            Passed directly to plqERM_Ridge.fit() without further preprocessing.
+
+        y_pm : ndarray of shape (n_samples,)
+            Binary labels already encoded in {-1, +1}.
+            Passed directly to plqERM_Ridge.fit() without further preprocessing.
+
+        sample_weight : ndarray of shape (n_samples,) or None
+            Per-sample weights.
+
+        fit_intercept : bool
+            Whether to extract the last coefficient as intercept.
+            Should match estimator.fit_intercept.
+
+        Returns
+        -------
+        ``coef_``: ndarray of shape (n_features,)
+            Fitted coefficients excluding the intercept column.
+
+        ``intercept``: float
+            Fitted intercept. 0.0 if fit_intercept is False.
+        """
+
+        clf = plqERM_Ridge(
+            loss=estimator.loss,
+            constraint=estimator.constraint,
+            C=estimator.C,
+            max_iter=estimator.max_iter,
+            tol=estimator.tol,
+            shrink=estimator.shrink,
+            warm_start=estimator.warm_start,
+            verbose=estimator.verbose,
+            trace_freq=estimator.trace_freq,
+        )
+        clf.fit(X_aug, y_pm, sample_weight=sample_weight)
+        if fit_intercept:
+            coef = clf.coef_[:-1].copy()
+            intercept = float(clf.coef_[-1])
+        else:
+            coef = clf.coef_.copy()
+            intercept = 0.0
+        return coef, intercept
+
 
     def fit(self, X, y, sample_weight=None):
         """
@@ -183,9 +268,9 @@ class plq_Ridge_Classifier(plqERM_Ridge, ClassifierMixin):
 
         # Establish classes_ on ORIGINAL labels
         self.classes_ = np.unique(y)
-        if self.classes_.size != 2:
+        if self.classes_.size < 2:
             raise ValueError(
-                f"plqERMClassifier currently supports only binary classification, "
+                f"plqERMClassifier requires at least 2 classes, "
                 f"but received {self.classes_.size} classes: {self.classes_}."
             )
 
@@ -205,49 +290,135 @@ class plq_Ridge_Classifier(plqERM_Ridge, ClassifierMixin):
         # Encode -> {0,1} -> {-1,+1}
         le = LabelEncoder().fit(self.classes_)
         self._label_encoder = le
-        y01 = le.transform(y)
-        y_pm = 2 * y01 - 1
 
         # Add constant column for intercept
         X_aug = X
         if self.fit_intercept:
             col = np.full((X.shape[0], 1), self.intercept_scaling, dtype=X.dtype)
             X_aug = np.hstack([X, col])
+        
+        if self.classes_.size == 2:
+            y01 = le.transform(y)
+            y_pm = 2 * y01 - 1
 
-        super().fit(X_aug, y_pm, sample_weight=sample_weight)
+            super().fit(X_aug, y_pm, sample_weight=sample_weight)
 
-        # Split intercept
-        if self.fit_intercept:
-            self.intercept_ = float(self.coef_[-1])
-            self.coef_ = self.coef_[:-1].copy()
+            # Split intercept
+            if self.fit_intercept:
+                self.intercept_ = float(self.coef_[-1])
+                self.coef_ = self.coef_[:-1].copy()
+            else:
+                self.intercept_ = 0.0
+            
         else:
-            self.intercept_ = 0.0
+            # Multiclass classification
+            if self.multi_class not in ('ovr', 'ovo'):
+                raise ValueError(
+                    f"multi_class must be 'ovr' or 'ovo' for multiclass problems, "
+                    f"got '{self.multi_class}'."
+                )
+            self._fit_multiclass(X_aug, y, sample_weight)
 
         return self
+    
+
+    def _fit_multiclass(self, X_aug, y, sample_weight=None):
+        """
+        Fit multiple binary classifiers for multiclass classification.
+
+        For OvR, trains K binary classifiers (one per class vs. all others).
+        For OvO, trains K*(K-1)/2 binary classifiers (one per pair of classes).
+
+        Each binary subproblem is fully independent and dispatched in parallel
+        via joblib.Parallel. Results are collected and stacked into coef_ and
+        intercept_ matrices.
+
+        Parameters
+        ----------
+        X_aug : ndarray of shape (n_samples, n_features[+1])
+            Feature matrix, possibly augmented with intercept column.
+
+        y : ndarray of shape (n_samples,)
+            Original (non-encoded) target labels.
+
+        sample_weight : ndarray of shape (n_samples,) or None
+            Per-sample weights.
+        """
+        if self.multi_class == 'ovr':
+            # Build one task per class: positive=cls, negative=all others
+            tasks = [
+                (X_aug, np.where(y == cls, 1, -1).astype(np.float64), sample_weight)
+                for cls in self.classes_
+            ]
+            class_pairs = None
+
+        elif self.multi_class == 'ovo':
+            # Build one task per pair of classes 
+            tasks = []
+            class_pairs = []
+            for cls_i, cls_j in combinations(self.classes_, 2):
+                mask = np.isin(y, [cls_i, cls_j])
+                y_pm = np.where(y[mask] == cls_i, 1, -1).astype(np.float64)
+                sw_sub = sample_weight[mask] if sample_weight is not None else None
+                tasks.append((X_aug[mask], y_pm, sw_sub))
+                class_pairs.append((cls_i, cls_j))
+
+        # Dispatch all binary subproblems in parallel
+        results = Parallel(n_jobs=self.n_jobs, prefer="threads")(
+            delayed(self._fit_subproblem)(self, X_sub, y_pm, sw, self.fit_intercept)
+            for X_sub, y_pm, sw in tasks
+        )
+
+        # Collect results into estimators_
+        if self.multi_class == 'ovr':
+            self.estimators_ = [
+                (coef, intercept) for coef, intercept in results
+            ]
+        elif self.multi_class == 'ovo':
+            self.estimators_ = [
+                (coef, intercept, cls_i, cls_j) for (coef, intercept), (cls_i, cls_j) in zip(results, class_pairs)
+            ]
+
+        # Stack into matrices for efficient decision_function computation
+        # OvR: coef_ shape (K, n_features), intercept_ shape (K,)
+        # OvO: coef_ shape (K*(K-1)/2, n_features), intercept_ shape (K*(K-1)/2,)
+        self.coef_ = np.array([e[0] for e in self.estimators_])
+        self.intercept_ = np.array([e[1] for e in self.estimators_])
+
 
     def decision_function(self, X):
         """
         Compute the decision function for samples in X.
 
+        For binary classification, returns a 1D array of scores.
+        For OvR multiclass, returns a 2D array of shape (n_samples, K).
+        For OvO multiclass, returns a 2D array of shape (n_samples, K*(K-1)/2).
+
+        Using coef_.T works uniformly for both binary (n_features,) and
+        multiclass (n_estimators, n_features) shapes.
+
         Parameters
         ----------
-        X : array-like of shape (n_samples, n_features)
+        X : array-like of shape (n_samples, n_features) 
             Input samples.
 
         Returns
         -------
-        ndarray of shape (n_samples,)
+        ndarray of shape (n_samples,) or (n_samples, n_estimators)
             Continuous scores for each sample.
         """
         check_is_fitted(
             self, attributes=["coef_", "intercept_", "_label_encoder", "classes_"]
         )
         X = check_array(X, accept_sparse=False, dtype=np.float64, order="C")
-        return X @ self.coef_ + self.intercept_
+        return X @ self.coef_.T + self.intercept_
 
     def predict(self, X):
         """
         Predict class labels for samples in X.
+        For binary classification, thresholds the decision score at 0.
+        For OvR, takes the argmax across K classifiers.
+        For OvO, uses majority voting across K*(K-1)/2 classifiers.
 
         Parameters
         ----------
@@ -260,8 +431,45 @@ class plq_Ridge_Classifier(plqERM_Ridge, ClassifierMixin):
             Predicted class labels in the original label space.
         """
         scores = self.decision_function(X)
-        pred01 = (scores >= 0).astype(int)
-        return self._label_encoder.inverse_transform(pred01)
+
+        if self.classes_.size == 2:
+            pred01 = (scores >= 0).astype(int)
+            return self._label_encoder.inverse_transform(pred01)
+        
+        elif self.multi_class == 'ovr':
+            # OvR: class with highest decision score wins
+            idx = np.argmax(scores, axis=1)
+            return self.classes_[idx]
+        
+        elif self.multi_class == 'ovo':
+            # OvO: votes + normalized confidences to break ties
+            # Note: score > 0 favors cls_i (first class in pair),
+            n_samples = X.shape[0]
+            n_classes = len(self.classes_)
+            votes = np.zeros((n_samples, n_classes), dtype=np.float64)
+            sum_of_confidences = np.zeros((n_samples, n_classes), dtype=np.float64)
+
+            for k, (_, _, cls_i, cls_j) in enumerate(self.estimators_):
+                i = np.where(self.classes_ == cls_i)[0][0]
+                j = np.where(self.classes_ == cls_j)[0][0]
+
+                # discrete vote: score > 0 favors cls_i, score <= 0 favors cls_j
+                pred = (scores[:, k] > 0).astype(int)
+                votes[:, i] += pred
+                votes[:, j] += 1 - pred
+
+                # continuous confidence: score > 0 means cls_i is more confident
+                sum_of_confidences[:, i] += scores[:, k]
+                sum_of_confidences[:, j] -= scores[:, k]
+
+            # Monotonically transform to (-1/3, 1/3) to break ties without
+            # overriding any decision made by a difference of >= 1 vote
+            transformed_confidences = sum_of_confidences / (
+                3 * (np.abs(sum_of_confidences) + 1)
+            )
+
+            return self.classes_[np.argmax(votes + transformed_confidences, axis=1)]
+
 
     def __sklearn_tags__(self):
         """
