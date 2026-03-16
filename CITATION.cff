@@ -1,0 +1,34 @@
+cff-version: 1.2.0
+message: "If you use ReHLine in your research, please cite it as follows:"
+title: "ReHLine: Efficient Solver for ERM with PLQ Loss and Linear Constraints"
+version: 1.0.0
+date-released: 2023-12-01
+url: "https://github.com/softmin/ReHLine"
+repository-code: "https://github.com/softmin/ReHLine-python"
+documentation: "https://rehline-python.readthedocs.io"
+license: MIT
+authors:
+  - family-names: "Dai"
+    given-names: "Ben"
+  - family-names: "Qiu"
+    given-names: "Yixuan"
+keywords:
+  - optimization
+  - machine learning
+  - empirical risk minimization
+  - convex optimization
+  - support vector machines
+  - quantile regression
+preferred-citation:
+  type: conference-paper
+  title: "ReHLine: Regularized Composite ReLU-ReHU Loss Minimization with Linear Computation and Linear Convergence"
+  authors:
+    - family-names: "Dai"
+      given-names: "Ben"
+    - family-names: "Qiu"
+      given-names: "Yixuan"
+  conference:
+    name: "Thirty-seventh Conference on Neural Information Processing Systems"
+  year: 2023
+  url: "https://openreview.net/pdf?id=3pEBW2UPAD"
+ENDOFFILE; __hermes_rc=$?; printf '__HERMES_FENCE_a9f7b3__'; exit $__hermes_rc
