@@ -358,7 +358,7 @@ class plq_Ridge_Classifier(plqERM_Ridge, ClassifierMixin):
             class_pairs = []
             for cls_i, cls_j in combinations(self.classes_, 2):
                 mask = np.isin(y, [cls_i, cls_j])
-                y_pm = np.where(y[mask] == cls_i, 1, -1).astype(np.float64)
+                y_pm = np.where(y[mask] == cls_j, 1, -1).astype(np.float64)
                 sw_sub = sample_weight[mask] if sample_weight is not None else None
                 tasks.append((X_aug[mask], y_pm, sw_sub))
                 class_pairs.append((cls_i, cls_j))
@@ -455,12 +455,12 @@ class plq_Ridge_Classifier(plqERM_Ridge, ClassifierMixin):
 
                 # discrete vote: score > 0 favors cls_i, score <= 0 favors cls_j
                 pred = (scores[:, k] > 0).astype(int)
-                votes[:, i] += pred
-                votes[:, j] += 1 - pred
+                votes[:, j] += pred
+                votes[:, i] += 1 - pred
 
                 # continuous confidence: score > 0 means cls_i is more confident
-                sum_of_confidences[:, i] += scores[:, k]
-                sum_of_confidences[:, j] -= scores[:, k]
+                sum_of_confidences[:, j] += scores[:, k]
+                sum_of_confidences[:, i] -= scores[:, k]
 
             # Monotonically transform to (-1/3, 1/3) to break ties without
             # overriding any decision made by a difference of >= 1 vote
