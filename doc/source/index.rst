@@ -56,7 +56,7 @@ The proposed **ReHLine** solver has appealing exhibits appealing properties:
 
 .. seealso::
 
-   See :doc:`../CHANGELOG` for a detailed list of changes in each version.
+   See `CHANGELOG <https://github.com/softmin/ReHLine-python/blob/master/CHANGELOG.md>`_ for a detailed list of changes in each version.
 
 
 🔨 Installation
