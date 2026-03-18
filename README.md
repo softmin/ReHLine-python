@@ -5,6 +5,7 @@
 [![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://rehline-python.readthedocs.io)
 [![Paper](https://img.shields.io/badge/NeurIPS-2023-red.svg)](https://openreview.net/pdf?id=3pEBW2UPAD)
 [![Downloads](https://pepy.tech/badge/rehline)](https://pepy.tech/project/rehline)
+[![Codecov](https://codecov.io/gh/softmin/ReHLine-python/branch/main/graph/badge.svg)](https://codecov.io/gh/softmin/ReHLine-python)
 
 > **Fast, scalable, and scikit-learn compatible optimization for machine learning**
 
