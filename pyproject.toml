@@ -30,6 +30,15 @@ py-modules = ["build"]
 # Only build on CPython
 build = "cp*"
 
+[project.optional-dependencies]
+test = ["pytest >= 7.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
 [build-system]
 requires = ["requests ~= 2.31.0", "pybind11 ~= 3.0.0", "setuptools >= 80.0.0", "wheel >= 0.42.0"]
 build-backend = "setuptools.build_meta"
