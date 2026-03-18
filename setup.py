@@ -5,8 +5,9 @@ from pathlib import Path
 import requests
 from pybind11.setup_helpers import Pybind11Extension, build_ext
 from setuptools import setup
+from setuptools_scm import get_version
 
-__version__ = "0.1.2"
+__version__ = get_version(root=".", relative_to=__file__)
 
 # The main interface is through Pybind11Extension.
 # * You can add cxx_std=11/14/17, and then build_ext can be removed.
@@ -19,6 +20,7 @@ __version__ = "0.1.2"
 
 # The directory that contains setup.py
 SETUP_DIRECTORY = Path(__file__).resolve().parent
+
 
 # Download Eigen source files
 # Modified from https://github.com/tohtsky/irspack/blob/main/setup.py
@@ -51,14 +53,16 @@ class get_eigen_include(object):
 
         return target_dir.name
 
+
 ext_modules = [
-    Pybind11Extension("rehline._internal",
+    Pybind11Extension(
+        "rehline._internal",
         ["src/rehline.cpp"],
         include_dirs=[get_eigen_include(), "src"],
         depends=["src/rehline.h"],
         # Example: passing in the version to the compiled code
-        define_macros=[('VERSION_INFO', __version__)],
-        ),
+        define_macros=[("VERSION_INFO", __version__)],
+    ),
 ]
 
 setup(

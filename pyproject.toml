@@ -1,6 +1,6 @@
 [project]
 name = "rehline"
-version = "0.1.2"
+dynamic = ["version"]
 description = "Regularized Composite ReLU-ReHU Loss Minimization with Linear Computation and Linear Convergence"
 authors = [
   {name = "Ben Dai", email = "bendai@cuhk.edu.hk"},
@@ -17,6 +17,9 @@ dependencies = [
     "scipy >= 1.11.4",
     "scikit-learn >= 1.2.2"
 ]
+
+[tool.setuptools_scm]
+tag_prefix = "v"
 
 [pyproject.urls]
 homepage = "https://rehline.github.io/"
@@ -40,5 +43,5 @@ python_classes = ["Test*"]
 python_functions = ["test_*"]
 
 [build-system]
-requires = ["requests ~= 2.31.0", "pybind11 ~= 3.0.0", "setuptools >= 80.0.0", "wheel >= 0.42.0"]
+requires = ["requests ~= 2.31.0", "pybind11 ~= 3.0.0", "setuptools >= 80.0.0", "wheel >= 0.42.0", "setuptools-scm >= 8.0"]
 build-backend = "setuptools.build_meta"
