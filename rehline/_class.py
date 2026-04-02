@@ -13,12 +13,12 @@ from sklearn.exceptions import ConvergenceWarning
 from sklearn.utils.validation import (_check_sample_weight, check_array,
                                       check_is_fitted, check_X_y)
 
-from ._base import (ReHLine_solver, _BaseReHLine,
-                    _make_constraint_rehline_param, _make_loss_rehline_param, _cast_sample_weight)
+from ._base import (ReHLine_solver, _BaseReHLine, _cast_sample_weight,
+                    _make_constraint_rehline_param, _make_loss_rehline_param)
 
 
 class ReHLine(_BaseReHLine, BaseEstimator):
-    r"""ReHLine Minimization.
+    r"""ReHLine Minimization [1]_.
 
     .. math::
 

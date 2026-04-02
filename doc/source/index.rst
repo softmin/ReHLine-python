@@ -34,6 +34,7 @@
 - Documentation: `https://rehline-python.readthedocs.io <https://rehline-python.readthedocs.io/en/latest/>`_
 - PyPi: `https://pypi.org/project/rehline <https://pypi.org/project/rehline>`_
 - Paper: `NeurIPS | 2023 <https://openreview.net/pdf?id=3pEBW2UPAD>`_
+
 .. - Open Source: `MIT license <https://opensource.org/licenses/MIT>`_
 
 The proposed **ReHLine** solver has appealing exhibits appealing properties:

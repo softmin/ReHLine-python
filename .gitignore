@@ -42,3 +42,6 @@ eigen3.zip
 
 # local
 local/
+
+# auto API
+doc/source/autoapi/
