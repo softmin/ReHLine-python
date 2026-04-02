@@ -216,17 +216,17 @@ class ReHLine(_BaseReHLine, BaseEstimator):
             trace_freq=self.trace_freq,
         )
 
-        self.opt_result_ = result
+        # self.opt_result_ = result
         # primal solution
-        self.coef_ = result.beta
+        self.coef_ = result.beta.copy()
         # dual solution
-        self._Lambda = result.Lambda
-        self._Gamma = result.Gamma
-        self._xi = result.xi
+        self._Lambda = result.Lambda.copy()
+        self._Gamma = result.Gamma.copy()
+        self._xi = result.xi.copy()
         # algo convergence
         self.n_iter_ = result.niter
-        self.dual_obj_ = result.dual_objfns
-        self.primal_obj_ = result.primal_objfns
+        self.dual_obj_ = list(result.dual_objfns)
+        self.primal_obj_ = list(result.primal_objfns)
 
         if self.n_iter_ >= self.max_iter:
             warnings.warn(
@@ -447,17 +447,17 @@ class plqERM_Ridge(_BaseReHLine, BaseEstimator):
             trace_freq=self.trace_freq,
         )
 
-        self.opt_result_ = result
+        # self.opt_result_ = result
         # primal solution
-        self.coef_ = result.beta
+        self.coef_ = result.beta.copy()
         # dual solution
-        self._Lambda = result.Lambda
-        self._Gamma = result.Gamma
-        self._xi = result.xi
+        self._Lambda = result.Lambda.copy()
+        self._Gamma = result.Gamma.copy()
+        self._xi = result.xi.copy()
         # algo convergence
         self.n_iter_ = result.niter
-        self.dual_obj_ = result.dual_objfns
-        self.primal_obj_ = result.primal_objfns
+        self.dual_obj_ = list(result.dual_objfns)
+        self.primal_obj_ = list(result.primal_objfns)
 
         if self.n_iter_ >= self.max_iter:
             warnings.warn(
@@ -699,18 +699,18 @@ class plqERM_ElasticNet(_BaseReHLine, BaseEstimator):
             trace_freq=self.trace_freq,
         )
 
-        self.opt_result_ = result
+        # self.opt_result_ = result
         # primal solution
-        self.coef_ = result.beta
+        self.coef_ = result.beta.copy()
         # dual solution
-        self._Lambda = result.Lambda
-        self._Gamma = result.Gamma
-        self._xi = result.xi
+        self._Lambda = result.Lambda.copy()
+        self._Gamma = result.Gamma.copy()
+        self._xi = result.xi.copy()
         self._mu = result.mu
         # algo convergence
         self.n_iter_ = result.niter
-        self.dual_obj_ = result.dual_objfns
-        self.primal_obj_ = result.primal_objfns
+        self.dual_obj_ = list(result.dual_objfns)
+        self.primal_obj_ = list(result.primal_objfns)
 
         if self.n_iter_ >= self.max_iter:
             warnings.warn(
@@ -934,18 +934,18 @@ class CQR_Ridge(_BaseReHLine, BaseEstimator):
             trace_freq=self.trace_freq,
         )
 
-        self.opt_result_ = result
+        # self.opt_result_ = result
         # primal solution
-        self.coef_ = result.beta[:-n_qt]
-        self.intercept_ = result.beta[-n_qt:]
+        self.coef_ = result.beta[:-n_qt].copy()
+        self.intercept_ = result.beta[-n_qt:].copy()
         # dual solution
-        self._Lambda = result.Lambda
-        self._Gamma = result.Gamma
+        self._Lambda = result.Lambda.copy()
+        self._Gamma = result.Gamma.copy()
         self._xi = result.xi
         # algo convergence
         self.n_iter_ = result.niter
-        self.dual_obj_ = result.dual_objfns
-        self.primal_obj_ = result.primal_objfns
+        self.dual_obj_ = list(result.dual_objfns)
+        self.primal_obj_ = list(result.primal_objfns)
 
         if self.n_iter_ >= self.max_iter:
             warnings.warn(
