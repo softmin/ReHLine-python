@@ -1,4 +1,3 @@
-
 import numpy as np
 from sklearn.datasets import make_classification
 from sklearn.preprocessing import StandardScaler
@@ -14,7 +13,7 @@ def make_fair_classification(n_samples=100, n_features=5, ind_sensitive=0):
         The number of samples.
 
     n_features : int, default=5
-        The total number of features. 
+        The total number of features.
 
     ind_sensitive : int, default=0
         The index of the sensitive feature.
@@ -32,7 +31,7 @@ def make_fair_classification(n_samples=100, n_features=5, ind_sensitive=0):
     """
 
     X, y = make_classification(n_samples, n_features)
-    y = 2*y - 1
+    y = 2 * y - 1
 
     scaler = StandardScaler()
     X = scaler.fit_transform(X)
@@ -42,10 +41,18 @@ def make_fair_classification(n_samples=100, n_features=5, ind_sensitive=0):
     return X, y, X_sen
 
 
-def make_mf_dataset(n_users, n_items, n_factors=20,
-                     n_interactions=None, density=0.01, 
-                     noise_std=0.1, seed=None, 
-                     rating_min=1.0, rating_max=5.0, return_params=True):
+def make_mf_dataset(
+    n_users,
+    n_items,
+    n_factors=20,
+    n_interactions=None,
+    density=0.01,
+    noise_std=0.1,
+    seed=None,
+    rating_min=1.0,
+    rating_max=5.0,
+    return_params=True,
+):
     """
     Generate synthetic rating data using matrix factorization model.
 
@@ -89,18 +96,18 @@ def make_mf_dataset(n_users, n_items, n_factors=20,
     -------
     dict
         Dictionary containing:
-        
+
         - **X** : ndarray of shape (n_interactions, 2)
             User-item pairs where X[:, 0] are user indices and X[:, 1] are item indices
         - **y** : ndarray of shape (n_interactions,)
             Synthetic ratings for each user-item pair
         - **params** : dict, optional
             Only returned if return_params=True. Contains:
-            
+
             * **P** : ndarray of shape (n_users, n_factors)
                 User factor matrix
             * **Q** : ndarray of shape (n_items, n_factors)
-                Item factor matrix  
+                Item factor matrix
             * **bu** : ndarray of shape (n_users,)
                 User biases
             * **bi** : ndarray of shape (n_items,)
@@ -119,23 +126,23 @@ def make_mf_dataset(n_users, n_items, n_factors=20,
     The generated ratings are clipped to stay within [rating_min, rating_max] range.
     """
     rng = np.random.RandomState(seed)
-    
+
     # Calculate interactions
     total_pairs = n_users * n_items
     n_interactions = n_interactions or int(total_pairs * density)
     n_interactions = min(n_interactions, total_pairs)
-    
+
     # Generate factors and biases
     scale = 1 / np.sqrt(n_factors)
     P = rng.normal(0, scale, (n_users, n_factors))
     Q = rng.normal(0, scale, (n_items, n_factors))
     bu = rng.normal(0, 0.5, n_users)
     bi = rng.normal(0, 0.5, n_items)
-    
+
     # Sample interactions
     flat_idx = rng.choice(total_pairs, n_interactions, False)
     users, items = flat_idx // n_items, flat_idx % n_items
-    
+
     # Compute ratings
     dot_vals = (P[users] * Q[items]).sum(axis=1)
     noise = rng.normal(0, noise_std, n_interactions)
@@ -143,9 +150,9 @@ def make_mf_dataset(n_users, n_items, n_factors=20,
     y = mu + bu[users] + bi[items] + dot_vals + noise
     y_rounded = np.round(y * 2) / 2
     y_clipped = np.clip(y_rounded, rating_min, rating_max)
-    
+
     # Return results
-    result = {"X": np.column_stack([users, items]), "y": y}
+    result = {"X": np.column_stack([users, items]), "y": y_clipped}
     if return_params:
         result["params"] = {"P": P, "Q": Q, "bu": bu, "bi": bi, "mu": mu}
 

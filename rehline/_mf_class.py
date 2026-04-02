@@ -1,15 +1,22 @@
-'''Matrix Factorization Optimization with Various Loss Functions Based on ReHLine'''
+"""Matrix Factorization Optimization with Various Loss Functions Based on ReHLine"""
 
 import warnings
+
 import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator
-from sklearn.utils.validation import _check_sample_weight
 from sklearn.exceptions import ConvergenceWarning
+from sklearn.utils.validation import _check_sample_weight
+
+from ._base import (
+    ReHLine_solver,
+    _BaseReHLine,
+    _cast_sample_bias,
+    _cast_sample_weight,
+    _make_constraint_rehline_param,
+    _make_loss_rehline_param,
+)
 from ._loss import ReHLoss
-from ._base import  (_BaseReHLine, ReHLine_solver,
-                    _make_loss_rehline_param,  _make_constraint_rehline_param,
-                    _cast_sample_bias, _cast_sample_weight)
 
 
 class plqMF_Ridge(_BaseReHLine, BaseEstimator):
@@ -17,26 +24,26 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
 
     .. math::
         \min_{\substack{
-            \mathbf{P} \in \mathbb{R}^{n \times k}\ 
+            \mathbf{P} \in \mathbb{R}^{n \times k}\
             \pmb{\alpha} \in \mathbb{R}^n \\
-            \mathbf{Q} \in \mathbb{R}^{m \times k}\ 
+            \mathbf{Q} \in \mathbb{R}^{m \times k}\
             \pmb{\beta} \in \mathbb{R}^m
-        }} 
+        }}
         \left[
-            \sum_{(u,i)\in \Omega} C \cdot \text{PLQ}(r_{ui}, \ \mathbf{p}_u^T \mathbf{q}_i + \alpha_u + \beta_i) 
-        \right]  
-        + 
-        \left[ 
-            \frac{\rho}{n}\sum_{u=1}^n(\|\mathbf{p}_u\|_2^2 + \alpha_u^2) 
-            + \frac{1-\rho}{m}\sum_{i=1}^m(\|\mathbf{q}_i\|_2^2 + \beta_i^2) 
+            \sum_{(u,i)\in \Omega} C \cdot \text{PLQ}(r_{ui}, \ \mathbf{p}_u^T \mathbf{q}_i + \alpha_u + \beta_i)
+        \right]
+        +
+        \left[
+            \frac{\rho}{n}\sum_{u=1}^n(\|\mathbf{p}_u\|_2^2 + \alpha_u^2)
+            + \frac{1-\rho}{m}\sum_{i=1}^m(\|\mathbf{q}_i\|_2^2 + \beta_i^2)
         \right]
 
     .. math::
-        \ \text{ s.t. } \ 
+        \ \text{ s.t. } \
         \mathbf{A}_{\text{user}} \begin{pmatrix} \alpha_u \\ \mathbf{p}_u \end{pmatrix} + \mathbf{b}_{\text{user}} \geq \mathbf{0},\ u = 1,\dots,n
         \quad \text{and} \quad
         \mathbf{A}_{\text{item}} \begin{pmatrix} \beta_i \\ \mathbf{q}_i \end{pmatrix} + \mathbf{b}_{\text{item}} \geq \mathbf{0},\ i = 1,\dots,m
-        
+
     The function supports various loss functions, including:
         - 'hinge', 'svm' or 'SVM'
         - 'MAE' or 'mae' or 'mean absolute error'
@@ -57,8 +64,8 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
         Number of unique items in the dataset (or number of columns in target sparse matrix).
 
     loss : dict
-        A dictionary specifying the loss function parameters. 
-    
+        A dictionary specifying the loss function parameters.
+
     constraint_user : list of dict
         A list of dictionaries, where each dictionary represents a constraint to user side parameters.
         Each dictionary must contain a 'name' key, which specifies the type of constraint.
@@ -75,7 +82,7 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
 
     C : float, default=1.0
         Regularization parameter. The strength of the regularization is
-        inversely proportional to `C`. Must be strictly positive. 
+        inversely proportional to `C`. Must be strictly positive.
         `C` will be absorbed by the ReHLine parameters when `_cast_sample_weight()` is conducted.
 
     rho : float, default=0.5
@@ -85,14 +92,14 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
         Mean of the Gaussian distribution for initializing latent factors.
 
     init_sd : float, default=0.1
-        Standard deviation of the Gaussian distribution for initializing latent factors. 
+        Standard deviation of the Gaussian distribution for initializing latent factors.
 
     random_state : int or RandomState, default=None
         Random seed for reproducible initialization of latent factors.
 
     max_iter : int, default=10000
         The maximum number of iterations to be run for the ReHLine solver.
-    
+
     tol : float, default=1e-4
         The tolerance for the stopping criterion for the ReHLine solver.
 
@@ -129,7 +136,7 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
     P : ndarray of shape (n_users, rank)
         User latent factor matrix. Learned during fitting.
 
-    Q : ndarray of shape (n_items, rank)  
+    Q : ndarray of shape (n_items, rank)
         Item latent factor matrix. Learned during fitting.
 
     bu : ndarray of shape (n_users,) or None
@@ -142,7 +149,7 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
         List where each element contains indices of items rated by the corresponding user.
         Available after fitting.
 
-    Ui : list of ndarray  
+    Ui : list of ndarray
         List where each element contains indices of users who rated the corresponding item.
         Available after fitting.
 
@@ -152,7 +159,7 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
 
     sample_weight : ndarray of shape (n_ratings,)
         Sample weights used during fitting. Available after fitting.
-        
+
     Methods
     -------
     fit(X, y, sample_weight=None)
@@ -170,19 +177,35 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
 
     """
 
-    def __init__(self, n_users, n_items, loss, biased=True,
-                    constraint_user=[], constraint_item=[],  
-                    rank=10, C=1.0, rho=0.5,
-                    init_mean=0.0, init_sd=0.1, random_state=None,
-                    max_iter=10000, tol=1e-4, shrink=1, trace_freq=100, 
-                    max_iter_CD=10, tol_CD=1e-4, verbose=0):
+    def __init__(
+        self,
+        n_users,
+        n_items,
+        loss,
+        biased=True,
+        constraint_user=None,
+        constraint_item=None,
+        rank=10,
+        C=1.0,
+        rho=0.5,
+        init_mean=0.0,
+        init_sd=0.1,
+        random_state=None,
+        max_iter=10000,
+        tol=1e-4,
+        shrink=1,
+        trace_freq=100,
+        max_iter_CD=10,
+        tol_CD=1e-4,
+        verbose=0,
+    ):
         # check input
         errors = []
         checks = [
             (0 < rho < 1, "rho must be between 0 and 1"),
             (C > 0, "C must be positive"),
             (tol_CD > 0, "tol_CD must be positive"),
-            (tol > 0, "tol must be positive")
+            (tol > 0, "tol must be positive"),
         ]
         for condition, error_msg in checks:
             if not condition:
@@ -192,11 +215,11 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
 
         # parameter initialization
         ## -----------------------------basic perameters-----------------------------
-        self.n_users = n_users 
-        self.n_items = n_items 
+        self.n_users = n_users
+        self.n_items = n_items
         self.loss = loss
-        self.constraint_user = constraint_user
-        self.constraint_item = constraint_item
+        self.constraint_user = constraint_user if constraint_user is not None else []
+        self.constraint_item = constraint_item if constraint_item is not None else []
         self.biased = biased
         ## -----------------------------hyper perameters-----------------------------
         self.rank = rank
@@ -208,10 +231,10 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
         self.random_state = random_state
         if self.random_state:
             np.random.seed(random_state)
-        self.P = np.random.normal(loc=init_mean, scale=init_sd, size=(n_users, rank)) 
+        self.P = np.random.normal(loc=init_mean, scale=init_sd, size=(n_users, rank))
         self.Q = np.random.normal(loc=init_mean, scale=init_sd, size=(n_items, rank))
-        self.bu = np.zeros(n_users) if self.biased else None 
-        self.bi = np.zeros(n_items) if self.biased else None 
+        self.bu = np.zeros(n_users) if self.biased else None
+        self.bi = np.zeros(n_items) if self.biased else None
         ## ----------------------------fitting parameters----------------------------
         self.max_iter_CD = max_iter_CD
         self.tol_CD = tol_CD
@@ -221,15 +244,13 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
         self.shrink = shrink
         self.trace_freq = trace_freq
 
-
-
     def fit(self, X, y, sample_weight=None):
         """Fit the model based on the given training data.
-        
+
         Parameters
         ----------
         X : array-like of shape (n_ratings, 2)
-            Input data where first column contains user ID and 
+            Input data where first column contains user ID and
             second column contains item ID.
 
         y : array-like of shape (n_ratings,)
@@ -238,90 +259,108 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
         sample_weight : array-like of shape (n_samples,), default=None
             Array of weights that are assigned to individual samples.
             If not provided, then each sample is given unit weight.
-            
+
         Returns
         -------
         self : object
             An instance of the estimator.
-            
+
         """
         # Preparation
         self.n_ratings = len(y)
         self.history = np.nan * np.zeros((self.max_iter_CD + 1, 2))
         self.sample_weight = _check_sample_weight(sample_weight, X, dtype=X.dtype)
 
-
-        X_df = pd.DataFrame(X, columns=['user', 'item'])
-        uidx_map = X_df.groupby('user').indices
-        iidx_map = X_df.groupby('item').indices
+        X_df = pd.DataFrame(X, columns=["user", "item"])
+        uidx_map = X_df.groupby("user").indices
+        iidx_map = X_df.groupby("item").indices
         self.Iu = [uidx_map.get(u, np.array([], dtype=int)) for u in range(self.n_users)]
         self.Ui = [iidx_map.get(i, np.array([], dtype=int)) for i in range(self.n_items)]
 
-
         C_user = self.C * self.n_users / (self.rho) / 2
-        C_item = self.C * self.n_items / (1-self.rho) / 2
+        C_item = self.C * self.n_items / (1 - self.rho) / 2
 
         if self.verbose in (1, 3):
-            print("{:<12} {:<20} {:<20}".format("Iteration", f"Average Loss({self.loss['name']})", "Objective Function"))
-
+            print(
+                "{:<12} {:<20} {:<20}".format(
+                    "Iteration",
+                    f"Average Loss({self.loss['name']})",
+                    "Objective Function",
+                )
+            )
 
         # CD algorithm
         self.history[0] = self.obj(X, y)
-        for l in range(self.max_iter_CD):
+        for iter_idx in range(self.max_iter_CD):
             ## User side update
             for user in range(self.n_users):
-
                 ### item indices given current user
                 index_tmp = self.Iu[user]
                 len_tmp = len(index_tmp)
 
                 ### if lack of interaction(cold start)
                 if len_tmp == 0:
-                    self.P[user,:] = 0.0
+                    self.P[user, :] = 0.0
                     if self.biased:
                         self.bu[user] = 0.0
                     continue
 
                 ### prepare sub-optimization data
                 y_tmp = y[index_tmp]
-                item_tmp = X[index_tmp][:,1]
+                item_tmp = X[index_tmp][:, 1]
                 Q_tmp = np.c_[np.ones((len_tmp, 1)), self.Q[item_tmp]] if self.biased else self.Q[item_tmp]
-                bias_tmp = self.bi[item_tmp] if self.biased  else None
+                bias_tmp = self.bi[item_tmp] if self.biased else None
                 weight_tmp = self.sample_weight[index_tmp]
 
                 ### prepare rehline parameters
                 U, V, Tau, S, T = _make_loss_rehline_param(loss=self.loss, X=Q_tmp, y=y_tmp)
-                U_bias, V_bias, Tau_bias, S_bias,  T_bias = _cast_sample_bias(U, V, Tau, S, T, sample_bias=bias_tmp)
-                U_weight, V_weight, Tau_weight, S_weight, T_weight = _cast_sample_weight(U_bias, V_bias, Tau_bias, S_bias, T_bias, C=C_user, sample_weight=weight_tmp)
+                U_bias, V_bias, Tau_bias, S_bias, T_bias = _cast_sample_bias(U, V, Tau, S, T, sample_bias=bias_tmp)
+                U_weight, V_weight, Tau_weight, S_weight, T_weight = _cast_sample_weight(
+                    U_bias,
+                    V_bias,
+                    Tau_bias,
+                    S_bias,
+                    T_bias,
+                    C=C_user,
+                    sample_weight=weight_tmp,
+                )
                 A, b = _make_constraint_rehline_param(constraint=self.constraint_user, X=Q_tmp, y=y_tmp)
 
                 ### solve and update
-                result_tmp = ReHLine_solver(X=Q_tmp, 
-                                            U=U_weight, V=V_weight,
-                                            Tau=Tau_weight, S=S_weight, T=T_weight,
-                                            A=A, b=b,
-                                            max_iter=self.max_iter, 
-                                            tol=self.tol, 
-                                            shrink=self.shrink, 
-                                            verbose=(self.verbose == 2 or self.verbose == 3), 
-                                            trace_freq=self.trace_freq)
+                result_tmp = ReHLine_solver(
+                    X=Q_tmp,
+                    U=U_weight,
+                    V=V_weight,
+                    Tau=Tau_weight,
+                    S=S_weight,
+                    T=T_weight,
+                    A=A,
+                    b=b,
+                    max_iter=self.max_iter,
+                    tol=self.tol,
+                    shrink=self.shrink,
+                    verbose=(self.verbose == 2 or self.verbose == 3),
+                    trace_freq=self.trace_freq,
+                )
 
                 if self.biased:
-                    self.bu[user], self.P[user,:] = result_tmp.beta[0], result_tmp.beta[1:]
+                    self.bu[user], self.P[user, :] = (
+                        result_tmp.beta[0],
+                        result_tmp.beta[1:],
+                    )
                 else:
-                    self.P[user,:] = result_tmp.beta
-                 
+                    self.P[user, :] = result_tmp.beta
+
                 ### algo convergence
                 if result_tmp.niter >= self.max_iter:
                     warnings.warn(
                         "ReHLine failed to converge, increase the number of iterations: `max_iter`.",
                         ConvergenceWarning,
+                        stacklevel=2,
                     )
-
 
             ## Item side update
             for item in range(self.n_items):
-                
                 ### user indices given current item
                 index_tmp = self.Ui[item]
                 len_tmp = len(index_tmp)
@@ -335,57 +374,71 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
 
                 ### prepare sub-optimization data
                 y_tmp = y[index_tmp]
-                user_tmp = X[index_tmp][:,0]
-                P_tmp = np.c_[np.ones((len_tmp, 1)) , self.P[user_tmp]] if self.biased else self.P[user_tmp]
+                user_tmp = X[index_tmp][:, 0]
+                P_tmp = np.c_[np.ones((len_tmp, 1)), self.P[user_tmp]] if self.biased else self.P[user_tmp]
                 weight_tmp = self.sample_weight[index_tmp]
                 bias_tmp = self.bu[user_tmp] if self.biased else None
-                
+
                 ### prepare rehline parameters
                 U, V, Tau, S, T = _make_loss_rehline_param(loss=self.loss, X=P_tmp, y=y_tmp)
-                U_bias, V_bias, Tau_bias, S_bias,  T_bias = _cast_sample_bias(U, V, Tau, S, T, sample_bias=bias_tmp)
-                U_weight, V_weight, Tau_weight, S_weight, T_weight = _cast_sample_weight(U_bias, V_bias, Tau_bias, S_bias, T_bias, C=C_item, sample_weight=weight_tmp)
+                U_bias, V_bias, Tau_bias, S_bias, T_bias = _cast_sample_bias(U, V, Tau, S, T, sample_bias=bias_tmp)
+                U_weight, V_weight, Tau_weight, S_weight, T_weight = _cast_sample_weight(
+                    U_bias,
+                    V_bias,
+                    Tau_bias,
+                    S_bias,
+                    T_bias,
+                    C=C_item,
+                    sample_weight=weight_tmp,
+                )
                 A, b = _make_constraint_rehline_param(constraint=self.constraint_item, X=P_tmp, y=y_tmp)
-                
+
                 ### solve and update
-                result_tmp = ReHLine_solver(X=P_tmp, 
-                                            U=U_weight, V=V_weight,
-                                            Tau=Tau_weight, S=S_weight, T=T_weight,
-                                            A=A, b=b,
-                                            max_iter=self.max_iter, 
-                                            tol=self.tol, 
-                                            shrink=self.shrink, 
-                                            verbose=(self.verbose == 2 or self.verbose == 3), 
-                                            trace_freq=self.trace_freq)
+                result_tmp = ReHLine_solver(
+                    X=P_tmp,
+                    U=U_weight,
+                    V=V_weight,
+                    Tau=Tau_weight,
+                    S=S_weight,
+                    T=T_weight,
+                    A=A,
+                    b=b,
+                    max_iter=self.max_iter,
+                    tol=self.tol,
+                    shrink=self.shrink,
+                    verbose=(self.verbose == 2 or self.verbose == 3),
+                    trace_freq=self.trace_freq,
+                )
 
                 if self.biased:
-                    self.bi[item], self.Q[item,:] = result_tmp.beta[0], result_tmp.beta[1:]
+                    self.bi[item], self.Q[item, :] = (
+                        result_tmp.beta[0],
+                        result_tmp.beta[1:],
+                    )
                 else:
-                    self.Q[item,:] = result_tmp.beta
-                 
+                    self.Q[item, :] = result_tmp.beta
+
                 ### algo convergence
                 if result_tmp.niter >= self.max_iter:
                     warnings.warn(
                         "ReHLine failed to converge, increase the number of iterations: `max_iter`.",
                         ConvergenceWarning,
+                        stacklevel=2,
                     )
 
-
             ## Check convergence
-            self.history[l+1] = self.obj(X, y)
-            obj_diff = (self.history[l] - self.history[l+1])[1]
+            self.history[iter_idx + 1] = self.obj(X, y)
+            obj_diff = (self.history[iter_idx] - self.history[iter_idx + 1])[1]
 
-            
             if self.verbose in (1, 3):
-                mean_loss = f"{self.history[l+1][0] / self.n_ratings:.6f}"
-                obj = f"{self.history[l+1][1]:.6f}"
-                print("{:<12} {:<20} {:<20}".format(l + 1, mean_loss, obj))
-            
+                mean_loss = f"{self.history[iter_idx + 1][0] / self.n_ratings:.6f}"
+                obj = f"{self.history[iter_idx + 1][1]:.6f}"
+                print(f"{iter_idx + 1:<12} {mean_loss:<20} {obj:<20}")
+
             if obj_diff < self.tol_CD:
                 break
 
         return self
-
-
 
     def decision_function(self, X):
         """The decision function evaluated on the given dataset
@@ -393,7 +446,7 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
         Parameters
         ----------
         X : array-like of shape (n_samples, 2)
-            Training data where first column contains user ID and 
+            Training data where first column contains user ID and
             second column contains item ID.
 
         Returns
@@ -403,21 +456,19 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
         """
         users = X[:, 0]
         items = X[:, 1]
-        dot_products = np.einsum('ij,ij->i', self.P[users], self.Q[items])  
-        
+        dot_products = np.einsum("ij,ij->i", self.P[users], self.Q[items])
+
         if self.biased:
             user_biases = self.bu[users]
             item_biases = self.bi[items]
-            return user_biases + item_biases + dot_products  
+            return user_biases + item_biases + dot_products
         else:
-            return dot_products  
-
-
+            return dot_products
 
     def obj(self, X, y):
         """
         Compute the values of loss term and objective function.
-        
+
         Parameters
         ----------
         X : array-like of shape (n_ratings, 2)
@@ -425,24 +476,24 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
 
         y : array-like of shape (n_ratings,)
             Actual rating values.
-            
+
         Returns
         -------
         loss_term : float
             The data fitting term (sum of loss values).
-            
+
         objective_value : float
             The total objective value including regularization.
-    
+
         """
-        
+
         if self.biased:
-            user_penalty = ( np.sum(self.P ** 2) + np.sum(self.bu ** 2) ) * self.rho / self.n_users
-            item_penalty = ( np.sum(self.Q ** 2) + np.sum(self.bi ** 2) ) * (1 - self.rho) / self.n_items
+            user_penalty = (np.sum(self.P**2) + np.sum(self.bu**2)) * self.rho / self.n_users
+            item_penalty = (np.sum(self.Q**2) + np.sum(self.bi**2)) * (1 - self.rho) / self.n_items
             penalty = user_penalty + item_penalty
         else:
-            user_penalty = np.sum(self.P ** 2) * self.rho / self.n_users
-            item_penalty = np.sum(self.Q ** 2) * (1 - self.rho) / self.n_items
+            user_penalty = np.sum(self.P**2) * self.rho / self.n_users
+            item_penalty = np.sum(self.Q**2) * (1 - self.rho) / self.n_items
             penalty = user_penalty + item_penalty
 
         y_pred = self.decision_function(X)

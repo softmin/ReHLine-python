@@ -24,7 +24,7 @@ SETUP_DIRECTORY = Path(__file__).resolve().parent
 
 # Download Eigen source files
 # Modified from https://github.com/tohtsky/irspack/blob/main/setup.py
-class get_eigen_include(object):
+class get_eigen_include:
     EIGEN3_URL = "https://gitlab.com/libeigen/eigen/-/archive/5.0.1/eigen-5.0.1.zip"
     EIGEN3_DIRNAME = "eigen-5.0.1"
 

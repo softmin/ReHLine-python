@@ -36,9 +36,7 @@ def test_fairsvm_fits_without_error():
     clf._A, clf._b = A, b
     clf.fit(X=X, y=y)
 
-    assert clf.coef_.shape == (d,), (
-        f"coef_ shape should be ({d},), got {clf.coef_.shape}"
-    )
+    assert clf.coef_.shape == (d,), f"coef_ shape should be ({d},), got {clf.coef_.shape}"
     assert np.all(np.isfinite(clf.coef_)), "coefficients should be finite"
 
 
@@ -52,6 +50,4 @@ def test_fairsvm_coef_shape():
     clf = plqERM_Ridge(loss={"name": "svm"}, C=1.0)
     clf.fit(X=X, y=y)
 
-    assert clf.coef_.shape == (d,), (
-        f"coef_ should have shape ({d},), got {clf.coef_.shape}"
-    )
+    assert clf.coef_.shape == (d,), f"coef_ should have shape ({d},), got {clf.coef_.shape}"

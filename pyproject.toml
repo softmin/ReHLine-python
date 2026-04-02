@@ -45,3 +45,31 @@ python_functions = ["test_*"]
 [build-system]
 requires = ["requests ~= 2.31.0", "pybind11 ~= 3.0.0", "setuptools >= 80.0.0", "wheel >= 0.42.0", "setuptools-scm >= 8.0"]
 build-backend = "setuptools.build_meta"
+
+# --- Ruff (linter + formatter) ---
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort (import sorting)
+    "B",    # flake8-bugbear (includes B006 mutable defaults)
+    "UP",   # pyupgrade
+]
+ignore = [
+    "E501",   # line too long (let formatter handle it)
+    "B905",   # zip without strict= (Python 3.10+)
+    "F401",   # unused imports (re-export from __init__.py)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["rehline"]
+
+# --- Codespell (typo checker) ---
+[tool.codespell]
+skip = "*.so,*.cpp,*.h,*.zip,*.html,*.ipynb,eigen-*,build,dist,.git,.ipynb_checkpoints"
+ignore-words-list = "nd,hist,bu,bi,ans"

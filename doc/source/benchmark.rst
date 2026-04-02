@@ -38,4 +38,3 @@ Results Overview
 .. image:: ./figs/res.png
    :width: 90%
    :align: center
-

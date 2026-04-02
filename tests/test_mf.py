@@ -6,17 +6,14 @@ so the test suite runs quickly in CI.
 """
 
 import numpy as np
-from sklearn.model_selection import train_test_split
-
-from rehline import make_mf_dataset, plqMF_Ridge
-
 
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
 # ---------------------------------------------------------------------------
-
-
 import pytest
+from sklearn.model_selection import train_test_split
+
+from rehline import make_mf_dataset, plqMF_Ridge
 
 
 @pytest.fixture(scope="module")
@@ -105,9 +102,7 @@ def test_mf_hinge_classification_fits(mf_data):
 
     # decision_function should return a 1-D array of length n_test
     scores = model.decision_function(d["X_test"])
-    assert scores.shape == (len(d["X_test"]),), (
-        f"decision_function shape mismatch: {scores.shape}"
-    )
+    assert scores.shape == (len(d["X_test"]),), f"decision_function shape mismatch: {scores.shape}"
 
     # Accuracy should be above random guessing
     preds = np.where(scores > 0, 1, -1)
@@ -132,12 +127,8 @@ def test_mf_nonneg_constraint(mf_data):
     model.fit(d["X_train"], d["y_train"])
 
     # P: user factor matrix, shape (n_users, rank)
-    assert np.all(model.P >= -1e-4), (
-        "User factors (P) should be non-negative (within numerical tolerance)"
-    )
+    assert np.all(model.P >= -1e-4), "User factors (P) should be non-negative (within numerical tolerance)"
     # Ui: list of item factor vectors (length n_items); check each individually
     for i, ui in enumerate(model.Ui):
         if ui is not None and hasattr(ui, "__len__"):
-            assert np.all(np.asarray(ui) >= -1e-4), (
-                f"Item factor Ui[{i}] should be non-negative"
-            )
+            assert np.all(np.asarray(ui) >= -1e-4), f"Item factor Ui[{i}] should be non-negative"

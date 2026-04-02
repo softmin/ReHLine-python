@@ -31,15 +31,9 @@ def test_path_sol_warm_start_shapes():
 
     assert len(Cs_out) == n_path, f"Cs_out length should be {n_path}, got {len(Cs_out)}"
     assert len(times) == n_path, f"times length should be {n_path}, got {len(times)}"
-    assert len(n_iters) == n_path, (
-        f"n_iters length should be {n_path}, got {len(n_iters)}"
-    )
-    assert len(loss_vals) == n_path, (
-        f"loss_vals length should be {n_path}, got {len(loss_vals)}"
-    )
-    assert coefs.shape == (n_path, n_features), (
-        f"coefs shape should be ({n_path}, {n_features}), got {coefs.shape}"
-    )
+    assert len(n_iters) == n_path, f"n_iters length should be {n_path}, got {len(n_iters)}"
+    assert len(loss_vals) == n_path, f"loss_vals length should be {n_path}, got {len(loss_vals)}"
+    assert coefs.shape == (n_path, n_features), f"coefs shape should be ({n_path}, {n_features}), got {coefs.shape}"
 
     # All timing values should be non-negative
     assert np.all(np.array(times) >= 0), "All timing values should be non-negative"
@@ -72,6 +66,5 @@ def test_path_sol_loss_range_with_larger_C():
     # Loss at the largest C should be no more than 5% above loss at the smallest C
     # (allows for convergence noise, verifies the general trend)
     assert loss_vals[-1] <= loss_vals[0] * 1.05, (
-        f"Loss at C=10 ({loss_vals[-1]:.2f}) should be ≤ 105% of "
-        f"loss at C=0.01 ({loss_vals[0]:.2f})"
+        f"Loss at C=10 ({loss_vals[-1]:.2f}) should be ≤ 105% of loss at C=0.01 ({loss_vals[0]:.2f})"
     )

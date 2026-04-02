@@ -4,37 +4,30 @@
 # list see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
+import os
+import sys
+
 # -- Path setup --------------------------------------------------------------
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
-# import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
-import os.path as osp
-
-import furo
-import nbsphinx
-import renku_sphinx_theme
 
 # import sphinx.apidoc
 # -- Project information -----------------------------------------------------
 
-project = 'ReHLine'
-copyright = '2023, Ben Dai and Yixuan Qiu'
-author = 'Ben Dai, Yixuan Qiu'
+project = "ReHLine"
+copyright = "2023, Ben Dai and Yixuan Qiu"
+author = "Ben Dai, Yixuan Qiu"
 # The full version, including alpha/beta/rc tags
 # release = '0.10'
 
-import os
-import sys
-
-sys.path.append('.')
-sys.path.insert(0, os.path.abspath('../..'))
-sys.path.insert(0, os.path.abspath('../rehline'))
+sys.path.append(".")
+sys.path.insert(0, os.path.abspath("../.."))
+sys.path.insert(0, os.path.abspath("../rehline"))
 # sys.path.append('../..')
 # sys.path.insert(0, os.path.abspath('.'))
 # sys.path.insert(0, os.path.abspath('../'))
@@ -45,18 +38,18 @@ sys.path.insert(0, os.path.abspath('../rehline'))
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-master_doc = 'index'
+master_doc = "index"
 extensions = [
-	# 'sphinx.ext.autodoc',
-    'autoapi.extension',
+    # 'sphinx.ext.autodoc',
+    "autoapi.extension",
     # "sphinx.ext.linkcode",
     "sphinx.ext.intersphinx",
     "sphinx_autodoc_typehints",
     # 'sphinx.ext.autosummary',
     # 'sphinx_gallery.gen_gallery',
-	# 'numpydoc',
-	'nbsphinx',
-	]
+    # 'numpydoc',
+    "nbsphinx",
+]
 
 # -- Plausible support
 ENABLE_PLAUSIBLE = os.environ.get("READTHEDOCS_VERSION_TYPE", "") in ["branch", "tag"]
@@ -66,7 +59,7 @@ html_context = {"enable_plausible": ENABLE_PLAUSIBLE}
 autodoc_typehints = "signature"  # autoapi respects this
 
 autoapi_type = "python"
-autoapi_dirs = ['../../rehline/']
+autoapi_dirs = ["../../rehline/"]
 autoapi_template_dir = "_templates/autoapi"
 autoapi_options = [
     "members",
@@ -109,11 +102,11 @@ html_css_files = [
 
 # autosummary_generate = True
 # numpydoc_show_class_members = False
-nbsphinx_execute = 'never'
+nbsphinx_execute = "never"
 nbsphinx_allow_errors = True
 # autodoc_mock_imports = ['numpy']
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
+templates_path = ["_templates"]
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -129,7 +122,7 @@ exclude_patterns = []
 # html_theme_path = [hachibee_sphinx_theme.get_html_themes_path()]
 
 
-html_theme = 'furo'
+html_theme = "furo"
 
 # html_permalinks_icon = '§'
 
@@ -147,17 +140,18 @@ html_theme = 'furo'
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+html_static_path = ["_static"]
 
 # html_css_files = [
 #     'css/custom.css',
 # ]
+
 
 def autoapi_skip_members(app, what, name, obj, skip, options):
     if what == "attribute":
         skip = True
     return skip
 
+
 def setup(sphinx):
     sphinx.connect("autoapi-skip-member", autoapi_skip_members)
-

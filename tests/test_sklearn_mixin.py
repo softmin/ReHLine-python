@@ -8,13 +8,12 @@ it is replaced with a targeted parameter check.
 
 import numpy as np
 from sklearn.datasets import make_classification, make_regression
-from sklearn.metrics import accuracy_score, r2_score
+from sklearn.metrics import accuracy_score
 from sklearn.model_selection import cross_val_score, train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 from rehline import plq_Ridge_Classifier, plq_Ridge_Regressor
-
 
 # ---------------------------------------------------------------------------
 # Classifier tests
@@ -44,13 +43,9 @@ def test_classifier_pipeline_fits_and_predicts():
     pipe.fit(X, y)
 
     preds = pipe.predict(X)
-    assert preds.shape == (len(y),), (
-        f"predict() shape should be ({len(y)},), got {preds.shape}"
-    )
+    assert preds.shape == (len(y),), f"predict() shape should be ({len(y)},), got {preds.shape}"
     # Basic sanity: accuracy should be above chance level
-    assert accuracy_score(y, preds) > 0.5, (
-        "Classifier accuracy should be above 0.5 on training data"
-    )
+    assert accuracy_score(y, preds) > 0.5, "Classifier accuracy should be above 0.5 on training data"
 
 
 def test_classifier_cross_val_score():
@@ -63,12 +58,8 @@ def test_classifier_cross_val_score():
         ]
     )
     cv_scores = cross_val_score(pipe, X, y, cv=3, scoring="accuracy")
-    assert cv_scores.shape == (3,), (
-        f"cross_val_score should return 3 scores, got shape {cv_scores.shape}"
-    )
-    assert np.mean(cv_scores) > 0.5, (
-        f"Mean CV accuracy should be > 0.5, got {np.mean(cv_scores):.3f}"
-    )
+    assert cv_scores.shape == (3,), f"cross_val_score should return 3 scores, got shape {cv_scores.shape}"
+    assert np.mean(cv_scores) > 0.5, f"Mean CV accuracy should be > 0.5, got {np.mean(cv_scores):.3f}"
 
 
 def test_classifier_with_intercept_scaling():
@@ -131,9 +122,7 @@ def test_regressor_pipeline_fits_and_predicts():
     pipe.fit(X, y)
 
     preds = pipe.predict(X)
-    assert preds.shape == (len(y),), (
-        f"predict() shape should be ({len(y)},), got {preds.shape}"
-    )
+    assert preds.shape == (len(y),), f"predict() shape should be ({len(y)},), got {preds.shape}"
 
 
 def test_regressor_cross_val_score():
@@ -148,9 +137,7 @@ def test_regressor_cross_val_score():
     cv_scores = cross_val_score(pipe, X, y, cv=3, scoring="r2")
     assert cv_scores.shape == (3,)
     # R² across folds should be reasonable
-    assert np.mean(cv_scores) > 0.0, (
-        f"Mean CV R² should be positive, got {np.mean(cv_scores):.3f}"
-    )
+    assert np.mean(cv_scores) > 0.0, f"Mean CV R² should be positive, got {np.mean(cv_scores):.3f}"
 
 
 def test_regressor_multiple_losses():
@@ -166,6 +153,4 @@ def test_regressor_multiple_losses():
         reg.fit(X_tr, y_tr)
         preds = reg.predict(X_te)
         assert preds.shape == (len(y_te),), f"predict() shape mismatch for loss={loss}"
-        assert np.all(np.isfinite(preds)), (
-            f"Predictions should be finite for loss={loss}"
-        )
+        assert np.all(np.isfinite(preds)), f"Predictions should be finite for loss={loss}"

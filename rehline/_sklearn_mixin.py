@@ -1,13 +1,13 @@
-import numpy as np
 from itertools import combinations
-from sklearn.base import ClassifierMixin, RegressorMixin, clone
+
+import numpy as np
+from joblib import Parallel, delayed
+from sklearn.base import ClassifierMixin, RegressorMixin
 from sklearn.preprocessing import LabelEncoder
 from sklearn.utils._tags import ClassifierTags, RegressorTags
 from sklearn.utils.class_weight import compute_class_weight
 from sklearn.utils.multiclass import check_classification_targets
 from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
-from joblib import Parallel, delayed
-
 
 from ._class import plqERM_Ridge
 
@@ -108,7 +108,7 @@ class plq_Ridge_Classifier(plqERM_Ridge, ClassifierMixin):
     classes_ : ndarray of shape (n_classes,)
         Unique class labels in the original label space.
 
-    estimators\_ : list, only present for multiclass
+    estimators_ : list, only present for multiclass
         For OvR: list of (coef, intercept) tuples, length K.
         For OvO: list of (coef, intercept, cls_i, cls_j) tuples, length K*(K-1)/2.
 
@@ -119,15 +119,15 @@ class plq_Ridge_Classifier(plqERM_Ridge, ClassifierMixin):
     def __init__(
         self,
         loss,
-        constraint=[],
+        constraint=None,
         C=1.0,
-        U=np.empty((0, 0)),
-        V=np.empty((0, 0)),
-        Tau=np.empty((0, 0)),
-        S=np.empty((0, 0)),
-        T=np.empty((0, 0)),
-        A=np.empty((0, 0)),
-        b=np.empty((0,)),
+        U=None,
+        V=None,
+        Tau=None,
+        S=None,
+        T=None,
+        A=None,
+        b=None,
         max_iter=1000,
         tol=1e-4,
         shrink=1,
@@ -137,22 +137,22 @@ class plq_Ridge_Classifier(plqERM_Ridge, ClassifierMixin):
         fit_intercept=True,
         intercept_scaling=1.0,
         class_weight=None,
-        multi_class=[],
+        multi_class=None,
         n_jobs=None,
     ):
         self.loss = loss
-        self.constraint = constraint
+        self.constraint = constraint if constraint is not None else []
         self.C = C
-        self._U = U
-        self._V = V
-        self._S = S
-        self._T = T
-        self._Tau = Tau
-        self._A = A
-        self._b = b
-        self.L = U.shape[0]
-        self.H = S.shape[0]
-        self.K = A.shape[0]
+        self._U = U if U is not None else np.empty((0, 0))
+        self._V = V if V is not None else np.empty((0, 0))
+        self._S = S if S is not None else np.empty((0, 0))
+        self._T = T if T is not None else np.empty((0, 0))
+        self._Tau = Tau if Tau is not None else np.empty((0, 0))
+        self._A = A if A is not None else np.empty((0, 0))
+        self._b = b if b is not None else np.empty((0,))
+        self.L = self._U.shape[0]
+        self.H = self._S.shape[0]
+        self.K = self._A.shape[0]
         self.max_iter = max_iter
         self.tol = tol
         self.shrink = shrink
@@ -170,7 +170,7 @@ class plq_Ridge_Classifier(plqERM_Ridge, ClassifierMixin):
 
         self._label_encoder = None
         self.classes_ = None
-        self.multi_class = multi_class
+        self.multi_class = multi_class if multi_class is not None else []
         self.n_jobs = n_jobs
 
     @staticmethod
@@ -281,9 +281,7 @@ class plq_Ridge_Classifier(plqERM_Ridge, ClassifierMixin):
             )
             cw_map = {c: w for c, w in zip(self.classes_, cw_vec)}
             sw_cw = np.asarray([cw_map[yi] for yi in y], dtype=np.float64)
-            sample_weight = (
-                sw_cw if sample_weight is None else (np.asarray(sample_weight) * sw_cw)
-            )
+            sample_weight = sw_cw if sample_weight is None else (np.asarray(sample_weight) * sw_cw)
 
         # Encode -> {0,1} -> {-1,+1}
         le = LabelEncoder().fit(self.classes_)
@@ -312,8 +310,7 @@ class plq_Ridge_Classifier(plqERM_Ridge, ClassifierMixin):
             # Multiclass classification
             if self.multi_class not in ("ovr", "ovo"):
                 raise ValueError(
-                    f"multi_class must be 'ovr' or 'ovo' for multiclass problems, "
-                    f"got '{self.multi_class}'."
+                    f"multi_class must be 'ovr' or 'ovo' for multiclass problems, got '{self.multi_class}'."
                 )
             self._fit_multiclass(X_aug, y, sample_weight)
 
@@ -343,10 +340,7 @@ class plq_Ridge_Classifier(plqERM_Ridge, ClassifierMixin):
         """
         if self.multi_class == "ovr":
             # Build one task per class: positive=cls, negative=all others
-            tasks = [
-                (X_aug, np.where(y == cls, 1, -1).astype(np.float64), sample_weight)
-                for cls in self.classes_
-            ]
+            tasks = [(X_aug, np.where(y == cls, 1, -1).astype(np.float64), sample_weight) for cls in self.classes_]
             class_pairs = None
 
         elif self.multi_class == "ovo":
@@ -362,8 +356,7 @@ class plq_Ridge_Classifier(plqERM_Ridge, ClassifierMixin):
 
         # Dispatch all binary subproblems in parallel
         results = Parallel(n_jobs=self.n_jobs, prefer="threads")(
-            delayed(self._fit_subproblem)(self, X_sub, y_pm, sw, self.fit_intercept)
-            for X_sub, y_pm, sw in tasks
+            delayed(self._fit_subproblem)(self, X_sub, y_pm, sw, self.fit_intercept) for X_sub, y_pm, sw in tasks
         )
 
         # Collect results into estimators_
@@ -371,8 +364,7 @@ class plq_Ridge_Classifier(plqERM_Ridge, ClassifierMixin):
             self.estimators_ = [(coef, intercept) for coef, intercept in results]
         elif self.multi_class == "ovo":
             self.estimators_ = [
-                (coef, intercept, cls_i, cls_j)
-                for (coef, intercept), (cls_i, cls_j) in zip(results, class_pairs)
+                (coef, intercept, cls_i, cls_j) for (coef, intercept), (cls_i, cls_j) in zip(results, class_pairs)
             ]
 
         # Stack into matrices for efficient decision_function computation
@@ -402,9 +394,7 @@ class plq_Ridge_Classifier(plqERM_Ridge, ClassifierMixin):
         ndarray of shape (n_samples,) or (n_samples, n_estimators)
             Continuous scores for each sample.
         """
-        check_is_fitted(
-            self, attributes=["coef_", "intercept_", "_label_encoder", "classes_"]
-        )
+        check_is_fitted(self, attributes=["coef_", "intercept_", "_label_encoder", "classes_"])
         X = check_array(X, accept_sparse=False, dtype=np.float64, order="C")
         return X @ self.coef_.T + self.intercept_
 
@@ -459,9 +449,7 @@ class plq_Ridge_Classifier(plqERM_Ridge, ClassifierMixin):
 
             # Monotonically transform to (-1/3, 1/3) to break ties without
             # overriding any decision made by a difference of >= 1 vote
-            transformed_confidences = sum_of_confidences / (
-                3 * (np.abs(sum_of_confidences) + 1)
-            )
+            transformed_confidences = sum_of_confidences / (3 * (np.abs(sum_of_confidences) + 1))
 
             return self.classes_[np.argmax(votes + transformed_confidences, axis=1)]
 
@@ -490,7 +478,7 @@ class plq_Ridge_Regressor(plqERM_Ridge, RegressorMixin):
     - **Intercept handling**: if ``fit_intercept=True``, a constant column (value = ``intercept_scaling``)
       is appended to the right of the design matrix before calling the base solver. The last learned
       coefficient is then split out as ``intercept_``.
-      → The column indices of the original features reamin; therefore, ``sen_idx`` in the constraint ``fair`` follow the original index.
+      → The column indices of the original features remain; therefore, ``sen_idx`` in the constraint ``fair`` follow the original index.
     - **Constraint handling**: constraints are passed through unchanged; the base class will call
       ``_make_constraint_rehline_param(constraint, X, y)`` on the matrix given to `fit`.
       With your updated implementation, ``fair`` must be specified as
@@ -554,16 +542,16 @@ class plq_Ridge_Regressor(plqERM_Ridge, RegressorMixin):
 
     def __init__(
         self,
-        loss={"name": "QR", "qt": 0.5},
-        constraint=[],
+        loss=None,
+        constraint=None,
         C=1.0,
-        U=np.empty((0, 0)),
-        V=np.empty((0, 0)),
-        Tau=np.empty((0, 0)),
-        S=np.empty((0, 0)),
-        T=np.empty((0, 0)),
-        A=np.empty((0, 0)),
-        b=np.empty((0,)),
+        U=None,
+        V=None,
+        Tau=None,
+        S=None,
+        T=None,
+        A=None,
+        b=None,
         max_iter=1000,
         tol=1e-4,
         shrink=1,
@@ -573,19 +561,19 @@ class plq_Ridge_Regressor(plqERM_Ridge, RegressorMixin):
         fit_intercept=True,
         intercept_scaling=1.0,
     ):
-        self.loss = loss
-        self.constraint = constraint
+        self.loss = loss if loss is not None else {"name": "QR", "qt": 0.5}
+        self.constraint = constraint if constraint is not None else []
         self.C = C
-        self._U = U
-        self._V = V
-        self._S = S
-        self._T = T
-        self._Tau = Tau
-        self._A = A
-        self._b = b
-        self.L = U.shape[0]
-        self.H = S.shape[0]
-        self.K = A.shape[0]
+        self._U = U if U is not None else np.empty((0, 0))
+        self._V = V if V is not None else np.empty((0, 0))
+        self._S = S if S is not None else np.empty((0, 0))
+        self._T = T if T is not None else np.empty((0, 0))
+        self._Tau = Tau if Tau is not None else np.empty((0, 0))
+        self._A = A if A is not None else np.empty((0, 0))
+        self._b = b if b is not None else np.empty((0,))
+        self.L = self._U.shape[0]
+        self.H = self._S.shape[0]
+        self.K = self._A.shape[0]
         self.max_iter = max_iter
         self.tol = tol
         self.shrink = shrink
@@ -680,16 +668,7 @@ class plq_Ridge_Regressor(plqERM_Ridge, RegressorMixin):
 
     def __sklearn_tags__(self):
         """
-        Estimator tags: regressor, requires y, dense-only.
-        Parameters
-        ----------
-        X : ndarray of shape (n_samples, n_features)
-        Input data (dense).
-
-        Returns
-        -------
-        y_pred : ndarray of shape (n_samples,)
-        Predicted target values (real-valued).
+        Return scikit-learn estimator tags for compatibility.
         """
 
         tags = super().__sklearn_tags__()

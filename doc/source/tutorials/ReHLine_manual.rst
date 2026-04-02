@@ -8,11 +8,11 @@ Manual ReHLine Formulation
   \min_{\mathbf{\beta} \in \mathbb{R}^d} \sum_{i=1}^n \sum_{l=1}^L \text{ReLU}( u_{li} \mathbf{x}_i^\intercal \mathbf{\beta} + v_{li}) + \sum_{i=1}^n \sum_{h=1}^H {\text{ReHU}}_{\tau_{hi}}( s_{hi} \mathbf{x}_i^\intercal \mathbf{\beta} + t_{hi}) + \frac{1}{2} \| \mathbf{\beta} \|_2^2, \ \text{ s.t. } \mathbf{A} \mathbf{\beta} + \mathbf{b} \geq \mathbf{0},
 
 
-where :math:`\mathbf{U} = (u_{li}),\mathbf{V} = (v_{li}) \in \mathbb{R}^{L \times n}` 
-and :math:`\mathbf{S} = (s_{hi}),\mathbf{T} = (t_{hi}),\mathbf{\tau} = (\tau_{hi}) \in \mathbb{R}^{H \times n}` 
-are the ReLU-ReHU loss parameters, and :math:`(\mathbf{A},\mathbf{b})` are the constraint parameters. 
+where :math:`\mathbf{U} = (u_{li}),\mathbf{V} = (v_{li}) \in \mathbb{R}^{L \times n}`
+and :math:`\mathbf{S} = (s_{hi}),\mathbf{T} = (t_{hi}),\mathbf{\tau} = (\tau_{hi}) \in \mathbb{R}^{H \times n}`
+are the ReLU-ReHU loss parameters, and :math:`(\mathbf{A},\mathbf{b})` are the constraint parameters.
 
-The key to using `ReHLine`` to solve any problem lies in utilizing custom ReHLine parameters to represent the problem, we illustrate this with following examples. Suppose that we have `X` and `y` as our data. 
+The key to using `ReHLine`` to solve any problem lies in utilizing custom ReHLine parameters to represent the problem, we illustrate this with following examples. Suppose that we have `X` and `y` as our data.
 
 .. code-block:: python
 
@@ -22,10 +22,10 @@ The key to using `ReHLine`` to solve any problem lies in utilizing custom ReHLin
   import numpy as np
   n, d = X.shape
 
-.. note:: 
+.. note::
 
   Most of the examples below can be directly implemented by `ReHLine: Empirical Risk Minimization <./tutorials/ReHLine_ERM.rst>`_; we are simply illustrating how to convert the problem to the ReHLine formulation.
-  
+
 SVM
 ---
 
