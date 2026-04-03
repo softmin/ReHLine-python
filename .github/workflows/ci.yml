@@ -30,7 +30,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install package and test dependencies
-        run: pip install ".[test]" pytest-cov
+        run: pip install -e ".[test]" pytest-cov
 
       - name: Run tests
         run: pytest -v --tb=short --cov-report=xml
