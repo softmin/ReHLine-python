@@ -203,8 +203,8 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
         self.n_users = n_users
         self.n_items = n_items
         self.loss = loss
-        self.constraint_user = constraint_user
-        self.constraint_item = constraint_item
+        self.constraint_user = constraint_user if constraint_user is not None else []
+        self.constraint_item = constraint_item if constraint_item is not None else []
         self.biased = biased
         ## -----------------------------hyper parameters-----------------------------
         self.rank = rank
@@ -281,9 +281,6 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
         self.history = np.full((self.max_iter_CD + 1, 2), np.nan)
         ## sample weights
         self.sample_weight = _check_sample_weight(sample_weight, X, dtype=X.dtype)
-        ## constraints on user and item
-        constraint_user = self.constraint_user if self.constraint_user is not None else []
-        constraint_item = self.constraint_item if self.constraint_item is not None else [] 
         ## random number generator
         rng = np.random.default_rng(self.random_state) 
 
@@ -357,7 +354,7 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
                     C=C_user,
                     sample_weight=weight_tmp,
                 )
-                A, b = _make_constraint_rehline_param(constraint=constraint_user, X=Q_tmp, y=y_tmp)
+                A, b = _make_constraint_rehline_param(constraint=self.constraint_user, X=Q_tmp, y=y_tmp)
 
                 ### solve and update
                 result_tmp = ReHLine_solver(
@@ -424,7 +421,7 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
                     C=C_item,
                     sample_weight=weight_tmp,
                 )
-                A, b = _make_constraint_rehline_param(constraint=constraint_item, X=P_tmp, y=y_tmp)
+                A, b = _make_constraint_rehline_param(constraint=self.constraint_item, X=P_tmp, y=y_tmp)
 
                 ### solve and update
                 result_tmp = ReHLine_solver(
