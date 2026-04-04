@@ -198,44 +198,22 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
         tol_CD=1e-4,
         verbose=0,
     ):
-        # check input
-        errors = []
-        checks = [
-            (0 < rho < 1, "rho must be between 0 and 1"),
-            (C > 0, "C must be positive"),
-            (tol_CD > 0, "tol_CD must be positive"),
-            (tol > 0, "tol must be positive"),
-        ]
-        for condition, error_msg in checks:
-            if not condition:
-                errors.append(error_msg)
-        if errors:
-            raise ValueError("; ".join(errors))
-
         # parameter initialization
         ## -----------------------------basic parameters-----------------------------
         self.n_users = n_users
         self.n_items = n_items
         self.loss = loss
-        self.constraint_user = constraint_user if constraint_user is not None else []
-        self.constraint_item = constraint_item if constraint_item is not None else []
+        self.constraint_user = constraint_user
+        self.constraint_item = constraint_item
         self.biased = biased
         ## -----------------------------hyper parameters-----------------------------
         self.rank = rank
         self.C = C
         self.rho = rho
-        ## --------------------------coefficient parameters--------------------------
+        ## -------------------------initialization parameters------------------------
         self.init_mean = init_mean
         self.init_sd = init_sd
         self.random_state = random_state
-        if random_state is not None:
-            self.rng = np.random.default_rng(random_state) 
-        else:
-            self.rng = np.random.default_rng()
-        self.P = None
-        self.Q = None
-        self.bu = None
-        self.bi = None
         ## ----------------------------fitting parameters----------------------------
         self.max_iter_CD = max_iter_CD
         self.tol_CD = tol_CD
@@ -267,25 +245,65 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
             An instance of the estimator.
 
         """
+        # check input
+        ## parameter validation
+        errors = []
+        checks = [
+            (0 < self.rho < 1, "rho must be between 0 and 1"),
+            (self.C > 0, "C must be positive"),
+            (self.tol_CD > 0, "tol_CD must be positive"),
+            (self.tol > 0, "tol must be positive"),
+        ]
+        for condition, error_msg in checks:
+            if not condition:
+                errors.append(error_msg)
+        if errors:
+            raise ValueError("; ".join(errors))
+        
+        ## data validation
+        X = np.asarray(X)
+        y = np.asarray(y)
+        if X.ndim != 2 or X.shape[1] != 2:
+            raise ValueError("X must have shape (n_ratings, 2)")
+        if X.shape[0] != len(y):
+            raise ValueError("X and y must have the same number of samples")
+        user_ids = X[:, 0].astype(int)
+        item_ids = X[:, 1].astype(int)
+        if np.any(user_ids < 0) or np.any(user_ids >= self.n_users):
+            raise ValueError("User IDs must be in [0, n_users)")
+        if np.any(item_ids < 0) or np.any(item_ids >= self.n_items):
+            raise ValueError("Item IDs must be in [0, n_items)")
+        
         # Preparation
-        self.n_ratings = len(y)
-        self.history = np.nan * np.zeros((self.max_iter_CD + 1, 2))
+        ## number of training observations
+        self.n_ratings = len(y) 
+        ## convergence trace 
+        self.history = np.full((self.max_iter_CD + 1, 2), np.nan)
+        ## sample weights
         self.sample_weight = _check_sample_weight(sample_weight, X, dtype=X.dtype)
+        ## constraints on user and item
+        constraint_user = self.constraint_user if self.constraint_user is not None else []
+        constraint_item = self.constraint_item if self.constraint_item is not None else [] 
+        ## random number generator
+        rng = np.random.default_rng(self.random_state) 
 
+        ## indices to locate interactions given a user or item id
+        ### user side: Iu[u] = row indices of interactions by user u
         sort_idx_users = np.argsort(X[:, 0], kind='stable')
         sorted_users = X[sort_idx_users, 0]
         counts = np.unique(sorted_users, return_counts=True)[1]
-        self.Iu = [np.array([], dtype=int)] * self.n_users
+        self.Iu = [np.array([], dtype=int) for _ in range(self.n_users)]
         for u, idxs in zip(sorted_users[np.cumsum(counts) - counts], np.split(sort_idx_users, np.cumsum(counts)[:-1])):
             self.Iu[u] = idxs
-
+        ### item side: Ui[i] = row indices of interactions that involve item i
         sort_idx_items = np.argsort(X[:, 1], kind='stable')
         sorted_items = X[sort_idx_items, 1]
         counts = np.unique(sorted_items, return_counts=True)[1]
-        self.Ui = [np.array([], dtype=int)] * self.n_items
+        self.Ui = [np.array([], dtype=int) for _ in range(self.n_items)]
         for i, idxs in zip(sorted_items[np.cumsum(counts) - counts], np.split(sort_idx_items, np.cumsum(counts)[:-1])):
             self.Ui[i] = idxs
 
+        ## effective C when updating user/item blocks (to match rehline formulation: C * PLQ_loss + 0.5 * l_2)
         C_user = self.C * self.n_users / (self.rho) / 2
         C_item = self.C * self.n_items / (1 - self.rho) / 2
 
@@ -298,9 +316,9 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
                 )
             )
 
-        # Initialization
-        self.P = self.rng.normal(loc=self.init_mean, scale=self.init_sd, size=(self.n_users, self.rank))
-        self.Q = self.rng.normal(loc=self.init_mean, scale=self.init_sd, size=(self.n_items, self.rank))
+        # Model Initialization
+        self.P = rng.normal(loc=self.init_mean, scale=self.init_sd, size=(self.n_users, self.rank))
+        self.Q = rng.normal(loc=self.init_mean, scale=self.init_sd, size=(self.n_items, self.rank))
         self.bu = np.zeros(self.n_users) if self.biased else None
         self.bi = np.zeros(self.n_items) if self.biased else None
 
@@ -339,7 +357,7 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
                     C=C_user,
                     sample_weight=weight_tmp,
                 )
-                A, b = _make_constraint_rehline_param(constraint=self.constraint_user, X=Q_tmp, y=y_tmp)
+                A, b = _make_constraint_rehline_param(constraint=constraint_user, X=Q_tmp, y=y_tmp)
 
                 ### solve and update
                 result_tmp = ReHLine_solver(
@@ -406,7 +424,7 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
                     C=C_item,
                     sample_weight=weight_tmp,
                 )
-                A, b = _make_constraint_rehline_param(constraint=self.constraint_item, X=P_tmp, y=y_tmp)
+                A, b = _make_constraint_rehline_param(constraint=constraint_item, X=P_tmp, y=y_tmp)
 
                 ### solve and update
                 result_tmp = ReHLine_solver(
@@ -511,9 +529,10 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
             item_penalty = np.sum(self.Q**2) * (1 - self.rho) / self.n_items
             penalty = user_penalty + item_penalty
 
-        y_pred = self.decision_function(X)
-        U, V, Tau, S, T = _make_loss_rehline_param(loss=self.loss, X=X, y=y)
+        X_dummy = np.ones((len(y), 1)) # not used in loss computation, only shape matters for loss param construction
+        U, V, Tau, S, T = _make_loss_rehline_param(loss=self.loss, X=X_dummy, y=y)
         loss = ReHLoss(U, V, S, T, Tau)
+        y_pred = self.decision_function(X)
         loss_term = loss(y_pred)
 
         return loss_term, self.C * loss_term + penalty
