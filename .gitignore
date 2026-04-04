@@ -14,6 +14,11 @@ rehline.egg-info/
 *.log
 env/
 
+# Coverage reports
+.coverage
+coverage.xml
+htmlcov/
+
 # Files during package building
 eigen-3.4.0/
 eigen-5.0.1/
