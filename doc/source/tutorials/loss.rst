@@ -53,6 +53,7 @@ A smoothed version of the Hinge loss (using ReHU) that is differentiable everywh
    :name: ssvm-gallery
 
    ../examples/SVM.ipynb
+   ../examples/Smooth_SVM_new.ipynb
 
 Squared SVM
 ^^^^^^^^^^^

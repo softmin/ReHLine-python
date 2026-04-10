@@ -19,6 +19,8 @@ Overview
      - ReHLine Minimization.
    * - :py:obj:`plqERM_Ridge <rehline.plqERM_Ridge>`
      - Empirical Risk Minimization (ERM) with a piecewise linear-quadratic (PLQ) objective with a ridge penalty.
+   * - :py:obj:`plqERM_ElasticNet <rehline.plqERM_ElasticNet>`
+     - Empirical Risk Minimization (ERM) with a piecewise linear-quadratic (PLQ) objective with a elastic net penalty.
    * - :py:obj:`plq_Ridge_Classifier <rehline.plq_Ridge_Classifier>`
      - Empirical Risk Minimization (ERM) Classifier with a Piecewise Linear-Quadratic (PLQ) loss
    * - :py:obj:`plq_Ridge_Regressor <rehline.plq_Ridge_Regressor>`
@@ -32,7 +34,7 @@ Overview
    :widths: auto
    :class: summarytable
 
-   * - :py:obj:`ReHLine_solver <rehline.ReHLine_solver>`\ (X, U, V, Tau, S, T, A, b, Lambda, Gamma, xi, max_iter, tol, shrink, verbose, trace_freq)
+   * - :py:obj:`ReHLine_solver <rehline.ReHLine_solver>`\ (X, U, V, Tau, S, T, A, b, rho, Lambda, Gamma, xi, mu, max_iter, tol, shrink, verbose, trace_freq)
      - \-
    * - :py:obj:`plqERM_Ridge_path_sol <rehline.plqERM_Ridge_path_sol>`\ (X, y, \*None, loss, constraint, eps, n_Cs, Cs, max_iter, tol, verbose, shrink, warm_start, return_time)
      - Compute the PLQ Empirical Risk Minimization (ERM) path over a range of regularization parameters.
@@ -497,7 +499,161 @@ Classes
 
 
 
-.. py:class:: plq_Ridge_Classifier(loss, constraint=[], C=1.0, U=np.empty((0, 0)), V=np.empty((0, 0)), Tau=np.empty((0, 0)), S=np.empty((0, 0)), T=np.empty((0, 0)), A=np.empty((0, 0)), b=np.empty((0, )), max_iter=1000, tol=0.0001, shrink=1, warm_start=0, verbose=0, trace_freq=100, fit_intercept=True, intercept_scaling=1.0, class_weight=None)
+.. py:class:: plqERM_ElasticNet(loss, constraint=[], C=1.0, l1_ratio=0.5, U=np.empty(shape=(0, 0)), V=np.empty(shape=(0, 0)), Tau=np.empty(shape=(0, 0)), S=np.empty(shape=(0, 0)), T=np.empty(shape=(0, 0)), A=np.empty(shape=(0, 0)), b=np.empty(shape=0), max_iter=1000, tol=0.0001, shrink=1, warm_start=0, verbose=0, trace_freq=100)
+
+   Bases: :py:obj:`rehline._base._BaseReHLine`, :py:obj:`sklearn.base.BaseEstimator`
+
+   Empirical Risk Minimization (ERM) with a piecewise linear-quadratic (PLQ) objective with a elastic net penalty.
+
+   .. math::
+
+       \min_{\mathbf{\beta} \in \mathbb{R}^d} C \sum_{i=1}^n \text{PLQ}(y_i, \mathbf{x}_i^T \mathbf{\beta}) + \text{l1_ratio} \| \mathbf{\beta} \|_1 + \frac{1}{2} (1 - \text{l1_ratio})  \| \mathbf{\beta} \|_2^2, \ \text{ s.t. } \ 
+       \mathbf{A} \mathbf{\beta} + \mathbf{b} \geq \mathbf{0},
+
+   The function supports various loss functions, including:
+       - 'hinge', 'svm' or 'SVM'
+       - 'check' or 'quantile' or 'quantile regression' or 'QR'
+       - 'sSVM' or 'smooth SVM' or 'smooth hinge'
+       - 'TV'
+       - 'huber' or 'Huber'
+       - 'SVR' or 'svr'
+
+   The following constraint types are supported:
+       * 'nonnegative' or '>=0': A non-negativity constraint.
+       * 'fair' or 'fairness': A fairness constraint.
+       * 'custom': A custom constraint, where the user must provide the constraint matrix 'A' and vector 'b'.
+
+   Parameters
+   ----------
+   loss : dict
+       A dictionary specifying the loss function parameters. 
+
+   constraint : list of dict
+       A list of dictionaries, where each dictionary represents a constraint.
+       Each dictionary must contain a 'name' key, which specifies the type of constraint.
+
+   C : float, default=1.0
+       Regularization parameter. The strength of the regularization is
+       inversely proportional to C. Must be strictly positive. 
+       `C` will be absorbed by the ReHLine parameters when `self.make_ReLHLoss` is conducted.
+
+   l1_ratio : float, default=0.5
+       The ElasticNet mixing parameter, with 0 <= l1_ratio < 1. For l1_ratio = 0 the penalty 
+       is an L2 penalty. For 0 < l1_ratio < 1, the penalty is a combination of L1 and L2.
+
+   verbose : int, default=0
+       Enable verbose output. Note that this setting takes advantage of a
+       per-process runtime setting in liblinear that, if enabled, may not work
+       properly in a multithreaded context.
+
+   max_iter : int, default=1000
+       The maximum number of iterations to be run.
+
+   _U, _V: array of shape (L, n_samples), default=np.empty(shape=(0, 0))
+       The parameters pertaining to the ReLU part in the loss function.
+
+   _Tau, _S, _T: array of shape (H, n_samples), default=np.empty(shape=(0, 0))
+       The parameters pertaining to the ReHU part in the loss function.
+
+   _A: array of shape (K, n_features), default=np.empty(shape=(0, 0))
+       The coefficient matrix in the linear constraint.
+
+   _b: array of shape (K, ), default=np.empty(shape=0)
+       The intercept vector in the linear constraint.
+
+   Attributes
+   ----------
+   coef\_ : array-like
+       The optimized model coefficients.
+
+   n_iter\_ : int
+       The number of iterations performed by the ReHLine solver.
+
+   opt_result\_ : object
+       The optimization result object.
+
+   dual_obj\_ : array-like
+       The dual objective function values.
+
+   primal_obj\_ : array-like
+       The primal objective function values.
+
+   Methods
+   -------
+   fit(X, y, sample_weight=None)
+       Fit the model based on the given training data.
+
+   decision_function(X)
+       The decision function evaluated on the given dataset.
+
+   Notes
+   -----
+   The `plqERM_ElasticNet` class is a subclass of `_BaseReHLine` and `BaseEstimator`, which suggests that it is part of a larger framework for implementing ReHLine algorithms.
+
+
+
+   Overview
+   ========
+
+
+   .. list-table:: Methods
+      :header-rows: 0
+      :widths: auto
+      :class: summarytable
+
+      * - :py:obj:`fit <rehline.plqERM_ElasticNet.fit>`\ (X, y, sample_weight)
+        - Fit the model based on the given training data.
+      * - :py:obj:`decision_function <rehline.plqERM_ElasticNet.decision_function>`\ (X)
+        - The decision function evaluated on the given dataset
+
+
+   Members
+   =======
+
+   .. py:method:: fit(X, y, sample_weight=None)
+
+      Fit the model based on the given training data.
+
+      Parameters
+      ----------
+
+      X: {array-like} of shape (n_samples, n_features)
+          Training vector, where `n_samples` is the number of samples and
+          `n_features` is the number of features.
+
+      y : array-like of shape (n_samples,)
+          The target variable.
+
+      sample_weight : array-like of shape (n_samples,), default=None
+          Array of weights that are assigned to individual
+          samples. If not provided, then each sample is given unit weight.
+
+      Returns
+      -------
+      self : object
+          An instance of the estimator.
+
+
+
+
+   .. py:method:: decision_function(X)
+
+      The decision function evaluated on the given dataset
+
+      Parameters
+      ----------
+      X : array-like of shape (n_samples, n_features)
+          The data matrix.
+
+      Returns
+      -------
+      ndarray of shape (n_samples, )
+          Returns the decision function of the samples.
+
+
+
+
+.. py:class:: plq_Ridge_Classifier(loss, constraint=[], C=1.0, U=np.empty((0, 0)), V=np.empty((0, 0)), Tau=np.empty((0, 0)), S=np.empty((0, 0)), T=np.empty((0, 0)), A=np.empty((0, 0)), b=np.empty((0, )), max_iter=1000, tol=0.0001, shrink=1, warm_start=0, verbose=0, trace_freq=100, fit_intercept=True, intercept_scaling=1.0, class_weight=None, multi_class=[], n_jobs=None)
 
    Bases: :py:obj:`rehline._class.plqERM_Ridge`, :py:obj:`sklearn.base.ClassifierMixin`
 
@@ -511,6 +667,7 @@ Classes
        - Supports optional intercept fitting (via an augmented constant feature).
        - Provides standard methods ``fit``, ``predict``, and ``decision_function``.
        - Integrates with scikit-learn ecosystem (e.g., GridSearchCV, Pipeline).
+       - Supports multiclass classification via OvR or OvO method.
 
    Parameters
    ----------
@@ -571,16 +728,32 @@ Classes
        - 'balanced' uses n_samples / (n_classes * n_j).
        - dict maps label -> weight in the ORIGINAL label space.
 
+   multi_class : str or list, default=[]
+       Method for multiclass classification. Options:
+       - 'ovo': One-vs-One, trains K*(K-1)/2 binary classifiers.
+       - 'ovr': One-vs-Rest, trains K binary classifiers.
+       - [ ] or ignored when only 2 classes are present.
+       
+   n_jobs : int or None, default=None
+       Number of parallel jobs for multiclass fitting.
+       None means 1 (serial). -1 means use all available CPUs.
+       Passed directly to joblib.Parallel.
+
+
    Attributes
    ----------
-   coef_ : ndarray of shape (n_features,)
-       Coefficients excluding the intercept.
+   ``coef_ ``: ndarray of shape (n_features,) for binary, (n_estimators, n_features) for multiclass
+       Coefficients of all fitted classifiers, excluding the intercept.
 
-   intercept_ : float
-       Intercept term. 0.0 if ``fit_intercept=False``.
+   ``intercept_ ``: float for binary, ndarray of shape (n_estimators,) for multiclass
+       Intercept term(s). 0.0 if ``fit_intercept=False``.
 
-   classes_ : ndarray of shape (2,)
+   classes_ : ndarray of shape (n_classes,)
        Unique class labels in the original label space.
+
+   estimators_ : list, only present for multiclass
+       For OvR: list of (coef, intercept) tuples, length K.
+       For OvO: list of (coef, intercept, cls_i, cls_j) tuples, length K*(K-1)/2.
 
    _label_encoder : LabelEncoder
        Encodes original labels into {0,1} for internal training.
@@ -631,20 +804,30 @@ Classes
 
       Compute the decision function for samples in X.
 
+      For binary classification, returns a 1D array of scores.
+      For OvR multiclass, returns a 2D array of shape (n_samples, K).
+      For OvO multiclass, returns a 2D array of shape (n_samples, K*(K-1)/2).
+
+      Using coef_.T works uniformly for both binary (n_features,) and
+      multiclass (n_estimators, n_features) shapes.
+
       Parameters
       ----------
-      X : array-like of shape (n_samples, n_features)
+      X : array-like of shape (n_samples, n_features) 
           Input samples.
 
       Returns
       -------
-      ndarray of shape (n_samples,)
+      ndarray of shape (n_samples,) or (n_samples, n_estimators)
           Continuous scores for each sample.
 
 
    .. py:method:: predict(X)
 
       Predict class labels for samples in X.
+      For binary classification, thresholds the decision score at 0.
+      For OvR, takes the argmax across K classifiers.
+      For OvO, uses majority voting across K*(K-1)/2 classifiers.
 
       Parameters
       ----------
@@ -722,11 +905,11 @@ Classes
 
    Attributes
    ----------
-   coef_ : ndarray of shape (n_features,)
+   ``coef_`` : ndarray of shape (n_features,)
        Learned linear coefficients (excluding the intercept term).
-   intercept_ : float
+   ``intercept_`` : float
        Intercept term extracted from the last coefficient when ``fit_intercept=True``, otherwise 0.0.
-   n_features_in_ : int
+   ``n_features_in_`` : int
        Number of input features seen during :meth:`fit` (before intercept augmentation).
 
    Notes
@@ -748,7 +931,7 @@ Classes
       * - :py:obj:`fit <rehline.plq_Ridge_Regressor.fit>`\ (X, y, sample_weight)
         - If ``fit_intercept=True``, a constant column (value = ``intercept_scaling``) is appended
       * - :py:obj:`decision_function <rehline.plq_Ridge_Regressor.decision_function>`\ (X)
-        - Compute f(X) = X @ coef_ + intercept_.
+        - Compute f(X) = X @ ``coef_`` + ``intercept_``.
       * - :py:obj:`predict <rehline.plq_Ridge_Regressor.predict>`\ (X)
         - Predict targets as the linear decision function.
 
@@ -782,7 +965,7 @@ Classes
 
    .. py:method:: decision_function(X)
 
-      Compute f(X) = X @ coef_ + intercept_.
+      Compute f(X) = X @ ``coef_`` + ``intercept_``.
 
       Parameters
       ----------
@@ -1059,7 +1242,7 @@ Classes
 
 Functions
 ---------
-.. py:function:: ReHLine_solver(X, U, V, Tau=np.empty(shape=(0, 0)), S=np.empty(shape=(0, 0)), T=np.empty(shape=(0, 0)), A=np.empty(shape=(0, 0)), b=np.empty(shape=0), Lambda=np.empty(shape=(0, 0)), Gamma=np.empty(shape=(0, 0)), xi=np.empty(shape=(0, 0)), max_iter=1000, tol=0.0001, shrink=1, verbose=1, trace_freq=100)
+.. py:function:: ReHLine_solver(X, U, V, Tau=np.empty(shape=(0, 0)), S=np.empty(shape=(0, 0)), T=np.empty(shape=(0, 0)), A=np.empty(shape=(0, 0)), b=np.empty(shape=0), rho=0.0, Lambda=np.empty(shape=(0, 0)), Gamma=np.empty(shape=(0, 0)), xi=np.empty(shape=(0, 0)), mu=np.empty(shape=(0, 0)), max_iter=1000, tol=0.0001, shrink=1, verbose=1, trace_freq=100)
 
 .. py:function:: plqERM_Ridge_path_sol(X, y, *, loss, constraint=[], eps=0.001, n_Cs=100, Cs=None, max_iter=5000, tol=0.0001, verbose=0, shrink=1, warm_start=False, return_time=True)
 

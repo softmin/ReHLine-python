@@ -20,6 +20,8 @@ Example Gallery
    examples/Sklearn_Mixin.ipynb
    examples/Multiclass_Classification.ipynb   
    examples/NMF.ipynb
+   examples/Smooth_SVM_new.ipynb
+   examples/MonotonicSVM.ipynb
 
 List of Examples
 ----------------
@@ -39,3 +41,5 @@ List of Examples
    examples/Sklearn_Mixin.ipynb
    examples/Multiclass_Classification.ipynb 
    examples/NMF.ipynb
+   examples/Smooth_SVM_new.ipynb
+   examples/MonotonicSVM.ipynb
