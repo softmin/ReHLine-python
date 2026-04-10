@@ -114,3 +114,4 @@ Example
    :name: rst-link-gallery
 
    ../examples/Sklearn_Mixin.ipynb
+   ../examples/ElasticNet.ipynb

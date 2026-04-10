@@ -20,6 +20,7 @@ Example Gallery
    examples/Sklearn_Mixin.ipynb
    examples/Multiclass_Classification.ipynb
    examples/NMF.ipynb
+   examples/ElasticNet.ipynb
 
 List of Examples
 ----------------
@@ -39,3 +40,4 @@ List of Examples
    examples/Sklearn_Mixin.ipynb
    examples/Multiclass_Classification.ipynb
    examples/NMF.ipynb
+   examples/ElasticNet.ipynb

@@ -13,7 +13,7 @@ from ._internal import rehline_internal, rehline_result
 from ._loss import ReHLoss
 from ._mf_class import plqMF_Ridge
 from ._path_sol import plqERM_Ridge_path_sol
-from ._sklearn_mixin import plq_Ridge_Classifier, plq_Ridge_Regressor
+from ._sklearn_mixin import plq_Ridge_Classifier, plq_Ridge_Regressor, plq_ElasticNet_Classifier, plq_ElasticNet_Regressor
 
 __all__ = (
     "_BaseReHLine",
@@ -26,6 +26,8 @@ __all__ = (
     "plqERM_Ridge_path_sol",
     "plq_Ridge_Classifier",
     "plq_Ridge_Regressor",
+    "plq_ElasticNet_Classifier",
+    "plq_ElasticNet_Regressor",
     "_make_loss_rehline_param",
     "_make_constraint_rehline_param",
     "make_mf_dataset",
