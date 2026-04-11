@@ -73,6 +73,13 @@ Increasing: :math:`\beta_i \le \beta_{i+1}`. Decreasing: :math:`\beta_i \ge \bet
    # Monotonically decreasing
    constraint = [{'name': 'monotonic', 'decreasing': True}]
 
+**Related Example**
+
+.. nblinkgallery::
+   :name: monotonic-gallery
+
+   ../examples/MonotonicSVM.ipynb
+
 Custom Constraints
 ^^^^^^^^^^^^^^^^^^
 Define arbitrary linear constraints of the form :math:`A\beta + b \ge 0`.
