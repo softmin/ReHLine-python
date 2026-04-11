@@ -5,7 +5,7 @@ Example Gallery
 ---------------
 
 .. nblinkgallery::
-   :caption: Emprical Risk Minimization
+   :caption: Empirical Risk Minimization
    :name: rst-link-gallery
 
    examples/QR.ipynb
@@ -18,10 +18,14 @@ Example Gallery
    examples/Path_solution.ipynb
    examples/Warm_start.ipynb
    examples/Sklearn_Mixin.ipynb
-   examples/Multiclass_Classification.ipynb   
+   examples/Multiclass_Classification.ipynb
    examples/NMF.ipynb
+new_examples_FEI
    examples/Smooth_SVM_new.ipynb
    examples/MonotonicSVM.ipynb
+   
+   examples/ElasticNet.ipynb
+main
 
 List of Examples
 ----------------
@@ -39,7 +43,11 @@ List of Examples
    examples/Path_solution.ipynb
    examples/Warm_start.ipynb
    examples/Sklearn_Mixin.ipynb
-   examples/Multiclass_Classification.ipynb 
+   examples/Multiclass_Classification.ipynb
    examples/NMF.ipynb
+new_examples_FEI
    examples/Smooth_SVM_new.ipynb
    examples/MonotonicSVM.ipynb
+   
+   examples/ElasticNet.ipynb
+main

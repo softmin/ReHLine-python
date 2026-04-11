@@ -1,6 +1,6 @@
 name: Build and upload to PyPI
 
-on: 
+on:
   push:
     paths-ignore:
       - .gitignore
@@ -27,7 +27,7 @@ jobs:
         uses: pypa/cibuildwheel@v3.3.1
         env:
           CIBW_BUILD_VERBOSITY: 1
-        
+
       - uses: actions/upload-artifact@v6
         with:
           name: rehline-wheels-${{ matrix.os }}-${{ strategy.job-index }}

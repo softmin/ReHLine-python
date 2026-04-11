@@ -19,7 +19,7 @@ The `ReHLine` solver addresses the following empirical risk minimization problem
 
 .. math::
 
-    \min_{\pmb{\beta} \in \mathbb{R}^d} \sum_{i=1}^n \text{PLQ}(y_i, \mathbf{x}_i^T \pmb{\beta}) + \frac{1}{2} \| \pmb{\beta} \|_2^2, \ \text{ s.t. } \ 
+    \min_{\pmb{\beta} \in \mathbb{R}^d} \sum_{i=1}^n \text{PLQ}(y_i, \mathbf{x}_i^T \pmb{\beta}) + \frac{1}{2} \| \pmb{\beta} \|_2^2, \ \text{ s.t. } \
     \mathbf{A} \pmb{\beta} + \mathbf{b} \geq \mathbf{0},
 
 where:
@@ -110,7 +110,8 @@ Example
 -------
 
 .. nblinkgallery::
-   :caption: Emprical Risk Minimization
+   :caption: Empirical Risk Minimization
    :name: rst-link-gallery
 
    ../examples/Sklearn_Mixin.ipynb
+   ../examples/ElasticNet.ipynb

@@ -34,14 +34,61 @@ py-modules = ["build"]
 build = "cp*"
 
 [project.optional-dependencies]
-test = ["pytest >= 7.0", "pandas >= 1.5.0"]
+test = ["pytest >= 7.0", "pandas >= 1.5.0", "pytest-cov"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+addopts = "--cov=rehline --cov-report=term-missing"
 
 [build-system]
 requires = ["requests ~= 2.31.0", "pybind11 ~= 3.0.0", "setuptools >= 80.0.0", "wheel >= 0.42.0", "setuptools-scm >= 8.0"]
 build-backend = "setuptools.build_meta"
+
+# --- Coverage ---
+[tool.coverage.run]
+source = ["rehline"]
+omit = ["rehline/_internal*"]
+relative_files = true
+
+[tool.coverage.paths]
+source = [
+    "rehline/",
+    "*/site-packages/rehline/",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+]
+
+# --- Ruff (linter + formatter) ---
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort (import sorting)
+    "B",    # flake8-bugbear (includes B006 mutable defaults)
+    "UP",   # pyupgrade
+]
+ignore = [
+    "E501",   # line too long (let formatter handle it)
+    "B905",   # zip without strict= (Python 3.10+)
+    "F401",   # unused imports (re-export from __init__.py)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["rehline"]
+
+# --- Codespell (typo checker) ---
+[tool.codespell]
+skip = "*.so,*.cpp,*.h,*.zip,*.html,*.ipynb,eigen-*,build,dist,.git,.ipynb_checkpoints"
+ignore-words-list = "nd,hist,bu,bi,ans"

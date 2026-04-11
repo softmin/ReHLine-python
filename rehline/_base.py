@@ -10,7 +10,7 @@ from abc import abstractmethod
 import numpy as np
 from scipy.special import huber
 from sklearn.base import BaseEstimator
-from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
+from sklearn.utils.validation import check_array, check_is_fitted
 
 from ._internal import rehline_internal, rehline_result
 
@@ -52,22 +52,22 @@ class _BaseReHLine(BaseEstimator):
         self,
         *,
         C=1.0,
-        U=np.empty(shape=(0, 0)),
-        V=np.empty(shape=(0, 0)),
-        Tau=np.empty(shape=(0, 0)),
-        S=np.empty(shape=(0, 0)),
-        T=np.empty(shape=(0, 0)),
-        A=np.empty(shape=(0, 0)),
-        b=np.empty(shape=(0)),
+        U=None,
+        V=None,
+        Tau=None,
+        S=None,
+        T=None,
+        A=None,
+        b=None,
     ):
         self.C = C
-        self._U = U
-        self._V = V
-        self._S = S
-        self._T = T
-        self._Tau = Tau
-        self._A = A
-        self._b = b
+        self._U = U if U is not None else np.empty(shape=(0, 0))
+        self._V = V if V is not None else np.empty(shape=(0, 0))
+        self._S = S if S is not None else np.empty(shape=(0, 0))
+        self._T = T if T is not None else np.empty(shape=(0, 0))
+        self._Tau = Tau if Tau is not None else np.empty(shape=(0, 0))
+        self._A = A if A is not None else np.empty(shape=(0, 0))
+        self._b = b if b is not None else np.empty(shape=(0))
         self.L = self._U.shape[0]
         self.H = self._S.shape[0]
         self.K = self._A.shape[0]
@@ -103,11 +103,7 @@ class _BaseReHLine(BaseEstimator):
                 "xi",
             ]:
                 value = getattr(self, key)
-                if (
-                    deep
-                    and hasattr(value, "get_params")
-                    and not isinstance(value, type)
-                ):
+                if deep and hasattr(value, "get_params") and not isinstance(value, type):
                     deep_items = value.get_params().items()
                     out.update((key + "__" + k, val) for k, val in deep_items)
                 out[key] = value
@@ -198,7 +194,7 @@ class _BaseReHLine(BaseEstimator):
             relu_input = (self._U.T * score[:, np.newaxis]).T + self._V
         if self.H > 0:
             rehu_input = (self._S.T * score[:, np.newaxis]).T + self._T
-        return np.sum(_relu(relu_input), 0) + np.sum(_rehu(rehu_input), 0)
+        return np.sum(_relu(relu_input), 0) + np.sum(_rehu(rehu_input, self._Tau), 0)
 
     @abstractmethod
     def fit(self, X, y, sample_weight):
@@ -263,7 +259,6 @@ def _rehu(x, cut=1):
         The result of the ReHU function.
 
     """
-    n_samples = x.shape[0]
     cut = cut * np.ones_like(x)
 
     u = np.maximum(x, 0)
@@ -271,39 +266,56 @@ def _rehu(x, cut=1):
 
 
 def _check_relu(relu_coef, relu_intercept):
-    assert relu_coef.shape == relu_intercept.shape, (
-        "`relu_coef` and `relu_intercept` should be the same shape!"
-    )
+    if relu_coef.shape != relu_intercept.shape:
+        raise ValueError("`relu_coef` and `relu_intercept` should be the same shape!")
 
 
 def _check_rehu(rehu_coef, rehu_intercept, rehu_cut):
-    assert rehu_coef.shape == rehu_intercept.shape, (
-        "`rehu_coef` and `rehu_intercept` should be the same shape!"
-    )
-    if len(rehu_coef) > 0:
-        assert (rehu_cut >= 0.0).all(), "`rehu_cut` must be non-negative!"
+    if rehu_coef.shape != rehu_intercept.shape:
+        raise ValueError("`rehu_coef` and `rehu_intercept` should be the same shape!")
+    if len(rehu_coef) > 0 and not (rehu_cut >= 0.0).all():
+        raise ValueError("`rehu_cut` must be non-negative!")
 
 
 def ReHLine_solver(
     X,
     U,
     V,
-    Tau=np.empty(shape=(0, 0)),
-    S=np.empty(shape=(0, 0)),
-    T=np.empty(shape=(0, 0)),
-    A=np.empty(shape=(0, 0)),
-    b=np.empty(shape=(0)),
+    Tau=None,
+    S=None,
+    T=None,
+    A=None,
+    b=None,
     rho=0.0,
-    Lambda=np.empty(shape=(0, 0)),
-    Gamma=np.empty(shape=(0, 0)),
-    xi=np.empty(shape=(0, 0)),
-    mu=np.empty(shape=(0, 0)),
+    Lambda=None,
+    Gamma=None,
+    xi=None,
+    mu=None,
     max_iter=1000,
     tol=1e-4,
     shrink=1,
     verbose=1,
     trace_freq=100,
 ):
+    if Tau is None:
+        Tau = np.empty(shape=(0, 0))
+    if S is None:
+        S = np.empty(shape=(0, 0))
+    if T is None:
+        T = np.empty(shape=(0, 0))
+    if A is None:
+        A = np.empty(shape=(0, 0))
+    if b is None:
+        b = np.empty(shape=(0))
+    if Lambda is None:
+        Lambda = np.empty(shape=(0, 0))
+    if Gamma is None:
+        Gamma = np.empty(shape=(0, 0))
+    if xi is None:
+        xi = np.empty(shape=(0, 0))
+    if mu is None:
+        mu = np.empty(shape=(0, 0))
+
     result = rehline_result()
     if len(Lambda) > 0:
         result.Lambda = np.maximum(0, np.minimum(Lambda, 1.0))
@@ -314,7 +326,21 @@ def ReHLine_solver(
     if len(mu) > 0:
         result.mu = np.maximum(0, np.minimum(mu, rho))
     rehline_internal(
-        result, X, A, b, U, V, S, T, Tau, max_iter, tol, rho, shrink, verbose, trace_freq
+        result,
+        X,
+        A,
+        b,
+        U,
+        V,
+        S,
+        T,
+        Tau,
+        max_iter,
+        tol,
+        rho,
+        shrink,
+        verbose,
+        trace_freq,
     )
     return result
 
@@ -398,11 +424,7 @@ def _make_loss_rehline_param(loss, X, y):
     #         X_fake[l*n:(l+1)*n,:d] = X
     #         X_fake[l*n:(l+1)*n,d+l] = 1.
 
-    elif (
-        (loss["name"] == "sSVM")
-        or (loss["name"] == "smooth SVM")
-        or (loss["name"] == "smooth hinge")
-    ):
+    elif (loss["name"] == "sSVM") or (loss["name"] == "smooth SVM") or (loss["name"] == "smooth hinge"):
         S = np.ones((1, n))
         T = np.ones((1, n))
         Tau = np.ones((1, n))
@@ -438,45 +460,33 @@ def _make_loss_rehline_param(loss, X, y):
         # Check Loss with epsilon-tolerance: (rho_kappa(r) - epsilon)_+
         qt = loss["qt"]  # kappa (quantile level)
         epsilon = loss["epsilon"]
-        
+
         U = np.zeros((2, n))
         V = np.zeros((2, n))
-        
+
         U[0] = -qt
-        U[1] = (1 - qt)
+        U[1] = 1 - qt
         V[0] = qt * y - epsilon
         V[1] = -(1 - qt) * y - epsilon
 
-    elif (
-        (loss["name"] == "MAE")
-        or (loss["name"] == "mae")
-        or (loss["name"] == "mean absolute error")
-    ):
+    elif (loss["name"] == "MAE") or (loss["name"] == "mae") or (loss["name"] == "mean absolute error"):
         U = np.array([[1.0] * n, [-1.0] * n])
         V = np.array([-y, y])
 
-    elif (
-        (loss["name"] == "squared SVM")
-        or (loss["name"] == "squared svm")
-        or (loss["name"] == "squared hinge")
-    ):
+    elif (loss["name"] == "squared SVM") or (loss["name"] == "squared svm") or (loss["name"] == "squared hinge"):
         Tau = np.inf * np.ones((1, n))
         S = -np.sqrt(2) * y.reshape(1, -1)
         T = np.sqrt(2) * np.ones((1, n))
 
-    elif (
-        (loss["name"] == "MSE")
-        or (loss["name"] == "mse")
-        or (loss["name"] == "mean squared error")
-    ):
+    elif (loss["name"] == "MSE") or (loss["name"] == "mse") or (loss["name"] == "mean squared error"):
         Tau = np.inf * np.ones((2, n))
         S = np.array([[np.sqrt(2)] * n, [-np.sqrt(2)] * n])
         T = np.array([-np.sqrt(2) * y, np.sqrt(2) * y])
 
     else:
-        raise Exception(
-            "Sorry, ReHLine currently does not support this loss function, \
-                        but you can manually set ReHLine params to solve the problem via `ReHLine` class."
+        raise ValueError(
+            "Sorry, ReHLine currently does not support this loss function, "
+            "but you can manually set ReHLine params to solve the problem via `ReHLine` class."
         )
 
     return U, V, Tau, S, T
@@ -529,17 +539,14 @@ def _make_constraint_rehline_param(constraint, X, y=None):
             X_sen = X[:, sen_idx]
             X_sen = X_sen.reshape(n, -1)
 
-            assert X_sen.shape[1] == len(tol_sen), (
-                "dim of X_sen and len of tol_sen must be equal"
-            )
+            if X_sen.shape[1] != len(tol_sen):
+                raise ValueError("dim of X_sen and len of tol_sen must be equal")
 
             A_tmp = np.repeat(X_sen.T @ X, repeats=[2], axis=0) / n
             A_tmp[::2] = -A_tmp[::2]
             b_tmp = np.repeat(tol_sen, repeats=[2], axis=0)
 
-        elif (constr_tmp["name"] == "monotonic") or (
-            constr_tmp["name"] == "monotonicity"
-        ):
+        elif (constr_tmp["name"] == "monotonic") or (constr_tmp["name"] == "monotonicity"):
             decreasing = constr_tmp.get("decreasing", False)
             idx = np.arange(d - 1)
             A_tmp = np.zeros((d - 1, d))
@@ -556,9 +563,9 @@ def _make_constraint_rehline_param(constraint, X, y=None):
             b_tmp = constr_tmp["b"]
 
         else:
-            raise Exception(
-                "Sorry, ReHLine currently does not support this constraint, \
-                        but you can add it by manually setting A and b via {'name': 'custom', 'A': A, 'b': b}"
+            raise ValueError(
+                "Sorry, ReHLine currently does not support this constraint, "
+                "but you can add it by manually setting A and b via {'name': 'custom', 'A': A, 'b': b}"
             )
 
         A = np.vstack([A, A_tmp]) if A.size else A_tmp
@@ -567,11 +574,9 @@ def _make_constraint_rehline_param(constraint, X, y=None):
     return A, b
 
 
-def _make_penalty_rehline_param(self, penalty=None, X=None):
+def _make_penalty_rehline_param(penalty=None, X=None):
     """The `_make_penalty_rehline_param` function generates penalty parameters for the ReHLine solver."""
-    raise Exception(
-        "Sorry, `_make_penalty_rehline_param` feature is currently under development."
-    )
+    raise NotImplementedError("Sorry, `_make_penalty_rehline_param` feature is currently under development.")
 
 
 def _cast_sample_bias(U, V, Tau, S, T, sample_bias=None):
@@ -757,8 +762,8 @@ def _cast_sample_weight(U, V, Tau, S, T, C=1.0, sample_weight=None):
 #     >>> # save and fit with the manipulated data matrix
 #     >>> X_fake = clf.append_l1(X, l1_pen=lam1)
 #     >>> clf.fit(X=X_fake)
-#     >>> print('sol privided by rehline: %s' %clf.coef_)
-#     >>> sol privided by rehline: [ 7.17796629e-01 -1.87075728e-06  2.61965622e+00] #sparse sol
+#     >>> print('sol provided by rehline: %s' %clf.coef_)
+#     >>> sol provided by rehline: [ 7.17796629e-01 -1.87075728e-06  2.61965622e+00] #sparse sol
 #     >>> print(clf.decision_function([[.1,.2,.3]]))
 #     >>> [0.85767616]
 #     """

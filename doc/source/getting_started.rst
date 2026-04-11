@@ -27,7 +27,7 @@ Let's begin by generating a toy dataset and splitting it into training and test 
     from sklearn.datasets import make_regression
     from sklearn.model_selection import train_test_split
     from sklearn.preprocessing import StandardScaler
-    
+
     np.random.seed(1024)
     # Generate toy data
     n, d = 1000, 5
@@ -36,7 +36,7 @@ Let's begin by generating a toy dataset and splitting it into training and test 
     # Normalize X and add intercept
     X = scaler.fit_transform(X)
     X = np.hstack((X, np.ones((n, 1))))
-    
+
     # Split data into training and test sets
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=50)
 
@@ -126,7 +126,7 @@ With `rehline`, you can easily add a `fairness constraint` to your ERM.
     from scipy.stats import pearsonr
     # Define a Huber estimator with fairness constraint
     clf = plqERM_Ridge(loss={'name': 'huber', 'tau': 0.5},
-                       constraint=[{'name': 'fair', 'sen_idx': [0], 'tol_sen': 0.1}], 
+                       constraint=[{'name': 'fair', 'sen_idx': [0], 'tol_sen': 0.1}],
                        C=1.0,
                        max_iter=10000)
     clf.fit(X=X_train, y=y_train)

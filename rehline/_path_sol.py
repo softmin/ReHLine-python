@@ -3,8 +3,7 @@ import time
 import numpy as np
 
 from ._base import _make_loss_rehline_param
-from ._class import plqERM_Ridge
-from ._class import CQR_Ridge
+from ._class import CQR_Ridge, plqERM_Ridge
 from ._loss import ReHLoss
 
 
@@ -13,7 +12,7 @@ def plqERM_Ridge_path_sol(
     y,
     *,
     loss,
-    constraint=[],
+    constraint=None,
     eps=1e-3,
     n_Cs=100,
     Cs=None,
@@ -26,7 +25,7 @@ def plqERM_Ridge_path_sol(
 ):
     """
     Compute the PLQ Empirical Risk Minimization (ERM) path over a range of regularization parameters.
-    This function evaluates the model's performance for different values of the regularization parameter 
+    This function evaluates the model's performance for different values of the regularization parameter
     and provides structured benchmarking output.
 
     Parameters
@@ -43,7 +42,7 @@ def plqERM_Ridge_path_sol(
     constraint : list of dict, optional (default=[])
         List of constraints applied to the optimization problem. Each constraint should be represented
         as a dictionary compatible with the solver.
-        
+
 
     eps : float, default=1e-3
         Defines the length of the regularization path when `Cs` is not provided.
@@ -121,6 +120,9 @@ def plqERM_Ridge_path_sol(
 
     n_samples, n_features = X.shape
 
+    if constraint is None:
+        constraint = []
+
     if Cs is None:
         log_eps = np.log10(eps)
         Cs = np.logspace(log_eps, -log_eps, n_Cs)
@@ -134,10 +136,9 @@ def plqERM_Ridge_path_sol(
     obj_values = []
     L2_norms = []
 
-
     if return_time:
         total_start = time.time()
-    
+
     U, V, Tau, S, T = _make_loss_rehline_param(loss, X, y)
     loss_obj = ReHLoss(U, V, S, T, Tau)
 
@@ -146,10 +147,14 @@ def plqERM_Ridge_path_sol(
     # xi_ws = np.empty(shape=(0, 0))
 
     clf = plqERM_Ridge(
-        loss=loss, constraint=constraint, C=Cs[0],
-        max_iter=max_iter, tol=tol, shrink=shrink, 
-        verbose=1*(verbose>=2), # ben: if verbose is 1, then the fit function will not show the progress
-        warm_start=warm_start
+        loss=loss,
+        constraint=constraint,
+        C=Cs[0],
+        max_iter=max_iter,
+        tol=tol,
+        shrink=shrink,
+        verbose=1 * (verbose >= 2),  # ben: if verbose is 1, then the fit function will not show the progress
+        warm_start=warm_start,
     )
 
     for i, C in enumerate(Cs):
@@ -175,7 +180,7 @@ def plqERM_Ridge_path_sol(
         # Compute loss function parameters for ReHLoss
         l2_norm = np.linalg.norm(clf.coef_) ** 2
         score = clf.decision_function(X)
-        total_obj = loss_obj(score) + 0.5*l2_norm
+        total_obj = loss_obj(score) + 0.5 * l2_norm
         obj_values.append(round(total_obj, 4))
         L2_norms.append(round(np.linalg.norm(clf.coef_), 4))
 
@@ -187,37 +192,39 @@ def plqERM_Ridge_path_sol(
         if return_time:
             elapsed_time = time.time() - start_time
             times.append(elapsed_time)
-        
+
         n_iters.append(clf.n_iter_)
 
     if return_time:
         total_time = time.time() - total_start
         avg_time_per_iter = total_time / sum(n_iters) if sum(n_iters) > 0 else float("inf")
 
-
     if verbose >= 1:
         print("\nPLQ ERM Path Solution Results")
         print("=" * 90)
-        print(f"{'C Value':<15}{'Iterations':<15}{'Time (s)':<20}{'Loss':<20}{'L2 Norm':<20}")
+        if return_time:
+            print(f"{'C Value':<15}{'Iterations':<15}{'Time (s)':<20}{'Loss':<20}{'L2 Norm':<20}")
+        else:
+            print(f"{'C Value':<15}{'Iterations':<15}{'Loss':<20}{'L2 Norm':<20}")
         print("-" * 90)
 
-        for C, iters, t, loss_val, l2 in zip(Cs, n_iters, times, obj_values, L2_norms):
-            if return_time:
+        if return_time:
+            for C, iters, t, loss_val, l2 in zip(Cs, n_iters, times, obj_values, L2_norms):
                 print(f"{C:<15.4g}{iters:<15}{t:<20.6f}{loss_val:<20.6f}{l2:<20.6f}")
-            else:
+        else:
+            for C, iters, loss_val, l2 in zip(Cs, n_iters, obj_values, L2_norms):
                 print(f"{C:<15.4g}{iters:<15}{loss_val:<20.6f}{l2:<20.6f}")
 
         print("=" * 90)
-        print(f"{'Total Time':<12}{total_time:.6f} sec")
-        print(f"{'Avg Time/Iter':<12}{avg_time_per_iter:.6f} sec")
-        print("=" * 90)
-
+        if return_time:
+            print(f"{'Total Time':<12}{total_time:.6f} sec")
+            print(f"{'Avg Time/Iter':<12}{avg_time_per_iter:.6f} sec")
+            print("=" * 90)
 
     if return_time:
         return Cs, times, n_iters, obj_values, L2_norms, coefs
     else:
         return Cs, n_iters, obj_values, L2_norms, coefs
-
 
 
 def CQR_Ridge_path_sol(
@@ -296,7 +303,7 @@ def CQR_Ridge_path_sol(
     fit_times : list of float, optional
         Elapsed fit times (if `return_time=True`).
 
-        
+
     Example
     -------
     >>> from sklearn.datasets import make_friedman1
@@ -324,7 +331,7 @@ def CQR_Ridge_path_sol(
     ...     warm_start=True,
     ...     return_time=True
     ... )
-    
+
     """
 
     if Cs is None:
@@ -348,15 +355,14 @@ def CQR_Ridge_path_sol(
         warm_start=warm_start,
     )
 
-    for i, C in enumerate(Cs):
-        clf.C = C  
+    for C in Cs:
+        clf.C = C
 
         if return_time:
             start = time.time()
 
         clf.fit(X, y)
 
-        d = X.shape[1]
         n_qt = len(quantiles)
 
         coef_matrix = np.tile(clf.coef_, (n_qt, 1))
@@ -372,7 +378,7 @@ def CQR_Ridge_path_sol(
             if verbose >= 1:
                 print(f"[OK] C={C:.3e}, time={elapsed:.3f}s")
 
-    coefs = np.array(coefs)       # (n_Cs, n_quantiles, n_features)
+    coefs = np.array(coefs)  # (n_Cs, n_quantiles, n_features)
     intercepts = np.array(intercepts)  # (n_Cs, n_quantiles)
 
     if return_time:

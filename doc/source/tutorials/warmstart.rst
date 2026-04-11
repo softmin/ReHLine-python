@@ -91,4 +91,3 @@ Finally, the `plqERM_Ridge` class is tested similarly:
     clf.C = 2*C
     clf.warm_start = 1
     clf.fit(X=X, y=y)  # Warm start
-

@@ -8,14 +8,12 @@ Dataset sizes are controlled to ~5000 samples to keep CI runtimes reasonable.
 
 import numpy as np
 from sklearn.datasets import make_classification
-from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 from sklearn.multiclass import OneVsOneClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import LinearSVC
 
 from rehline import plq_Ridge_Classifier
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -78,9 +76,7 @@ def test_binary_vs_sklearn():
     coef_reh = clf_reh.coef_.flatten()
 
     max_diff = np.max(np.abs(coef_skl - coef_reh))
-    assert max_diff <= 1e-3, (
-        f"Binary coef_ max difference {max_diff:.6e} > 1e-3 vs sklearn LinearSVC"
-    )
+    assert max_diff <= 1e-3, f"Binary coef_ max difference {max_diff:.6e} > 1e-3 vs sklearn LinearSVC"
 
 
 def test_multiclass_ovr_vs_sklearn():
@@ -127,9 +123,7 @@ def test_multiclass_ovr_vs_sklearn():
     )
 
     max_diff = np.max(np.abs(coef_skl - coef_reh))
-    assert max_diff <= 1e-3, (
-        f"OvR coef_ max difference {max_diff:.6e} > 1e-3 vs sklearn LinearSVC(OvR)"
-    )
+    assert max_diff <= 1e-3, f"OvR coef_ max difference {max_diff:.6e} > 1e-3 vs sklearn LinearSVC(OvR)"
 
 
 def test_multiclass_ovo_vs_sklearn():
@@ -178,9 +172,7 @@ def test_multiclass_ovo_vs_sklearn():
 
     # Bug fix (PR #34): sign convention was corrected so coef_ now matches sklearn exactly.
     max_diff = np.max(np.abs(coef_skl - coef_reh))
-    assert max_diff <= 1e-3, (
-        f"OvO coef_ max difference {max_diff:.6e} > 1e-3 vs sklearn OvO"
-    )
+    assert max_diff <= 1e-3, f"OvO coef_ max difference {max_diff:.6e} > 1e-3 vs sklearn OvO"
 
 
 def test_decision_function_shapes():
@@ -193,9 +185,7 @@ def test_decision_function_shapes():
     y_bin = np.random.randint(0, 2, n_samples)
     clf = plq_Ridge_Classifier(loss={"name": "svm"}, C=1.0, tol=1e-5)
     clf.fit(X, y_bin)
-    assert clf.decision_function(X).shape == (n_samples,), (
-        "Binary decision_function should have shape (n_samples,)"
-    )
+    assert clf.decision_function(X).shape == (n_samples,), "Binary decision_function should have shape (n_samples,)"
 
     # OvR (4 classes)
     y_multi = np.random.randint(0, 4, n_samples)
@@ -270,10 +260,7 @@ def test_ovo_coef_sign_convention():
 
     for k, est in enumerate(clf_skl.estimators_):
         dot = np.dot(est.coef_.flatten(), clf_reh.coef_[k])
-        assert dot > 0, (
-            f"OvO subproblem {k}: dot product {dot:.4f} <= 0, "
-            "sign-convention bug has reappeared."
-        )
+        assert dot > 0, f"OvO subproblem {k}: dot product {dot:.4f} <= 0, sign-convention bug has reappeared."
 
 
 def test_ovo_predict_consistency():
@@ -323,10 +310,7 @@ def test_ovo_predict_consistency():
     y_manual = clf.classes_[np.argmax(votes + transformed, axis=1)]
 
     n_disagree = np.sum(y_pred != y_manual)
-    assert n_disagree == 0, (
-        f"predict() and decision_function() are inconsistent: "
-        f"{n_disagree} samples disagree."
-    )
+    assert n_disagree == 0, f"predict() and decision_function() are inconsistent: {n_disagree} samples disagree."
 
 
 def test_ovo_fit_intercept_false():
@@ -372,10 +356,7 @@ def test_ovo_fit_intercept_false():
     assert clf_reh.coef_.shape == (n_estimators, n_features)
     assert np.all(clf_reh.intercept_ == 0.0)
 
-    max_diff = max(
-        np.max(np.abs(est.coef_.flatten() - clf_reh.coef_[k]))
-        for k, est in enumerate(clf_skl.estimators_)
-    )
+    max_diff = max(np.max(np.abs(est.coef_.flatten() - clf_reh.coef_[k])) for k, est in enumerate(clf_skl.estimators_))
     assert max_diff <= 1e-3, f"fit_intercept=False OvO coef_ diff {max_diff:.6e} > 1e-3"
 
 
@@ -450,8 +431,5 @@ def test_ovo_more_classes():
     assert clf_reh.intercept_.shape == (n_estimators,)
     assert len(clf_reh.estimators_) == n_estimators
 
-    max_diff = max(
-        np.max(np.abs(est.coef_.flatten() - clf_reh.coef_[k]))
-        for k, est in enumerate(clf_skl.estimators_)
-    )
+    max_diff = max(np.max(np.abs(est.coef_.flatten() - clf_reh.coef_[k])) for k, est in enumerate(clf_skl.estimators_))
     assert max_diff <= 1e-3, f"5-class OvO coef_ diff {max_diff:.6e} > 1e-3"

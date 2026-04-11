@@ -15,9 +15,7 @@ def test_monotonic_increasing():
     clf.fit(X, y)
 
     diffs = np.diff(clf.coef_)
-    assert np.all(diffs >= -1e-3), (
-        f"Coefficients are not monotonically increasing: {clf.coef_}"
-    )
+    assert np.all(diffs >= -1e-3), f"Coefficients are not monotonically increasing: {clf.coef_}"
 
 
 def test_monotonic_decreasing():
@@ -29,6 +27,4 @@ def test_monotonic_decreasing():
     clf.fit(X, y)
 
     diffs = np.diff(clf.coef_)
-    assert np.all(diffs <= 1e-3), (
-        f"Coefficients are not monotonically decreasing: {clf.coef_}"
-    )
+    assert np.all(diffs <= 1e-3), f"Coefficients are not monotonically decreasing: {clf.coef_}"

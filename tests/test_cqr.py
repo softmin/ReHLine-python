@@ -19,20 +19,12 @@ def test_CQR_Ridge():
     cqr = CQR_Ridge(quantiles=quantiles)
     cqr.fit(X, y, sample_weight=sample_weight)
 
-    assert cqr.coef_.shape == (len(beta),), (
-        f"coef_ shape should be ({len(beta)},), got {cqr.coef_.shape}"
-    )
-    assert cqr.intercept_.shape == (n_qt,), (
-        f"intercept_ shape should be ({n_qt},), got {cqr.intercept_.shape}"
-    )
-    assert cqr.quantiles_.shape == (n_qt,), (
-        f"quantiles_ shape should be ({n_qt},), got {cqr.quantiles_.shape}"
-    )
+    assert cqr.coef_.shape == (len(beta),), f"coef_ shape should be ({len(beta)},), got {cqr.coef_.shape}"
+    assert cqr.intercept_.shape == (n_qt,), f"intercept_ shape should be ({n_qt},), got {cqr.intercept_.shape}"
+    assert cqr.quantiles_.shape == (n_qt,), f"quantiles_ shape should be ({n_qt},), got {cqr.quantiles_.shape}"
 
     pred = cqr.predict(X[:5])
-    assert pred.shape == (5, n_qt), (
-        f"predict output shape should be (5, {n_qt}), got {pred.shape}"
-    )
+    assert pred.shape == (5, n_qt), f"predict output shape should be (5, {n_qt}), got {pred.shape}"
 
 
 def test_CQR_Ridge_monotone_quantiles():
@@ -50,6 +42,5 @@ def test_CQR_Ridge_monotone_quantiles():
     # (on average across samples, not necessarily per sample)
     mean_preds = pred.mean(axis=0)
     assert mean_preds[0] <= mean_preds[1] <= mean_preds[2], (
-        f"Mean predictions should be non-decreasing across quantile levels, "
-        f"got {mean_preds}"
+        f"Mean predictions should be non-decreasing across quantile levels, got {mean_preds}"
     )

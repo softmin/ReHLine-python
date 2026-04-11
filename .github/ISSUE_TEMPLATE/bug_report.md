@@ -21,9 +21,9 @@ assignees: ''
 ## Steps to Reproduce
 
 <!-- Steps to reproduce the bug -->
-1. 
-2. 
-3. 
+1.
+2.
+3.
 
 ## Minimal Code Example
 
@@ -37,12 +37,12 @@ from rehline import ReHLine
 
 ## Environment
 
-- OS: 
-- Python version: 
-- ReHLine version: 
-- NumPy version: 
-- SciPy version: 
-- scikit-learn version: 
+- OS:
+- Python version:
+- ReHLine version:
+- NumPy version:
+- SciPy version:
+- scikit-learn version:
 
 ## Additional Context
 

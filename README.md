@@ -30,6 +30,22 @@ See more details in the [ReHLine documentation](https://rehline-python.readthedo
 pip install rehline
 ```
 
+### Development Install
+
+For contributors and developers:
+
+```bash
+git clone https://github.com/softmin/ReHLine-python.git
+cd ReHLine-python
+pip install -e ".[dev]"
+```
+
+To run tests:
+
+```bash
+pytest tests/
+```
+
 ## 🚀 Quick Start
 
 ### Scikit-Learn Style API (Recommended)
@@ -79,20 +95,27 @@ print(f"Best params: {grid_search.best_params_}")
 from rehline import ReHLine
 import numpy as np
 
+# Generate sample data
+np.random.seed(42)
+X = np.random.randn(100, 5)
+y = np.random.choice([-1, 1], size=100)
+n, d = X.shape
+C = 1.0
+
 # Define custom PLQ loss parameters
 clf = ReHLine()
 # Set custom U, V matrices for ReLU loss
 # and S, T, tau for ReHU loss
 ## U
-clf.U = -(C*y).reshape(1,-1)
+clf._U = -(C*y).reshape(1,-1)
 ## V
-clf.V = (C*np.array(np.ones(n))).reshape(1,-1)
+clf._V = (C*np.ones(n)).reshape(1,-1)
 
 # Set custom linear constraints A*beta + b >= 0
 X_sen = X[:,0]
 tol_sen = 0.1
-clf.A = np.repeat([X_sen @ X], repeats=[2], axis=0) / n
-clf.A[1] = -clf.A[1]
+clf._A = np.repeat([X_sen @ X], repeats=[2], axis=0) / n
+clf._A[1] = -clf._A[1]
 
 clf.fit(X)
 ```
@@ -113,7 +136,7 @@ ReHLine excels at solving a wide range of machine learning problems:
 | **Sparse Learning** | Feature selection with L1 regularization | Scales to high dimensions |
 | **Custom Optimization** | Any PLQ loss with linear constraints | Flexible framework for research |
 
-<!-- 
+<!--
 ## 📝 Formulation
 
 **ReHLine** is designed to address the empirical regularized ReLU-ReHU minimization problem, named *ReHLine optimization*, of the following form:

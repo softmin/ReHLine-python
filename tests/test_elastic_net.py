@@ -23,12 +23,10 @@ marked xfail.
 import numpy as np
 from sklearn.datasets import make_regression
 from sklearn.linear_model import ElasticNet
-from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
 from rehline import plqERM_ElasticNet, plqERM_Ridge
-
 
 # ---------------------------------------------------------------------------
 # Helper
@@ -85,9 +83,7 @@ def test_elasticnet_vs_sklearn_mse():
         tol=1e-5,
     )
     clf_reh.fit(X_train, y_train)
-    sol_reh = np.where(
-        np.abs(clf_reh.coef_.flatten()) < 1e-8, 0, clf_reh.coef_.flatten()
-    )
+    sol_reh = np.where(np.abs(clf_reh.coef_.flatten()) < 1e-8, 0, clf_reh.coef_.flatten())
 
     max_diff = np.max(np.abs(sol_skl - sol_reh))
     assert max_diff <= 1e-4, (
@@ -114,9 +110,7 @@ def test_different_l1_ratios():
         )
         clf.fit(X_train, y_train)
         assert clf.coef_ is not None, f"Fit failed for l1_ratio={l1_ratio}"
-        assert clf.coef_.shape == (n_features,), (
-            f"Wrong coef_ shape for l1_ratio={l1_ratio}: {clf.coef_.shape}"
-        )
+        assert clf.coef_.shape == (n_features,), f"Wrong coef_ shape for l1_ratio={l1_ratio}: {clf.coef_.shape}"
 
 
 def test_different_losses():
@@ -142,9 +136,7 @@ def test_different_losses():
         )
         clf.fit(X_train, y_train)
         assert clf.coef_ is not None, f"Fit failed for loss={loss}"
-        assert clf.coef_.shape == (n_features,), (
-            f"Wrong coef_ shape for loss={loss}: {clf.coef_.shape}"
-        )
+        assert clf.coef_.shape == (n_features,), f"Wrong coef_ shape for loss={loss}: {clf.coef_.shape}"
 
 
 def test_elasticnet_vs_ridge():
@@ -172,9 +164,7 @@ def test_elasticnet_vs_ridge():
     clf_ridge.fit(X_train, y_train)
 
     max_diff = np.max(np.abs(clf_en.coef_.flatten() - clf_ridge.coef_.flatten()))
-    assert max_diff < 1e-4, (
-        f"ElasticNet(l1_ratio=0) should match Ridge within 1e-4, max_diff={max_diff:.6e}"
-    )
+    assert max_diff < 1e-4, f"ElasticNet(l1_ratio=0) should match Ridge within 1e-4, max_diff={max_diff:.6e}"
 
 
 def test_sparsity_increases_with_l1():
@@ -203,10 +193,7 @@ def test_sparsity_increases_with_l1():
         clf.fit(X_scaled, y)
         zeros.append(np.sum(np.abs(clf.coef_.flatten()) < 1e-8))
 
-    assert zeros[-1] >= zeros[0], (
-        f"Sparsity should be at least as high at l1_ratio=0.9 as at l1_ratio=0.0, "
-        f"got {zeros}"
-    )
+    assert zeros[-1] >= zeros[0], f"Sparsity should be at least as high at l1_ratio=0.9 as at l1_ratio=0.0, got {zeros}"
 
 
 def test_dual_variable_mu():

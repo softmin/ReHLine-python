@@ -2323,9 +2323,9 @@ input:checked+.slider:before {
                                             <li> <b>CUDA</b>: NVIDIA GeForce RTX 4090: cuda_12.2 </li>
                                             <li> <b>platform</b>: Linux6.2.0-34-generic-x86_64 </li>
                                             <li> <b>processor</b>: 13th Gen Intel(R) Core(TM) i9-13900K </li>
-                                            
+
                                             <li> <b>numpy</b>: 1.26.0  </li>
-                                            
+
                                             <li> <b>scipy</b>: 1.11.3 </li>
                                         </ul>
                                     </div>
@@ -2981,7 +2981,7 @@ Object.keys(SYMBOLDEFS).forEach(function(k) {
 
 /**
  * Returns a <path></path> element that have to be placed in a <svg></svg> element.
- * 
+ *
  * @param {int} symbolNumber
  * @param {String} color
  * @return {Element}
@@ -3013,13 +3013,13 @@ const createPathElement = (symbolNumber, color) => {
         path.setAttribute('stroke-width', 0.5);
         path.setAttribute('stroke-opacity', 1);
     }
-    
+
     return path;
 }
 
 /**
  * Returns the string corresponding of the symbol shape requested by symbolNumber.
- * 
+ *
  * @param {int} symbolNumber
  * @param {int} r size of the symbol (currently, we request a 5)
  * @returns {String} this string must be placed in the "d" attribute of <path></path> SVG element.

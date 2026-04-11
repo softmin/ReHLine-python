@@ -38,8 +38,7 @@ def test_solver_warmstart_lambda_shape():
     res_warm = ReHLine_solver(X, U, V, Lambda=res_cold.Lambda)
 
     assert res_warm.Lambda.shape == res_cold.Lambda.shape, (
-        f"Warm-start Lambda shape {res_warm.Lambda.shape} should match "
-        f"cold-start {res_cold.Lambda.shape}"
+        f"Warm-start Lambda shape {res_warm.Lambda.shape} should match cold-start {res_cold.Lambda.shape}"
     )
 
 
@@ -84,7 +83,6 @@ def test_ReHLine_warmstart_coef_consistent():
     clf_cold.C = C
     clf_cold._U, clf_cold._V = U, V
     clf_cold.fit(X)
-    coef_cold = clf_cold.coef_.copy()
 
     # Warm-start with increased C — result will differ, but should converge
     clf_warm = ReHLine(verbose=0)
@@ -122,7 +120,6 @@ def test_plqERM_Ridge_warmstart_coef_consistent():
 
     clf_cold = plqERM_Ridge(loss={"name": "svm"}, C=C, verbose=0)
     clf_cold.fit(X=X, y=y)
-    coef_cold = clf_cold.coef_.copy()
 
     # Fit at C, then warm-start at 2*C
     clf_warm = plqERM_Ridge(loss={"name": "svm"}, C=C, verbose=0)

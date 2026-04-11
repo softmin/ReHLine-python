@@ -258,7 +258,7 @@ private:
         // If K = 0, all terms that depend on A, xi, or b will be zero
         if (m_K > 0)
         {
-            // 0.5 * ||Atxi||^2 - Atxi' * U3L - Atxi' * S3G + Atxi' MuR + xi' * b 
+            // 0.5 * ||Atxi||^2 - Atxi' * U3L - Atxi' * S3G + Atxi' MuR + xi' * b
             const Scalar Atxi_U3L = (m_L > 0) ? (Atxi.dot(U3L)) : Scalar(0);
             const Scalar Atxi_S3G = (m_H > 0) ? (Atxi.dot(S3G)) : Scalar(0);
             const Scalar Atxi_MuR = (m_rho > 0) ? (Atxi.dot(MuR)) : Scalar(0);
@@ -283,7 +283,7 @@ private:
         }
         // If rho = 0, all terms that depend on rho, or Mu will be zero
         if (m_rho > 0)
-            obj += Scalar(2.0) * m_mu.squaredNorm() - Scalar(2.0) * m_rho * m_mu.sum() + 
+            obj += Scalar(2.0) * m_mu.squaredNorm() - Scalar(2.0) * m_rho * m_mu.sum() +
                 Scalar(0.5) * m_d * m_rho * m_rho;
         return obj;
     }
@@ -379,7 +379,7 @@ private:
         // Update Mu and beta
         m_mu = newMu;
         m_beta.noalias() += Scalar(2.0) * (newMu - preMu);
-    }    
+    }
 
     // =================== Updating functions (free variable set) ================ //
 
@@ -931,7 +931,7 @@ void rehline_solver(
     const Eigen::MatrixBase<DerivedVec>& b,
     const Eigen::MatrixBase<DerivedMat>& U, const Eigen::MatrixBase<DerivedMat>& V,
     const Eigen::MatrixBase<DerivedMat>& S, const Eigen::MatrixBase<DerivedMat>& T, const Eigen::MatrixBase<DerivedMat>& Tau,
-    Index max_iter, typename DerivedMat::Scalar tol, typename DerivedMat::Scalar rho = 0, 
+    Index max_iter, typename DerivedMat::Scalar tol, typename DerivedMat::Scalar rho = 0,
     Index shrink = 1, Index verbose = 0, Index trace_freq = 100,
     std::ostream& cout = std::cout
 )
