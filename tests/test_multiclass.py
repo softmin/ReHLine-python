@@ -183,7 +183,7 @@ def test_decision_function_shapes():
 
     # Binary
     y_bin = np.random.randint(0, 2, n_samples)
-    clf = plq_Ridge_Classifier(loss={"name": "svm"}, C=1.0, tol=1e-5)
+    clf = plq_Ridge_Classifier(loss={"name": "svm"}, C=1.0, tol=1e-5, max_iter=1_000_000)
     clf.fit(X, y_bin)
     assert clf.decision_function(X).shape == (n_samples,), "Binary decision_function should have shape (n_samples,)"
 
@@ -206,6 +206,7 @@ def test_decision_function_shapes():
         C=1.0,
         multi_class="ovo",
         tol=1e-5,
+        max_iter=1_000_000,
     )
     clf_ovo.fit(X, y_multi)
     assert clf_ovo.decision_function(X).shape == (n_samples, 6), (

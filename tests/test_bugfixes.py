@@ -135,7 +135,7 @@ class TestMakeMfDataset:
 class TestPathSolVerbose:
     """Verify that plqERM_Ridge_path_sol does not crash with verbose + no timing."""
 
-    def test_verbose_without_return_time(self):
+    def test_verbose_without_return_time(self, capsys):
         """verbose=1 + return_time=False must not raise NameError."""
         X, y = _make_classification_data(n=100, d=3)
         loss = {"name": "svm"}
@@ -158,8 +158,11 @@ class TestPathSolVerbose:
         Cs_out, n_iters, loss_vals, l2_norms, coefs = result
         assert len(Cs_out) == 2
         assert len(n_iters) == 2
+        captured = capsys.readouterr()
+        assert "PLQ ERM Path Solution Results" in captured.out
+        assert "Time (s)" not in captured.out
 
-    def test_verbose_with_return_time(self):
+    def test_verbose_with_return_time(self, capsys):
         """verbose=1 + return_time=True should still work."""
         X, y = _make_classification_data(n=100, d=3)
         loss = {"name": "svm"}
@@ -177,6 +180,9 @@ class TestPathSolVerbose:
         )
 
         assert len(result) == 6, f"Expected 6 return values, got {len(result)}"
+        captured = capsys.readouterr()
+        assert "PLQ ERM Path Solution Results" in captured.out
+        assert "Total Time" in captured.out
 
 
 # ===========================================================================

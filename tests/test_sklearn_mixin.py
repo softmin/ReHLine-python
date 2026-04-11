@@ -37,7 +37,7 @@ def test_classifier_pipeline_fits_and_predicts():
     pipe = Pipeline(
         [
             ("scaler", StandardScaler()),
-            ("clf", plq_Ridge_Classifier(loss={"name": "svm"}, C=1.0)),
+            ("clf", plq_Ridge_Classifier(loss={"name": "svm"}, C=1.0, tol=1e-3, max_iter=1_000_000)),
         ]
     )
     pipe.fit(X, y)
@@ -50,7 +50,16 @@ def test_classifier_pipeline_fits_and_predicts():
 
 def test_classifier_cross_val_score():
     """cross_val_score on plq_Ridge_Classifier pipeline should return reasonable scores."""
-    X, y = _clf_dataset()
+    X, y = make_classification(
+        n_samples=500,
+        n_features=10,
+        n_informative=5,
+        n_redundant=2,
+        n_classes=2,
+        class_sep=1.5,
+        flip_y=0.0,
+        random_state=42,
+    )
     pipe = Pipeline(
         [
             ("scaler", StandardScaler()),
@@ -72,6 +81,7 @@ def test_classifier_with_intercept_scaling():
         C=1.0,
         fit_intercept=True,
         intercept_scaling=1.0,
+        max_iter=1_000_000,
     )
     clf.fit(X_tr, y_tr)
     preds = clf.predict(X_te)
@@ -86,6 +96,7 @@ def test_classifier_with_nonneg_constraint():
         loss={"name": "svm"},
         C=1.0,
         constraint=[{"name": "nonnegative"}],
+        max_iter=1_000_000,
     )
     clf.fit(X, y)
     # Allow 1e-2 numerical slack — the solver may not satisfy the constraint

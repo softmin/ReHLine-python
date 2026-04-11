@@ -33,7 +33,7 @@ def test_plqERM_Ridge_svr_matches_sklearn():
     reg_skl.fit(X, y)
     coef_skl = reg_skl.coef_.flatten()
 
-    reg_reh = plqERM_Ridge(loss={"name": "svr", "epsilon": epsilon}, C=C)
+    reg_reh = plqERM_Ridge(loss={"name": "svr", "epsilon": epsilon}, C=C, tol=1e-4, max_iter=100000)
     reg_reh.fit(X=X, y=y)
     coef_reh = reg_reh.coef_.flatten()
 
@@ -53,7 +53,7 @@ def test_ReHLine_manual_svr_params_match_builtin():
     n = X.shape[0]
 
     # Built-in loss
-    reg_builtin = plqERM_Ridge(loss={"name": "svr", "epsilon": epsilon}, C=C)
+    reg_builtin = plqERM_Ridge(loss={"name": "svr", "epsilon": epsilon}, C=C, tol=1e-6, max_iter=1_000_000)
     reg_builtin.fit(X=X, y=y)
     coef_builtin = reg_builtin.coef_.flatten()
 
@@ -65,7 +65,7 @@ def test_ReHLine_manual_svr_params_match_builtin():
     V[1] = C * (y - epsilon)
 
     # When U/V are pre-scaled by C, use C=1.0 to avoid double-counting
-    reg_manual = ReHLine(C=1.0)
+    reg_manual = ReHLine(C=1.0, tol=1e-6, max_iter=1_000_000)
     reg_manual._U, reg_manual._V = U, V
     reg_manual.fit(X=X)
     coef_manual = reg_manual.coef_.flatten()
