@@ -20,10 +20,22 @@ Example Gallery
    examples/Sklearn_Mixin.ipynb
    examples/Multiclass_Classification.ipynb
    examples/NMF.ipynb
-new_examples_FEI
+
    examples/Smooth_SVM_new.ipynb
    examples/MonotonicSVM.ipynb
-   
+   examples/SVM_new.ipynb
+   examples/Squared_SVM_new.ipynb
+   examples/QR_new.ipynb
+   examples/QR_eps_new.ipynb
+   examples/Huber_new.ipynb
+   examples/SVR_new.ipynb
+   examples/MAE_new.ipynb
+   examples/MSE_new.ipynb
+   examples/FairSVM_new.ipynb
+   examples/CustomQR.ipynb
+   examples/GridSearchCV_SVM_losses.ipynb
+   examples/GridSearchCV_reg_losses.ipynb
+
    examples/ElasticNet.ipynb
 main
 
@@ -45,9 +57,21 @@ List of Examples
    examples/Sklearn_Mixin.ipynb
    examples/Multiclass_Classification.ipynb
    examples/NMF.ipynb
-new_examples_FEI
+
    examples/Smooth_SVM_new.ipynb
    examples/MonotonicSVM.ipynb
+   examples/SVM_new.ipynb
+   examples/Squared_SVM_new.ipynb
+   examples/QR_new.ipynb
+   examples/QR_eps_new.ipynb
+   examples/Huber_new.ipynb
+   examples/SVR_new.ipynb
+   examples/MAE_new.ipynb
+   examples/MSE_new.ipynb
+   examples/FairSVM_new.ipynb
+   examples/CustomQR.ipynb
+   examples/GridSearchCV_SVM_losses.ipynb
+   examples/GridSearchCV_reg_losses.ipynb
    
    examples/ElasticNet.ipynb
 main
