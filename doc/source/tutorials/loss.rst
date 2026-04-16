@@ -35,6 +35,7 @@ Standard Support Vector Machine loss [1]_.
    :name: svm-gallery
 
    ../examples/SVM.ipynb
+   ../examples/SVM_new.ipynb
 
 Smooth SVM
 ^^^^^^^^^^
@@ -72,6 +73,20 @@ Squared Hinge loss.
    :name: squared-svm-gallery
 
    ../examples/SVM.ipynb
+   ../examples/Squared_SVM_new.ipynb
+
+Compare SVM Losses with GridSearchCV
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+We compare three SVM-type losses: ``SVM``, ``Smooth SVM``, and ``Squared SVM`` with
+``GridSearchCV`` and report the best-performing loss together with its optimal hyperparameter.
+
+**Related Example**
+
+.. nblinkgallery::
+   :name: compare-svm-gallery
+
+   ../examples/GridSearchCV_SVM_losses.ipynb
 
 
 Regression
@@ -95,6 +110,7 @@ Minimizes the check loss (pinball loss) for estimating conditional quantiles [2]
    :name: qr-gallery
 
    ../examples/QR.ipynb
+   ../examples/QR_new.ipynb
 
 Quantile Regression with Epsilon Tolerance
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -115,6 +131,7 @@ Minimizes the check loss with an epsilon-insensitive zone for robust conditional
    :name: qr-eps-gallery
 
    ../examples/QR_eps.ipynb
+   ../examples/QR_eps_new.ipynb
 
 Huber Regression
 ^^^^^^^^^^^^^^^^
@@ -127,6 +144,14 @@ Robust regression loss that is quadratic for small errors and linear for large e
 .. code-block:: python
 
    loss = {'name': 'huber', 'tau': 1.0}
+
+**Related Example**
+
+.. nblinkgallery::
+   :name: huber-gallery
+
+   ../examples/Huber_new.ipynb
+
 
 Support Vector Regression (SVR)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -146,6 +171,7 @@ Epsilon-insensitive loss [4]_.
    :name: svr-gallery
 
    ../examples/SVR.ipynb
+   ../examples/SVR_new.ipynb
 
 Mean Absolute Error (MAE)
 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -158,6 +184,13 @@ L1 loss, robust to outliers.
 
    loss = {'name': 'mae'}
 
+**Related Example**
+
+.. nblinkgallery::
+   :name: mae-gallery
+
+   ../examples/MAE_new.ipynb
+   
 Mean Squared Error (MSE)
 ^^^^^^^^^^^^^^^^^^^^^^^^
 Standard L2 loss (Least Squares).
@@ -168,6 +201,26 @@ Standard L2 loss (Least Squares).
 .. code-block:: python
 
    loss = {'name': 'mse'}
+
+**Related Example**
+
+.. nblinkgallery::
+   :name: mse-gallery
+
+   ../examples/MSE_new.ipynb
+
+Compare Regression Losses with GridSearchCV
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+We compare three regression losses: ``Huber``, ``MAE``, and ``MSE`` with 
+``GridSearchCV`` and report the best-performing loss together with its optimal hyperparameter.
+
+**Related Example**
+
+.. nblinkgallery::
+   :name: compare-reg-gallery
+
+   ../examples/GridSearchCV_reg_losses.ipynb
 
 
 References

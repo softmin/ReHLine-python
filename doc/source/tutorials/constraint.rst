@@ -55,6 +55,7 @@ Constrains the correlation between predictions and sensitive attributes to be wi
    :name: fair-gallery
 
    ../examples/FairSVM.ipynb
+   ../examples/FairSVM_new.ipynb
 
 Monotonicity
 ^^^^^^^^^^^^
@@ -101,6 +102,12 @@ Define arbitrary linear constraints of the form :math:`A\beta + b \ge 0`.
 
    constraint = [{'name': 'custom', 'A': A, 'b': b}]
 
+**Related Example**
+
+.. nblinkgallery::
+   :name: custom-gallery
+
+   ../examples/CustomQR.ipynb
 
 References
 ----------
