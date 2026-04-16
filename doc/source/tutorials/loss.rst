@@ -3,8 +3,8 @@ Loss
 
 ReHLine supports a variety of convex PLQ loss functions for both classification and regression tasks.
 
-Usage Pattern
--------------
+Basic Usage
+-----------
 
 Define a loss function using a dictionary:
 
@@ -14,9 +14,26 @@ Define a loss function using a dictionary:
    # loss_kwargs: more keys and values for loss parameters
    loss = {'name': <loss_name>, **loss_kwargs}
 
+Available Losses
+----------------
 
-Classification
---------------
+Classification:
+
+* `SVM (Hinge Loss)`_
+* `Smooth SVM`_
+* `Squared SVM`_
+
+Regression:
+
+* `Quantile Regression`_
+* `Quantile Regression with Epsilon Tolerance`_
+* `Huber Regression`_
+* `Support Vector Regression (SVR)`_
+* `Mean Absolute Error (MAE)`_
+* `Mean Squared Error (MSE)`_
+
+Classification Losses
+---------------------
 
 SVM (Hinge Loss)
 ^^^^^^^^^^^^^^^^
@@ -35,7 +52,6 @@ Standard Support Vector Machine loss [1]_.
    :name: svm-gallery
 
    ../examples/SVM.ipynb
-   ../examples/SVM_new.ipynb
 
 Smooth SVM
 ^^^^^^^^^^
@@ -53,8 +69,7 @@ A smoothed version of the Hinge loss (using ReHU) that is differentiable everywh
 .. nblinkgallery::
    :name: ssvm-gallery
 
-   ../examples/SVM.ipynb
-   ../examples/Smooth_SVM_new.ipynb
+   ../examples/Smooth_SVM.ipynb
 
 Squared SVM
 ^^^^^^^^^^^
@@ -72,25 +87,11 @@ Squared Hinge loss.
 .. nblinkgallery::
    :name: squared-svm-gallery
 
-   ../examples/SVM.ipynb
-   ../examples/Squared_SVM_new.ipynb
-
-Compare SVM Losses with GridSearchCV
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-We compare three SVM-type losses: ``SVM``, ``Smooth SVM``, and ``Squared SVM`` with
-``GridSearchCV`` and report the best-performing loss together with its optimal hyperparameter.
-
-**Related Example**
-
-.. nblinkgallery::
-   :name: compare-svm-gallery
-
-   ../examples/GridSearchCV_SVM_losses.ipynb
+   ../examples/Squared_SVM.ipynb
 
 
-Regression
-----------
+Regression Losses
+-----------------
 
 Quantile Regression
 ^^^^^^^^^^^^^^^^^^^
@@ -110,7 +111,6 @@ Minimizes the check loss (pinball loss) for estimating conditional quantiles [2]
    :name: qr-gallery
 
    ../examples/QR.ipynb
-   ../examples/QR_new.ipynb
 
 Quantile Regression with Epsilon Tolerance
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -131,7 +131,6 @@ Minimizes the check loss with an epsilon-insensitive zone for robust conditional
    :name: qr-eps-gallery
 
    ../examples/QR_eps.ipynb
-   ../examples/QR_eps_new.ipynb
 
 Huber Regression
 ^^^^^^^^^^^^^^^^
@@ -150,7 +149,7 @@ Robust regression loss that is quadratic for small errors and linear for large e
 .. nblinkgallery::
    :name: huber-gallery
 
-   ../examples/Huber_new.ipynb
+   ../examples/Huber.ipynb
 
 
 Support Vector Regression (SVR)
@@ -171,7 +170,6 @@ Epsilon-insensitive loss [4]_.
    :name: svr-gallery
 
    ../examples/SVR.ipynb
-   ../examples/SVR_new.ipynb
 
 Mean Absolute Error (MAE)
 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -189,8 +187,8 @@ L1 loss, robust to outliers.
 .. nblinkgallery::
    :name: mae-gallery
 
-   ../examples/MAE_new.ipynb
-   
+   ../examples/MAE.ipynb
+
 Mean Squared Error (MSE)
 ^^^^^^^^^^^^^^^^^^^^^^^^
 Standard L2 loss (Least Squares).
@@ -207,21 +205,7 @@ Standard L2 loss (Least Squares).
 .. nblinkgallery::
    :name: mse-gallery
 
-   ../examples/MSE_new.ipynb
-
-Compare Regression Losses with GridSearchCV
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-We compare three regression losses: ``Huber``, ``MAE``, and ``MSE`` with 
-``GridSearchCV`` and report the best-performing loss together with its optimal hyperparameter.
-
-**Related Example**
-
-.. nblinkgallery::
-   :name: compare-reg-gallery
-
-   ../examples/GridSearchCV_reg_losses.ipynb
-
+   ../examples/MSE.ipynb
 
 References
 ----------

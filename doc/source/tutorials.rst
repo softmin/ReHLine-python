@@ -49,8 +49,10 @@ List of Tutorials
    :maxdepth: 2
    :hidden:
 
+   ./tutorials/ReHLine_ERM
    ./tutorials/ReHLine_manual
    ./tutorials/ReHLine_sklearn
    ./tutorials/ReHLine_MF
    ./tutorials/loss
    ./tutorials/constraint
+   ./tutorials/warmstart

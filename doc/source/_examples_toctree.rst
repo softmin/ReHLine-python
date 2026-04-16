@@ -1,12 +1,7 @@
-Example
-=======
+:orphan:
 
-Example Gallery
----------------
-
-.. nblinkgallery::
-   :caption: Empirical Risk Minimization
-   :name: rst-link-gallery
+.. toctree::
+   :hidden:
 
    examples/QR.ipynb
    examples/QR_eps.ipynb
@@ -20,7 +15,6 @@ Example Gallery
    examples/Sklearn_Mixin.ipynb
    examples/Multiclass_Classification.ipynb
    examples/NMF.ipynb
-
    examples/Smooth_SVM.ipynb
    examples/MonotonicSVM.ipynb
    examples/Squared_SVM.ipynb
@@ -30,5 +24,4 @@ Example Gallery
    examples/CustomQR.ipynb
    examples/GridSearchCV_SVM_losses.ipynb
    examples/GridSearchCV_reg_losses.ipynb
-
    examples/ElasticNet.ipynb

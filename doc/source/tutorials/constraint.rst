@@ -55,7 +55,6 @@ Constrains the correlation between predictions and sensitive attributes to be wi
    :name: fair-gallery
 
    ../examples/FairSVM.ipynb
-   ../examples/FairSVM_new.ipynb
 
 Monotonicity
 ^^^^^^^^^^^^

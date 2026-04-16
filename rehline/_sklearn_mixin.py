@@ -9,7 +9,7 @@ from sklearn.utils.class_weight import compute_class_weight
 from sklearn.utils.multiclass import check_classification_targets
 from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
 
-from ._class import plqERM_Ridge, plqERM_ElasticNet
+from ._class import plqERM_ElasticNet, plqERM_Ridge
 
 
 class plq_Ridge_Classifier(plqERM_Ridge, ClassifierMixin):
@@ -105,10 +105,10 @@ class plq_Ridge_Classifier(plqERM_Ridge, ClassifierMixin):
     ``intercept_``: float for binary, ndarray of shape (n_estimators,) for multiclass
         Intercept term(s). 0.0 if ``fit_intercept=False``.
 
-    classes_ : ndarray of shape (n_classes,)
+    ``classes_`` : ndarray of shape (n_classes,)
         Unique class labels in the original label space.
 
-    estimators_ : list, only present for multiclass
+    ``estimators_`` : list, only present for multiclass
         For OvR: list of (coef, intercept) tuples, length K.
         For OvO: list of (coef, intercept, cls_i, cls_j) tuples, length K*(K-1)/2.
 
@@ -324,8 +324,8 @@ class plq_Ridge_Classifier(plqERM_Ridge, ClassifierMixin):
         For OvO, trains K*(K-1)/2 binary classifiers (one per pair of classes).
 
         Each binary subproblem is fully independent and dispatched in parallel
-        via joblib.Parallel. Results are collected and stacked into coef_ and
-        intercept_ matrices.
+        via joblib.Parallel. Results are collected and stacked into ``coef_``
+        and ``intercept_`` matrices.
 
         Parameters
         ----------
@@ -741,26 +741,26 @@ class plq_ElasticNet_Classifier(plqERM_ElasticNet, ClassifierMixin):
 
     Attributes
     ----------
-    coef_ : ndarray of shape (n_features,) for binary, (n_estimators, n_features) for multiclass
-    intercept_ : float for binary, ndarray of shape (n_estimators,) for multiclass
-    classes_ : ndarray of shape (n_classes,)
-    estimators_ : list, only present for multiclass
+    ``coef_`` : ndarray of shape (n_features,) for binary, (n_estimators, n_features) for multiclass
+    ``intercept_`` : float for binary, ndarray of shape (n_estimators,) for multiclass
+    ``classes_`` : ndarray of shape (n_classes,)
+    ``estimators_`` : list, only present for multiclass
     _label_encoder : LabelEncoder
     """
 
     def __init__(
         self,
         loss,
-        constraint=[],
+        constraint=None,
         C=1.0,
         l1_ratio=0.5,
-        U=np.empty((0, 0)),
-        V=np.empty((0, 0)),
-        Tau=np.empty((0, 0)),
-        S=np.empty((0, 0)),
-        T=np.empty((0, 0)),
-        A=np.empty((0, 0)),
-        b=np.empty((0,)),
+        U=None,
+        V=None,
+        Tau=None,
+        S=None,
+        T=None,
+        A=None,
+        b=None,
         max_iter=1000,
         tol=1e-4,
         shrink=1,
@@ -770,7 +770,7 @@ class plq_ElasticNet_Classifier(plqERM_ElasticNet, ClassifierMixin):
         fit_intercept=True,
         intercept_scaling=1.0,
         class_weight=None,
-        multi_class=[],
+        multi_class=None,
         n_jobs=None,
     ):
         if not (0.0 <= l1_ratio < 1.0):
@@ -779,13 +779,28 @@ class plq_ElasticNet_Classifier(plqERM_ElasticNet, ClassifierMixin):
                 f"Use l1_ratio=0 for pure Ridge, or plq_Ridge_Classifier directly."
             )
 
+        constraint = [] if constraint is None else constraint
+        U = np.empty((0, 0)) if U is None else U
+        V = np.empty((0, 0)) if V is None else V
+        Tau = np.empty((0, 0)) if Tau is None else Tau
+        S = np.empty((0, 0)) if S is None else S
+        T = np.empty((0, 0)) if T is None else T
+        A = np.empty((0, 0)) if A is None else A
+        b = np.empty((0,)) if b is None else b
+        multi_class = [] if multi_class is None else multi_class
+
         super().__init__(
             loss=loss,
             constraint=constraint,
             C=C,
             l1_ratio=l1_ratio,
-            U=U, V=V, Tau=Tau, S=S, T=T,
-            A=A, b=b,
+            U=U,
+            V=V,
+            Tau=Tau,
+            S=S,
+            T=T,
+            A=A,
+            b=b,
             max_iter=max_iter,
             tol=tol,
             shrink=shrink,
@@ -834,7 +849,7 @@ class plq_ElasticNet_Classifier(plqERM_ElasticNet, ClassifierMixin):
             loss=estimator.loss,
             constraint=estimator.constraint,
             C=estimator.C,
-            l1_ratio=estimator.l1_ratio,  
+            l1_ratio=estimator.l1_ratio,
             max_iter=estimator.max_iter,
             tol=estimator.tol,
             shrink=estimator.shrink,
@@ -886,9 +901,7 @@ class plq_ElasticNet_Classifier(plqERM_ElasticNet, ClassifierMixin):
             )
             cw_map = {c: w for c, w in zip(self.classes_, cw_vec)}
             sw_cw = np.asarray([cw_map[yi] for yi in y], dtype=np.float64)
-            sample_weight = (
-                sw_cw if sample_weight is None else (np.asarray(sample_weight) * sw_cw)
-            )
+            sample_weight = sw_cw if sample_weight is None else (np.asarray(sample_weight) * sw_cw)
 
         le = LabelEncoder().fit(self.classes_)
         self._label_encoder = le
@@ -913,10 +926,9 @@ class plq_ElasticNet_Classifier(plqERM_ElasticNet, ClassifierMixin):
                 self.intercept_ = 0.0
 
         else:
-            if self.multi_class not in ('ovr', 'ovo'):
+            if self.multi_class not in ("ovr", "ovo"):
                 raise ValueError(
-                    f"multi_class must be 'ovr' or 'ovo' for multiclass problems, "
-                    f"got '{self.multi_class}'."
+                    f"multi_class must be 'ovr' or 'ovo' for multiclass problems, got '{self.multi_class}'."
                 )
             self._fit_multiclass(X_aug, y, sample_weight)
 
@@ -928,14 +940,11 @@ class plq_ElasticNet_Classifier(plqERM_ElasticNet, ClassifierMixin):
         Identical logic to plq_Ridge_Classifier._fit_multiclass; dispatches
         to self._fit_subproblem which uses plqERM_ElasticNet internally.
         """
-        if self.multi_class == 'ovr':
-            tasks = [
-                (X_aug, np.where(y == cls, 1, -1).astype(np.float64), sample_weight)
-                for cls in self.classes_
-            ]
+        if self.multi_class == "ovr":
+            tasks = [(X_aug, np.where(y == cls, 1, -1).astype(np.float64), sample_weight) for cls in self.classes_]
             class_pairs = None
 
-        elif self.multi_class == 'ovo':
+        elif self.multi_class == "ovo":
             tasks = []
             class_pairs = []
             for cls_i, cls_j in combinations(self.classes_, 2):
@@ -946,16 +955,14 @@ class plq_ElasticNet_Classifier(plqERM_ElasticNet, ClassifierMixin):
                 class_pairs.append((cls_i, cls_j))
 
         results = Parallel(n_jobs=self.n_jobs, prefer="threads")(
-            delayed(self._fit_subproblem)(self, X_sub, y_pm, sw, self.fit_intercept)
-            for X_sub, y_pm, sw in tasks
+            delayed(self._fit_subproblem)(self, X_sub, y_pm, sw, self.fit_intercept) for X_sub, y_pm, sw in tasks
         )
 
-        if self.multi_class == 'ovr':
+        if self.multi_class == "ovr":
             self.estimators_ = [(coef, intercept) for coef, intercept in results]
-        elif self.multi_class == 'ovo':
+        elif self.multi_class == "ovo":
             self.estimators_ = [
-                (coef, intercept, cls_i, cls_j)
-                for (coef, intercept), (cls_i, cls_j) in zip(results, class_pairs)
+                (coef, intercept, cls_i, cls_j) for (coef, intercept), (cls_i, cls_j) in zip(results, class_pairs)
             ]
 
         self.coef_ = np.array([e[0] for e in self.estimators_])
@@ -968,9 +975,7 @@ class plq_ElasticNet_Classifier(plqERM_ElasticNet, ClassifierMixin):
         For binary: 1D array of shape (n_samples,).
         For OvR/OvO multiclass: 2D array of shape (n_samples, n_estimators).
         """
-        check_is_fitted(
-            self, attributes=["coef_", "intercept_", "_label_encoder", "classes_"]
-        )
+        check_is_fitted(self, attributes=["coef_", "intercept_", "_label_encoder", "classes_"])
         X = check_array(X, accept_sparse=False, dtype=np.float64, order="C")
         return X @ self.coef_.T + self.intercept_
 
@@ -988,11 +993,11 @@ class plq_ElasticNet_Classifier(plqERM_ElasticNet, ClassifierMixin):
             pred01 = (scores >= 0).astype(int)
             return self._label_encoder.inverse_transform(pred01)
 
-        elif self.multi_class == 'ovr':
+        elif self.multi_class == "ovr":
             idx = np.argmax(scores, axis=1)
             return self.classes_[idx]
 
-        elif self.multi_class == 'ovo':
+        elif self.multi_class == "ovo":
             n_samples = X.shape[0]
             n_classes = len(self.classes_)
             votes = np.zeros((n_samples, n_classes), dtype=np.float64)
@@ -1009,9 +1014,7 @@ class plq_ElasticNet_Classifier(plqERM_ElasticNet, ClassifierMixin):
                 sum_of_confidences[:, j] += scores[:, k]
                 sum_of_confidences[:, i] -= scores[:, k]
 
-            transformed_confidences = sum_of_confidences / (
-                3 * (np.abs(sum_of_confidences) + 1)
-            )
+            transformed_confidences = sum_of_confidences / (3 * (np.abs(sum_of_confidences) + 1))
             return self.classes_[np.argmax(votes + transformed_confidences, axis=1)]
 
     def __sklearn_tags__(self):
@@ -1021,7 +1024,8 @@ class plq_ElasticNet_Classifier(plqERM_ElasticNet, ClassifierMixin):
         tags.target_tags.required = True
         tags.input_tags.sparse = False
         return tags
-    
+
+
 class plq_ElasticNet_Regressor(plqERM_ElasticNet, RegressorMixin):
     """
     Empirical Risk Minimization (ERM) regressor with a Piecewise Linear-Quadratic (PLQ) loss
@@ -1082,28 +1086,28 @@ class plq_ElasticNet_Regressor(plqERM_ElasticNet, RegressorMixin):
 
     Attributes
     ----------
-    coef_ : ndarray of shape (n_features,)
+    ``coef_`` : ndarray of shape (n_features,)
         Learned linear coefficients (excluding the intercept term).
-    intercept_ : float
+    ``intercept_`` : float
         Intercept term. 0.0 if ``fit_intercept=False``.
-    n_features_in_ : int
+    ``n_features_in_`` : int
         Number of input features seen during :meth:`fit` (before intercept
         augmentation).
     """
 
     def __init__(
         self,
-        loss={"name": "QR", "qt": 0.5},
-        constraint=[],
+        loss=None,
+        constraint=None,
         C=1.0,
         l1_ratio=0.5,
-        U=np.empty((0, 0)),
-        V=np.empty((0, 0)),
-        Tau=np.empty((0, 0)),
-        S=np.empty((0, 0)),
-        T=np.empty((0, 0)),
-        A=np.empty((0, 0)),
-        b=np.empty((0,)),
+        U=None,
+        V=None,
+        Tau=None,
+        S=None,
+        T=None,
+        A=None,
+        b=None,
         max_iter=1000,
         tol=1e-4,
         shrink=1,
@@ -1119,13 +1123,28 @@ class plq_ElasticNet_Regressor(plqERM_ElasticNet, RegressorMixin):
                 f"Use l1_ratio=0 for pure Ridge, or plq_Ridge_Regressor directly."
             )
 
+        loss = {"name": "QR", "qt": 0.5} if loss is None else loss
+        constraint = [] if constraint is None else constraint
+        U = np.empty((0, 0)) if U is None else U
+        V = np.empty((0, 0)) if V is None else V
+        Tau = np.empty((0, 0)) if Tau is None else Tau
+        S = np.empty((0, 0)) if S is None else S
+        T = np.empty((0, 0)) if T is None else T
+        A = np.empty((0, 0)) if A is None else A
+        b = np.empty((0,)) if b is None else b
+
         super().__init__(
             loss=loss,
             constraint=constraint,
             C=C,
             l1_ratio=l1_ratio,
-            U=U, V=V, Tau=Tau, S=S, T=T,
-            A=A, b=b,
+            U=U,
+            V=V,
+            Tau=Tau,
+            S=S,
+            T=T,
+            A=A,
+            b=b,
             max_iter=max_iter,
             tol=tol,
             shrink=shrink,
@@ -1181,7 +1200,7 @@ class plq_ElasticNet_Regressor(plqERM_ElasticNet, RegressorMixin):
 
     def decision_function(self, X):
         """
-        Compute f(X) = X @ coef_ + intercept_.
+        Compute f(X) = X @ ``coef_`` + ``intercept_``.
 
         Parameters
         ----------
