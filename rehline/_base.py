@@ -195,7 +195,7 @@ class _BaseReHLine(BaseEstimator):
         if self.H > 0:
             rehu_input = (self._S.T * score[:, np.newaxis]).T + self._T
         return np.sum(_relu(relu_input), 0) + np.sum(_rehu(rehu_input, self._Tau), 0)
-
+     
     @abstractmethod
     def fit(self, X, y, sample_weight):
         """Fit model."""
@@ -286,7 +286,7 @@ def ReHLine_solver(
     T=None,
     A=None,
     b=None,
-    rho=0.0,
+    rho=None,
     Lambda=None,
     Gamma=None,
     xi=None,
@@ -307,6 +307,8 @@ def ReHLine_solver(
         A = np.empty(shape=(0, 0))
     if b is None:
         b = np.empty(shape=(0))
+    if rho is None:
+        rho = np.empty(shape=(0))
     if Lambda is None:
         Lambda = np.empty(shape=(0, 0))
     if Gamma is None:
@@ -330,6 +332,7 @@ def ReHLine_solver(
         X,
         A,
         b,
+        rho,
         U,
         V,
         S,
@@ -337,7 +340,6 @@ def ReHLine_solver(
         Tau,
         max_iter,
         tol,
-        rho,
         shrink,
         verbose,
         trace_freq,
@@ -773,32 +775,32 @@ def _cast_sample_weight(U, V, Tau, S, T, C=1.0, sample_weight=None):
 #     U_new = np.zeros((self.L+2, n+d))
 #     V_new = np.zeros((self.L+2, n+d))
 #     ## Block 1
-#     if len(self.U):
-#         U_new[:self.L, :n] = self.U
-#         V_new[:self.L, :n] = self.V
+#     if len(self._U):
+#         U_new[:self.L, :n] = self._U
+#         V_new[:self.L, :n] = self._V
 #     ## Block 2
 #     U_new[-2,n:] = l1_pen
 #     U_new[-1,n:] = -l1_pen
 
-#     if len(self.S):
+#     if len(self._S):
 #         S_new = np.zeros((self.H, n+d))
 #         T_new = np.zeros((self.H, n+d))
 #         Tau_new = np.zeros((self.H, n+d))
 
-#         S_new[:,:n] = self.S
-#         T_new[:,:n] = self.T
-#         Tau_new[:,:n] = self.Tau
+#         S_new[:,:n] = self._S
+#         T_new[:,:n] = self._T
+#         Tau_new[:,:n] = self._Tau
 
-#         self.S = S_new
-#         self.T = T_new
-#         self.Tau = Tau_new
+#         self._S = S_new
+#         self._T = T_new
+#         self._Tau = Tau_new
 
 #     ## fake X
 #     X_fake = np.zeros((n+d, d))
 #     X_fake[:n,:] = X
 #     X_fake[n:,:] = np.identity(d)
 
-#     self.U = U_new
-#     self.V = V_new
+#     self._U = U_new
+#     self._V = V_new
 #     self.auto_shape()
 #     return X_fake
