@@ -80,6 +80,7 @@ void reset_fv_set(std::vector<std::pair<Index, Index>>& fvset, std::size_t n, st
 //   * S, T, Tau: [H x n]
 //   * A        : [K x d]
 //   * b        : [K]
+//   * rho      : [d]
 // - Pre-computed
 //   * r: [n]
 //   * p: [K]
@@ -139,6 +140,7 @@ private:
     const Index m_L;
     const Index m_H;
     const Index m_K;
+    const Index m_W;
 
     // Input matrices and vectors
     RMatrix     m_X;
@@ -149,7 +151,7 @@ private:
     ConstRefMat m_Tau;
     RMatrix     m_A;
     ConstRefVec m_b;
-    Scalar      m_rho;   // l1_ratio / (1 - l1_ratio)
+    ConstRefVec m_rho;
 
     // Pre-computed
     Vector m_gk_denom;   // ||a[k]||^2
@@ -174,7 +176,7 @@ private:
     // =================== Initialization functions =================== //
 
     // Compute the primal variable beta from dual variables
-    // beta = A'xi - U3 * vec(Lambda) - S3 * vec(Gamma)
+    // beta = A'xi - U3 * vec(Lambda) - S3 * vec(Gamma) + 2 * Mu - rho
     // A can be empty, one of U and V may be empty
     inline void set_primal()
     {
@@ -193,9 +195,9 @@ private:
         if (m_H > 0)
             LHterm.noalias() += m_S.cwiseProduct(m_Gamma).colwise().sum().transpose();
         m_beta.noalias() -= m_X.transpose() * LHterm;
-
-        if (m_rho > 0)
-            m_beta.noalias() += Scalar(2.0) * m_mu - m_rho * Vector::Ones(m_d);
+        // L1 related
+        if (m_W > 0)
+            m_beta.noalias() += Scalar(2.0) * m_mu - m_rho;
     }
 
     // =================== Evaluating objection function =================== //
@@ -224,7 +226,7 @@ private:
         // Quadratic term
         result += Scalar(0.5) * m_beta.squaredNorm();
         // L1 penalty term
-        result += m_rho * m_beta.template lpNorm<1>();
+        result += m_beta.cwiseAbs().cwiseProduct(m_rho).sum();
         return result;
     }
 
@@ -251,8 +253,8 @@ private:
         }
         // 2 * Mu - rho, [d x 1]
         Vector MuR = Vector::Zero(m_d);
-        if (m_rho > 0)
-            MuR = Scalar(2.0) * m_mu - m_rho * Vector::Ones(m_d);
+        if (m_W > 0)
+            MuR = Scalar(2.0) * m_mu - m_rho;
         // Compute dual objective function value
         Scalar obj = Scalar(0);
         // If K = 0, all terms that depend on A, xi, or b will be zero
@@ -261,7 +263,7 @@ private:
             // 0.5 * ||Atxi||^2 - Atxi' * U3L - Atxi' * S3G + Atxi' MuR + xi' * b
             const Scalar Atxi_U3L = (m_L > 0) ? (Atxi.dot(U3L)) : Scalar(0);
             const Scalar Atxi_S3G = (m_H > 0) ? (Atxi.dot(S3G)) : Scalar(0);
-            const Scalar Atxi_MuR = (m_rho > 0) ? (Atxi.dot(MuR)) : Scalar(0);
+            const Scalar Atxi_MuR = (m_W > 0) ? (Atxi.dot(MuR)) : Scalar(0);
             obj += Scalar(0.5) * Atxi.squaredNorm() - Atxi_U3L - Atxi_S3G + Atxi_MuR + m_xi.dot(m_b);
         }
         // If L = 0, all terms that depend on U, V, or Lambda will be zero
@@ -269,7 +271,7 @@ private:
         {
             // 0.5 * ||U3L||^2 + U3L' * S3G - U3L' * MuR - tr(Lambda * V')
             const Scalar U3L_S3G = (m_H > 0) ? (U3L.dot(S3G)) : Scalar(0);
-            const Scalar U3L_MuR = (m_rho > 0) ? (U3L.dot(MuR)) : Scalar(0);
+            const Scalar U3L_MuR = (m_W > 0) ? (U3L.dot(MuR)) : Scalar(0);
             obj += Scalar(0.5) * U3L.squaredNorm() + U3L_S3G - U3L_MuR -
                 m_Lambda.cwiseProduct(m_V).sum();
         }
@@ -277,14 +279,15 @@ private:
         if (m_H > 0)
         {
             // 0.5 * ||S3G||^2 - S3G' * MuR + 0.5 * ||Gamma||^2 - tr(Gamma * T')
-            const Scalar S3G_MuR = (m_rho > 0) ? (S3G.dot(MuR)) : Scalar(0);
+            const Scalar S3G_MuR = (m_W > 0) ? (S3G.dot(MuR)) : Scalar(0);
             obj += Scalar(0.5) * S3G.squaredNorm() - S3G_MuR + Scalar(0.5) * m_Gamma.squaredNorm() -
                 m_Gamma.cwiseProduct(m_T).sum();
         }
-        // If rho = 0, all terms that depend on rho, or Mu will be zero
-        if (m_rho > 0)
-            obj += Scalar(2.0) * m_mu.squaredNorm() - Scalar(2.0) * m_rho * m_mu.sum() +
-                Scalar(0.5) * m_d * m_rho * m_rho;
+        // If W = 0, all terms that depend on rho or Mu will be zero
+        if (m_W > 0)
+            // 2.0 * ||Mu||^2 - 2.0 * rho' * Mu + 0.5 * ||rho||^2 
+            obj += Scalar(2.0) * m_mu.squaredNorm() - Scalar(2.0) * m_rho.dot(m_mu) +
+                Scalar(0.5) * m_rho.squaredNorm();
         return obj;
     }
 
@@ -368,7 +371,7 @@ private:
     // Update mu and beta
     inline void update_mu_beta()
     {
-        if (m_rho <= 0)
+        if (m_W <= 0)
             return;
 
         // Save original Mu
@@ -598,7 +601,7 @@ private:
     // Overloaded version based on free variable set
     inline void update_mu_beta(std::vector<Index>& fv_set, Scalar& min_pg, Scalar& max_pg)
     {
-        if (m_rho <= 0)
+        if (m_W <= 0)
             return;
 
         // Permutation
@@ -618,12 +621,13 @@ private:
         for (auto j: fv_set)
         {
             const Scalar mu_j = m_mu[j];
+            const Scalar rho_j = m_rho[j];
 
             // Compute g_j
             const Scalar g_j = m_beta[j];
             // PG and shrink
             Scalar pg;
-            const bool shrink = pg_mu(mu_j, g_j, m_rho, lb, ub, pg);
+            const bool shrink = pg_mu(mu_j, g_j, rho_j, lb, ub, pg);
             if (shrink)
                continue;
 
@@ -632,7 +636,7 @@ private:
             min_pg = std::min(min_pg, pg);
             // Compute new mu_j
             const Scalar candid = mu_j - g_j * Scalar(0.5);
-            const Scalar newmu = std::max(Scalar(0), std::min(m_rho, candid));
+            const Scalar newmu = std::max(Scalar(0), std::min(rho_j, candid));
             // Update mu and beta
             m_mu[j] = newmu;
             m_beta[j] += Scalar(2.0) * (newmu - mu_j);
@@ -647,8 +651,9 @@ public:
     ReHLineSolver(ConstRefMat X, ConstRefMat U, ConstRefMat V,
                   ConstRefMat S, ConstRefMat T, ConstRefMat Tau,
                   ConstRefMat A, ConstRefVec b,
-                  Scalar rho) :
-        m_n(X.rows()), m_d(X.cols()), m_L(U.rows()), m_H(S.rows()), m_K(A.rows()),
+                  ConstRefVec rho) :
+        m_n(X.rows()), m_d(X.cols()), m_L(U.rows()), m_H(S.rows()), m_K(A.rows()), 
+        m_W(rho.rows()), // check if l1 penalty is implemented
         m_X(X), m_U(U), m_V(V), m_S(S), m_T(T), m_Tau(Tau), m_A(A), m_b(b),
         m_rho(rho),
         m_gk_denom(m_K), m_gli_denom(m_L, m_n), m_ghi_denom(m_H, m_n),
@@ -691,10 +696,10 @@ public:
             // Gamma.fill(std::min(1.0, 0.5 * tau));
         }
 
-        // Each element of Mu satisfies 0 <= mu_j <= rho,
+        // Each element of Mu satisfies 0 <= mu_j <= rho_j,
         // and we use min(0.5 * rho, 1) to initialize (rho can be Inf)
-        if (m_rho > 0)
-            m_mu.setConstant( std::min(Scalar(0.5) * m_rho, Scalar(1)) );
+        if (m_W > 0)
+            m_mu.noalias() = (m_rho * Scalar(0.5)).cwiseMin(Scalar(1));
 
         // Set primal variable based on duals
         set_primal();
@@ -746,15 +751,15 @@ public:
         }
 
 
-        if (m_rho > 0)
+        if (m_W > 0)
         {
             // Check shape of warmstart parameters
             if (mu_ws.size() != m_d){
                 throw std::invalid_argument("mu_ws must have size d");
             }
             // Check values of warmstart parameters
-            if ((mu_ws.array() < Scalar(0)).any() || (mu_ws.array() > m_rho).any()){
-                throw std::invalid_argument("mu_ws must be in [0, rho]");
+            if ((mu_ws.array() < Scalar(0)).any() || (mu_ws.array() > m_rho.array()).any()){
+                throw std::invalid_argument("mu_ws_j must be in [0, rho_j]");
             }
             m_mu = mu_ws;
         }
@@ -928,10 +933,10 @@ template <typename DerivedMat, typename DerivedVec, typename Index = int>
 void rehline_solver(
     ReHLineResult<typename DerivedMat::PlainObject, Index>& result,
     const Eigen::MatrixBase<DerivedMat>& X, const Eigen::MatrixBase<DerivedMat>& A,
-    const Eigen::MatrixBase<DerivedVec>& b,
+    const Eigen::MatrixBase<DerivedVec>& b, const Eigen::MatrixBase<DerivedVec>& rho,
     const Eigen::MatrixBase<DerivedMat>& U, const Eigen::MatrixBase<DerivedMat>& V,
     const Eigen::MatrixBase<DerivedMat>& S, const Eigen::MatrixBase<DerivedMat>& T, const Eigen::MatrixBase<DerivedMat>& Tau,
-    Index max_iter, typename DerivedMat::Scalar tol, typename DerivedMat::Scalar rho = 0,
+    Index max_iter, typename DerivedMat::Scalar tol, 
     Index shrink = 1, Index verbose = 0, Index trace_freq = 100,
     std::ostream& cout = std::cout
 )

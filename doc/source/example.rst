@@ -32,3 +32,4 @@ Example Gallery
    examples/GridSearchCV_reg_losses.ipynb
 
    examples/ElasticNet.ipynb
+   examples/Adaptive_ElasticNet.ipynb

@@ -19,15 +19,15 @@ using ReHLineResult = rehline::ReHLineResult<Matrix>;
 
 void rehline_internal(
     ReHLineResult& result,
-    const MapMat& X, const MapMat& A, const MapVec& b,
+    const MapMat& X, const MapMat& A, const MapVec& b, const MapVec& rho,
     const MapMat& U, const MapMat& V,
     const MapMat& S, const MapMat& T, const MapMat& Tau,
-    int max_iter, double tol, double rho = 0.0, int shrink = 1,
+    int max_iter, double tol, int shrink = 1,
     int verbose = 0, int trace_freq = 100
 )
 {
-    rehline::rehline_solver(result, X, A, b, U, V, S, T, Tau,
-                            max_iter, tol, rho, shrink, verbose, trace_freq);
+    rehline::rehline_solver(result, X, A, b, rho, U, V, S, T, Tau,
+                            max_iter, tol, shrink, verbose, trace_freq);
 }
 
 PYBIND11_MODULE(_internal, m) {

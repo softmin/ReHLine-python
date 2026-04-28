@@ -493,7 +493,7 @@ class plqERM_ElasticNet(_BaseReHLine, BaseEstimator):
 
     .. math::
 
-        \min_{\mathbf{\beta} \in \mathbb{R}^d} C \sum_{i=1}^n \text{PLQ}(y_i, \mathbf{x}_i^T \mathbf{\beta}) + \text{l1_ratio} \| \mathbf{\beta} \|_1 + \frac{1}{2} (1 - \text{l1_ratio})  \| \mathbf{\beta} \|_2^2, \ \text{ s.t. } \
+        \min_{\mathbf{\beta} \in \mathbb{R}^d} C \sum_{i=1}^n \text{PLQ}(y_i, \mathbf{x}_i^T \mathbf{\beta}) + \text{l1_ratio} \sum_{j=1}^d \omega_j | \beta_j | + \frac{1}{2} (1 - \text{l1_ratio})  \| \mathbf{\beta} \|_2^2, \ \text{ s.t. } \
         \mathbf{A} \mathbf{\beta} + \mathbf{b} \geq \mathbf{0},
 
     The function supports various loss functions, including:
@@ -526,6 +526,9 @@ class plqERM_ElasticNet(_BaseReHLine, BaseEstimator):
     l1_ratio : float, default=0.5
         The ElasticNet mixing parameter, with 0 <= l1_ratio < 1. For l1_ratio = 0 the penalty
         is an L2 penalty. For 0 < l1_ratio < 1, the penalty is a combination of L1 and L2.
+
+    omega : array of shape (n_features, ), default=np.empty(shape=(0, 0))
+        Weight coefficients for adaptive lasso.
 
     verbose : int, default=0
         Enable verbose output. Note that this setting takes advantage of a
@@ -584,6 +587,7 @@ class plqERM_ElasticNet(_BaseReHLine, BaseEstimator):
         constraint=None,
         C=1.0,
         l1_ratio=0.5,
+        omega=None,
         U=None,
         V=None,
         Tau=None,
@@ -602,8 +606,8 @@ class plqERM_ElasticNet(_BaseReHLine, BaseEstimator):
         self.constraint = constraint if constraint is not None else []
         self.C = C
         self.l1_ratio = l1_ratio
-        self.rho = l1_ratio / (1 - l1_ratio)
         self.C_eff = C / (1 - l1_ratio)
+        self.omega = omega if omega is not None else np.empty(shape=(0, 0))
         self._U = U if U is not None else np.empty(shape=(0, 0))
         self._V = V if V is not None else np.empty(shape=(0, 0))
         self._S = S if S is not None else np.empty(shape=(0, 0))
@@ -677,6 +681,25 @@ class plqERM_ElasticNet(_BaseReHLine, BaseEstimator):
             self._Gamma = np.empty(shape=(0, 0))
             self._xi = np.empty(shape=(0, 0))
             self._mu = np.empty(shape=(0, 0))
+
+        if self.l1_ratio == 0:
+            self.rho = None
+            if self.omega.size > 0:
+                warnings.warn(
+                    f"Omega will be ignored since l1_ratio=0.",
+                    UserWarning,
+                    stacklevel=2
+                )
+        else:
+            if self.omega.size not in (0, d):
+                raise ValueError(
+                    f"Omega length {self.omega.size} must be 0 or {d} (n_features)"
+                )
+            if not np.all(self.omega > 0):
+                raise ValueError(
+                    "All elements in omega must be strictly positive."
+                )
+            self.rho = np.full(d, self.l1_ratio / (1 - self.l1_ratio)) * (self.omega if self.omega.size == d else 1.0)
 
         result = ReHLine_solver(
             X=X,

@@ -31,7 +31,7 @@ from rehline import plqERM_ElasticNet, plqERM_Ridge
 # ---------------------------------------------------------------------------
 # Helper
 # ---------------------------------------------------------------------------
-
+import pytest
 
 def _regression_dataset(n, n_features, n_informative, seed=42):
     X, y = make_regression(
@@ -223,3 +223,121 @@ def test_dual_variable_mu():
     rho = clf.rho
     assert np.all(clf._mu >= 0), "mu should be non-negative"
     assert np.all(clf._mu <= rho + 1e-10), f"mu should be <= rho={rho}"
+
+
+def test_different_omegas():
+    """ElasticNet should fit successfully for all tested omega values."""
+    n, n_features, C, l1_ratio = 2000, 10, 0.01, 0.5
+
+    X, y = make_regression(
+        n_samples=n,
+        n_features=n_features,
+        noise=0.1,
+        random_state=42,
+        n_informative=6,
+    )
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+
+    for i in range(5):  # conduct 5 tests with different omega
+        rng = np.random.default_rng(seed=42+i)
+        omega = rng.uniform(low=0.1, high=0.2+i, size=n_features)
+        clf = plqERM_ElasticNet(
+            loss={"name": "mse"},
+            C=C,
+            l1_ratio=l1_ratio,
+            omega=omega,
+            max_iter=5000,
+            tol=1e-4,
+        )
+        clf.fit(X_scaled, y)
+        assert clf.coef_ is not None, f"Fit failed for omega={omega}"
+        assert clf.coef_.shape == (n_features,), f"Wrong coef_ shape for omega={omega}: {clf.coef_.shape}"
+
+
+def test_with_omega_vs_without_omega():
+    """ElasticNet with omega=(1, 1, ..., 1) should exactly match that without omega."""
+    n, n_features, C, l1_ratio = 2000, 10, 0.01, 0.5
+
+    X, y = make_regression(
+        n_samples=n,
+        n_features=n_features,
+        noise=0.1,
+        random_state=42,
+        n_informative=6,
+    )
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+
+    clf_with_omg = plqERM_ElasticNet(
+                 loss={"name": "mse"},
+                 C=C,
+                 l1_ratio=l1_ratio,
+                 omega=np.ones(n_features),
+                 max_iter=5000,
+                 tol=1e-4,
+    )
+    clf_with_omg.fit(X_scaled, y)
+
+    clf_without_omg = plqERM_ElasticNet(
+                    loss={"name": "mse"},
+                    C=C,
+                    l1_ratio=l1_ratio,
+                    max_iter=5000,
+                    tol=1e-4,
+    )
+    clf_without_omg.fit(X_scaled, y)
+
+    assert np.array_equal(clf_with_omg.coef_.flatten(), clf_without_omg.coef_.flatten()), \
+        "ElasticNet with omega=(1, 1, ..., 1) should exactly match that without omega."
+
+
+def test_omega_validation():
+    """Test omega related validations raise appropriate warnings or errors"""
+    n, n_features, C, l1_ratio = 2000, 10, 0.01, 0.5
+
+    X, y = make_regression(
+        n_samples=n,
+        n_features=n_features,
+        noise=0.1,
+        random_state=42,
+        n_informative=6,
+    )
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+
+    # Test invalid omega shape (must align with n_features)
+    with pytest.raises(ValueError, match="Omega length"):
+        clf = plqERM_ElasticNet(
+            loss={"name": "mse"},
+            C=C,
+            l1_ratio=l1_ratio,
+            omega=np.ones(n_features + 1),
+            max_iter=5000,
+            tol=1e-4,
+        )
+        clf.fit(X_scaled, y)
+    # Test invalid omega value (all elements must be strictly positive)
+    with pytest.raises(ValueError, match="All elements in omega must be strictly positive"):
+        omega = np.ones(n_features)
+        omega[0] = -1
+        clf = plqERM_ElasticNet(
+            loss={"name": "mse"},
+            C=C,
+            l1_ratio=l1_ratio,
+            omega=omega,
+            max_iter=5000,
+            tol=1e-4,
+        )
+        clf.fit(X_scaled, y)
+    # Test ineffective omega (when omega provided but l1_ratio==0)
+    with pytest.warns(UserWarning, match="Omega will be ignored since l1_ratio=0"):
+        clf = plqERM_ElasticNet(
+            loss={"name": "mse"},
+            C=C,
+            l1_ratio=0.0,
+            omega=np.ones(n_features),
+            max_iter=5000,
+            tol=1e-4,
+        )
+        clf.fit(X_scaled, y)
