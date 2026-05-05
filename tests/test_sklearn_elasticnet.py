@@ -101,6 +101,19 @@ def test_elasticnet_clf_l1_ratio_invalid_raises():
     with pytest.raises(ValueError, match="l1_ratio"):
         plq_ElasticNet_Classifier(loss={"name": "svm"}, C=1.0, l1_ratio=1.0)
 
+def test_elasticnet_clf_binary_omega_effect():
+    """Model coefficient with higher omega weights should be smaller."""
+    X, y = _binary_dataset()
+    omega_small = np.random.rand(10)
+    omega_large = omega_small * 5
+
+    clf1 = plq_ElasticNet_Classifier(loss={"name": "svm"}, C=1.0, l1_ratio=0.5, omega=omega_small)
+    clf1.fit(X, y)
+    clf2 = plq_ElasticNet_Classifier(loss={"name": "svm"}, C=1.0, l1_ratio=0.5, omega=omega_large)
+    clf2.fit(X, y)
+
+    assert np.sum(np.abs(clf2.coef_)) <= np.sum(np.abs(clf1.coef_))
+
 
 # ===========================================================================
 # plq_ElasticNet_Classifier — multiclass OvR
@@ -142,6 +155,32 @@ def test_elasticnet_clf_ovr_pipeline():
     assert pipe.predict(X).shape == (len(y),)
 
 
+def test_elasticnet_clf_ovr_omega_effect():
+    """Model coefficient with higher omega weights should be smaller."""
+    X, y = _multiclass_dataset(n_classes=3)
+    omega_small = np.random.rand(10)
+    omega_large = omega_small * 5
+
+    clf1 = plq_ElasticNet_Classifier(loss={"name": "svm"}, 
+                                     C=1.0, 
+                                     l1_ratio=0.5, 
+                                     fit_intercept=True,
+                                     omega=omega_small,
+                                     multi_class="ovr"
+    )
+    clf1.fit(X, y)
+    clf2 = plq_ElasticNet_Classifier(loss={"name": "svm"}, 
+                                     C=1.0, 
+                                     l1_ratio=0.5, 
+                                     fit_intercept=True,
+                                     omega=omega_large,
+                                     multi_class="ovr"
+    )
+    clf2.fit(X, y)
+
+    assert np.sum(np.abs(clf2.coef_)) <= np.sum(np.abs(clf1.coef_))
+
+
 # ===========================================================================
 # plq_ElasticNet_Classifier — multiclass OvO
 # ===========================================================================
@@ -178,6 +217,31 @@ def test_elasticnet_clf_multiclass_invalid_strategy_raises():
     with pytest.raises(ValueError, match="multi_class"):
         clf.fit(X, y)
 
+
+def test_elasticnet_clf_ovo_omega_effect():
+    """Model coefficient with higher omega weights should be smaller."""
+    X, y = _multiclass_dataset(n_classes=3)
+    omega_small = np.random.rand(10)
+    omega_large = omega_small * 5
+
+    clf1 = plq_ElasticNet_Classifier(loss={"name": "svm"}, 
+                                     C=1.0, 
+                                     l1_ratio=0.5, 
+                                     fit_intercept=False,
+                                     omega=omega_small,
+                                     multi_class="ovo"
+    )
+    clf1.fit(X, y)
+    clf2 = plq_ElasticNet_Classifier(loss={"name": "svm"}, 
+                                     C=1.0, 
+                                     l1_ratio=0.5, 
+                                     fit_intercept=False,
+                                     omega=omega_large,
+                                     multi_class="ovo"
+    )
+    clf2.fit(X, y)
+
+    assert np.sum(np.abs(clf2.coef_)) <= np.sum(np.abs(clf1.coef_))
 
 # ===========================================================================
 # plq_ElasticNet_Regressor
@@ -256,3 +320,16 @@ def test_elasticnet_reg_predict_equals_decision_function():
     reg = plq_ElasticNet_Regressor(loss={"name": "QR", "qt": 0.5}, C=1.0, l1_ratio=0.5)
     reg.fit(X_tr, y_tr)
     np.testing.assert_array_equal(reg.predict(X_te), reg.decision_function(X_te))
+
+def test_elasticnet_reg_omega_effect():
+    """Model coefficient with higher omega weights should be smaller."""
+    X, y = _reg_dataset()
+    omega_small = np.random.rand(10)
+    omega_large = omega_small * 5
+
+    reg1 = plq_ElasticNet_Regressor(loss={"name": "mae"}, C=1.0, l1_ratio=0.5, omega=omega_small)
+    reg1.fit(X, y)
+    reg2 = plq_ElasticNet_Regressor(loss={"name": "mae"}, C=1.0, l1_ratio=0.5, omega=omega_large)
+    reg2.fit(X, y)
+
+    assert np.sum(np.abs(reg2.coef_)) <= np.sum(np.abs(reg1.coef_))

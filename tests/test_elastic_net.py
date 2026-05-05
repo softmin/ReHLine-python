@@ -317,8 +317,8 @@ def test_omega_validation():
             tol=1e-4,
         )
         clf.fit(X_scaled, y)
-    # Test invalid omega value (all elements must be strictly positive)
-    with pytest.raises(ValueError, match="All elements in omega must be strictly positive"):
+    # Test invalid omega value (all elements must be strictly non-negative)
+    with pytest.raises(ValueError, match="All elements in omega must be strictly non-negative"):
         omega = np.ones(n_features)
         omega[0] = -1
         clf = plqERM_ElasticNet(
@@ -341,3 +341,39 @@ def test_omega_validation():
             tol=1e-4,
         )
         clf.fit(X_scaled, y)
+
+
+def test_zero_omega_vs_ridge():
+    """ElasticNet with omega=(0, 0, ..., 0) should exactly match Ridge within 1e-4.."""
+    n, n_features, C, l1_ratio = 2000, 10, 0.01, 0.5
+
+    X, y = make_regression(
+        n_samples=n,
+        n_features=n_features,
+        noise=0.1,
+        random_state=42,
+        n_informative=6,
+    )
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+
+    clf_EN = plqERM_ElasticNet(
+                 loss={"name": "mse"},
+                 C=C,
+                 l1_ratio=l1_ratio,
+                 omega=np.zeros(n_features),
+                 max_iter=5000,
+                 tol=1e-4,
+    )
+    clf_EN.fit(X_scaled, y)
+
+    clf_RG = plqERM_Ridge(
+                    loss={"name": "mse"},
+                    C=C/(1-l1_ratio),
+                    max_iter=5000,
+                    tol=1e-4,
+    )
+    clf_RG.fit(X_scaled, y)
+
+    max_diff = np.max(np.abs(clf_EN.coef_.flatten() - clf_RG.coef_.flatten()))
+    assert max_diff < 1e-4, f"ElasticNet(omega=(0, 0, ..., 0)) should match Ridge within 1e-4, max_diff={max_diff:.6e}"

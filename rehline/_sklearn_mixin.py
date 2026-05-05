@@ -714,6 +714,11 @@ class plq_ElasticNet_Classifier(plqERM_ElasticNet, ClassifierMixin):
         - 0 < l1_ratio < 1 → combined L1 + L2 penalty
         Must be strictly less than 1.0 to avoid division by zero in rho/C_eff.
 
+    omega : array of shape (n_features, ), default=np.empty(shape=(0, 0))
+        Non-negative weight coefficients for adaptive lasso. If not provided, all non-intercept coefficients 
+        receive the same L1 penalty controlled by ``l1_ratio``. The penalty for the intercept 
+        can be scaled via ``intercept_scaling``.
+
     fit_intercept : bool, default=True
         Whether to fit an intercept term via an augmented constant feature column.
 
@@ -754,6 +759,7 @@ class plq_ElasticNet_Classifier(plqERM_ElasticNet, ClassifierMixin):
         constraint=None,
         C=1.0,
         l1_ratio=0.5,
+        omega=None,
         U=None,
         V=None,
         Tau=None,
@@ -780,6 +786,7 @@ class plq_ElasticNet_Classifier(plqERM_ElasticNet, ClassifierMixin):
             )
 
         constraint = [] if constraint is None else constraint
+        omega = np.empty((0,)) if omega is None else omega
         U = np.empty((0, 0)) if U is None else U
         V = np.empty((0, 0)) if V is None else V
         Tau = np.empty((0, 0)) if Tau is None else Tau
@@ -794,6 +801,7 @@ class plq_ElasticNet_Classifier(plqERM_ElasticNet, ClassifierMixin):
             constraint=constraint,
             C=C,
             l1_ratio=l1_ratio,
+            omega=omega,
             U=U,
             V=V,
             Tau=Tau,
@@ -850,6 +858,7 @@ class plq_ElasticNet_Classifier(plqERM_ElasticNet, ClassifierMixin):
             constraint=estimator.constraint,
             C=estimator.C,
             l1_ratio=estimator.l1_ratio,
+            omega=estimator.omega,
             max_iter=estimator.max_iter,
             tol=estimator.tol,
             shrink=estimator.shrink,
@@ -908,9 +917,11 @@ class plq_ElasticNet_Classifier(plqERM_ElasticNet, ClassifierMixin):
 
         # Intercept augmentation
         X_aug = X
+        omega_copy = self.omega.copy()
         if self.fit_intercept:
             col = np.full((X.shape[0], 1), self.intercept_scaling, dtype=X.dtype)
             X_aug = np.hstack([X, col])
+            self.omega = np.append(self.omega, 1) if self.omega.size > 0 else self.omega
 
         if self.classes_.size == 2:
             y01 = le.transform(y)
@@ -918,7 +929,7 @@ class plq_ElasticNet_Classifier(plqERM_ElasticNet, ClassifierMixin):
 
             # super() resolves to plqERM_ElasticNet.fit()
             super().fit(X_aug, y_pm, sample_weight=sample_weight)
-
+            self.omega = omega_copy
             if self.fit_intercept:
                 self.intercept_ = float(self.coef_[-1])
                 self.coef_ = self.coef_[:-1].copy()
@@ -931,6 +942,7 @@ class plq_ElasticNet_Classifier(plqERM_ElasticNet, ClassifierMixin):
                     f"multi_class must be 'ovr' or 'ovo' for multiclass problems, got '{self.multi_class}'."
                 )
             self._fit_multiclass(X_aug, y, sample_weight)
+            self.omega = omega_copy
 
         return self
 
@@ -1067,6 +1079,11 @@ class plq_ElasticNet_Regressor(plqERM_ElasticNet, RegressorMixin):
         - l1_ratio = 0  → pure Ridge (equivalent to plq_Ridge_Regressor)
         - 0 < l1_ratio < 1 → combined L1 + L2 penalty
         Must be strictly less than 1.0 to avoid division by zero in rho/C_eff.
+    
+    omega : array of shape (n_features, ), default=np.empty(shape=(0, 0))
+            Non-negative weight coefficients for adaptive lasso. If not provided, all non-intercept coefficients 
+            receive the same L1 penalty controlled by ``l1_ratio``. The penalty for the intercept 
+            can be scaled via ``intercept_scaling``.
 
     fit_intercept : bool, default=True
         If True, append a constant column (value = ``intercept_scaling``) to
@@ -1101,6 +1118,7 @@ class plq_ElasticNet_Regressor(plqERM_ElasticNet, RegressorMixin):
         constraint=None,
         C=1.0,
         l1_ratio=0.5,
+        omega=None,
         U=None,
         V=None,
         Tau=None,
@@ -1125,6 +1143,7 @@ class plq_ElasticNet_Regressor(plqERM_ElasticNet, RegressorMixin):
 
         loss = {"name": "QR", "qt": 0.5} if loss is None else loss
         constraint = [] if constraint is None else constraint
+        omega = np.empty((0,)) if omega is None else omega
         U = np.empty((0, 0)) if U is None else U
         V = np.empty((0, 0)) if V is None else V
         Tau = np.empty((0, 0)) if Tau is None else Tau
@@ -1138,6 +1157,7 @@ class plq_ElasticNet_Regressor(plqERM_ElasticNet, RegressorMixin):
             constraint=constraint,
             C=C,
             l1_ratio=l1_ratio,
+            omega=omega,
             U=U,
             V=V,
             Tau=Tau,
@@ -1183,12 +1203,15 @@ class plq_ElasticNet_Regressor(plqERM_ElasticNet, RegressorMixin):
         self.n_features_in_ = X.shape[1]
 
         X_aug = X
+        omega_copy = self.omega.copy()
         if self.fit_intercept:
             col = np.full((X.shape[0], 1), self.intercept_scaling, dtype=X.dtype)
             X_aug = np.hstack([X, col])
+            self.omega = np.append(self.omega, 1) if self.omega.size > 0 else self.omega
 
         # MRO resolves super() to plqERM_ElasticNet.fit()
         super().fit(X_aug, y, sample_weight=sample_weight)
+        self.omega = omega_copy
 
         if self.fit_intercept:
             self.intercept_ = float(self.coef_[-1])
