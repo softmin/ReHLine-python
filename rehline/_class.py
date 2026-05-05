@@ -527,8 +527,9 @@ class plqERM_ElasticNet(_BaseReHLine, BaseEstimator):
         The ElasticNet mixing parameter, with 0 <= l1_ratio < 1. For l1_ratio = 0 the penalty
         is an L2 penalty. For 0 < l1_ratio < 1, the penalty is a combination of L1 and L2.
 
-    omega : array of shape (n_features, ), default=np.empty(shape=(0, 0))
-        Weight coefficients for adaptive lasso.
+    omega : array of shape (n_features, ), default=np.empty(shape=0)
+        Non-negative weight coefficients for adaptive lasso. If not provided, all coefficients receive the 
+        same L1 penalty controlled by ``l1_ratio``.
 
     verbose : int, default=0
         Enable verbose output. Note that this setting takes advantage of a
@@ -606,8 +607,7 @@ class plqERM_ElasticNet(_BaseReHLine, BaseEstimator):
         self.constraint = constraint if constraint is not None else []
         self.C = C
         self.l1_ratio = l1_ratio
-        self.C_eff = C / (1 - l1_ratio)
-        self.omega = omega if omega is not None else np.empty(shape=(0, 0))
+        self.omega = omega if omega is not None else np.empty(shape=(0))
         self._U = U if U is not None else np.empty(shape=(0, 0))
         self._V = V if V is not None else np.empty(shape=(0, 0))
         self._S = S if S is not None else np.empty(shape=(0, 0))
@@ -627,7 +627,7 @@ class plqERM_ElasticNet(_BaseReHLine, BaseEstimator):
         self._Lambda = np.empty(shape=(0, 0))
         self._Gamma = np.empty(shape=(0, 0))
         self._xi = np.empty(shape=(0, 0))
-        self._mu = np.empty(shape=(0, 0))
+        self._mu = np.empty(shape=(0))
         self.coef_ = None
 
     def fit(self, X, y, sample_weight=None):
@@ -664,14 +664,14 @@ class plqERM_ElasticNet(_BaseReHLine, BaseEstimator):
         self.auto_shape()
 
         sample_weight = _check_sample_weight(sample_weight, X, dtype=X.dtype)
-
+        C_eff = self.C / (1 - self.l1_ratio)
         U_weight, V_weight, Tau_weight, S_weight, T_weight = _cast_sample_weight(
             self._U,
             self._V,
             self._Tau,
             self._S,
             self._T,
-            C=self.C_eff,
+            C=C_eff,
             sample_weight=sample_weight,
         )
 
@@ -680,7 +680,7 @@ class plqERM_ElasticNet(_BaseReHLine, BaseEstimator):
             self._Lambda = np.empty(shape=(0, 0))
             self._Gamma = np.empty(shape=(0, 0))
             self._xi = np.empty(shape=(0, 0))
-            self._mu = np.empty(shape=(0, 0))
+            self._mu = np.empty(shape=(0))
 
         if self.l1_ratio == 0:
             self.rho = None
@@ -695,9 +695,9 @@ class plqERM_ElasticNet(_BaseReHLine, BaseEstimator):
                 raise ValueError(
                     f"Omega length {self.omega.size} must be 0 or {d} (n_features)"
                 )
-            if not np.all(self.omega > 0):
+            if not np.all(self.omega >= 0):
                 raise ValueError(
-                    "All elements in omega must be strictly positive."
+                    "All elements in omega must be strictly non-negative."
                 )
             self.rho = np.full(d, self.l1_ratio / (1 - self.l1_ratio)) * (self.omega if self.omega.size == d else 1.0)
 

@@ -8,7 +8,7 @@ Warm-start should:
 
 import numpy as np
 
-from rehline import ReHLine, plqERM_Ridge
+from rehline import ReHLine, plqERM_Ridge, plqERM_ElasticNet
 from rehline._base import ReHLine_solver
 
 
@@ -139,4 +139,39 @@ def test_plqERM_Ridge_warmstart_coef_consistent():
         coef_ref_2C,
         atol=1e-3,
         err_msg="plqERM_Ridge: warm-start and cold-start should agree at the same C",
+    )
+
+
+# ---------------------------------------------------------------------------
+# plqERM_ElasticNet
+# ---------------------------------------------------------------------------
+
+
+def test_plqERM_ElasticNet_warmstart_coef_consistent():
+    """Warm-started plqERM_ElasticNet should match cold-start solution for the same C."""
+    X, y = _make_classification_data()
+    C = 0.5
+    l1_ratio = 0.2
+
+    clf_cold = plqERM_ElasticNet(loss={"name": "svm"}, C=C, l1_ratio=l1_ratio, verbose=0)
+    clf_cold.fit(X=X, y=y)
+
+    # Fit at C, then warm-start at 2*C
+    clf_warm = plqERM_ElasticNet(loss={"name": "svm"}, C=C, l1_ratio=l1_ratio, verbose=0)
+    clf_warm.fit(X=X, y=y)
+    clf_warm.C = 2 * C
+    clf_warm.warm_start = 1
+    clf_warm.fit(X=X, y=y)
+    coef_warm_2C = clf_warm.coef_.copy()
+
+    # Reference: cold-start at 2*C
+    clf_ref = plqERM_ElasticNet(loss={"name": "svm"}, C=2 * C, l1_ratio=l1_ratio, verbose=0)
+    clf_ref.fit(X=X, y=y)
+    coef_ref_2C = clf_ref.coef_.copy()
+
+    np.testing.assert_allclose(
+        coef_warm_2C,
+        coef_ref_2C,
+        atol=1e-3,
+        err_msg="plqERM_ElasticNet: warm-start and cold-start should agree at the same C",
     )
