@@ -1,0 +1,32 @@
+{
+  "task_datasets": {
+    "ridge_quantile": [
+      "make_regression_300k",
+      "openml_buzz_twitter"
+    ],
+    "elasticnet_quantile": [
+      "make_regression_300k",
+      "openml_buzz_twitter"
+    ],
+    "ridge_svm": [
+      "make_classification_300k",
+      "openml_guillermo",
+      "covtype_binary_100k"
+    ],
+    "elasticnet_svm": [
+      "make_classification_300k",
+      "openml_guillermo",
+      "covtype_binary_100k"
+    ]
+  },
+  "cv": 2,
+  "repeats": 1,
+  "n_jobs": null,
+  "max_iter": 5000000,
+  "tol": 1e-4,
+  "C_grid": [0.1, 1.0, 10.0],
+  "l1_ratio_grid": [0.5],
+  "quantile_grid": [0.25],
+  "preprocess_X": "standard",
+  "output_dir": "benchmarks/results/large"
+}
