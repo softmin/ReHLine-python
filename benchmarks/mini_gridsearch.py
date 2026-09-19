@@ -17,7 +17,9 @@ import sys
 import time
 import urllib.request
 from collections.abc import Callable, Iterable
+from contextlib import nullcontext
 from dataclasses import dataclass
+from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -125,6 +127,9 @@ CONFIG_DEFAULTS = {
     "cqr_quantiles_grid": [list(quantiles) for quantiles in DEFAULT_CQR_QUANTILES_GRID],
     "preprocess_X": "standard",
     "output_dir": str(DEFAULT_RESULTS_DIR),
+    "verify_objective": False,
+    "objective_rtol": 1e-8,
+    "objective_atol": 1e-10,
 }
 
 
@@ -399,6 +404,26 @@ def available_datasets() -> dict[str, DatasetSpec]:
         ),
         "covtype_binary_full": DatasetSpec("covtype_binary_full", "classification", _fetch_covtype_binary),
         "breast_cancer": DatasetSpec("breast_cancer", "classification", _load_breast_cancer),
+        "iris": DatasetSpec("iris", "classification", partial(load_iris, return_X_y=True)),
+        "wine": DatasetSpec("wine", "classification", partial(load_wine, return_X_y=True)),
+        "digits": DatasetSpec("digits", "classification", partial(load_digits, return_X_y=True)),
+        **{
+            f"multiclass_{k}": DatasetSpec(
+                f"multiclass_{k}",
+                "classification",
+                partial(
+                    make_classification,
+                    n_samples=600,
+                    n_features=20,
+                    n_informative=12,
+                    n_redundant=2,
+                    n_classes=k,
+                    n_clusters_per_class=1,
+                    random_state=42,
+                ),
+            )
+            for k in (4, 10, 30)
+        },
         "iris_binary": DatasetSpec("iris_binary", "classification", _load_iris_binary),
         "wine_binary": DatasetSpec("wine_binary", "classification", _load_wine_binary),
         "digits_0_1": DatasetSpec("digits_0_1", "classification", _load_digits_0_1),
@@ -433,7 +458,7 @@ def available_tasks(
     cqr_quantiles_values = _nested_float_list(cqr_quantiles_grid, DEFAULT_CQR_QUANTILES_GRID)
     monotonic_constraints = [[{"name": "monotonic", "decreasing": False}]]
 
-    return {
+    tasks = {
         "ridge_quantile": BenchmarkTask(
             name="ridge_quantile",
             problem_type="regression",
@@ -667,6 +692,19 @@ def available_tasks(
         ),
     }
 
+    for penalty in ("ridge", "elasticnet"):
+        base = tasks[f"{penalty}_svm"]
+        for strategy in ("ovr", "ovo"):
+            name = f"{penalty}_svm_{strategy}"
+            tasks[name] = BenchmarkTask(
+                name,
+                base.problem_type,
+                clone(base.estimator).set_params(multi_class=strategy),
+                base.param_grid,
+                base.scoring,
+            )
+    return tasks
+
 
 def run_gridsearch_benchmark(
     tasks: Iterable[BenchmarkTask] | dict[str, BenchmarkTask] | None = None,
@@ -676,6 +714,9 @@ def run_gridsearch_benchmark(
     repeats: int = 1,
     n_jobs: int | None = None,
     preprocess_X: str | None = "standard",
+    verify_objective: bool = False,
+    objective_rtol: float = 1e-8,
+    objective_atol: float = 1e-10,
     return_dataframe: bool = True,
     as_markdown: bool = False,
     markdown_columns: Iterable[str] | None = None,
@@ -701,6 +742,13 @@ def run_gridsearch_benchmark(
     preprocess_X
         Feature preprocessing applied inside the cross-validation pipeline.
         Supported values are ``"standard"``, ``"minmax"``, and ``"none"``.
+    verify_objective
+        Independently audit every candidate/fold and the final refit in an extra
+        untimed repeat, then check all timed objectives against that audit.
+        Requires outer ``n_jobs=1``; inner multiclass fits use threads. Fail on nonconvergence or
+        insufficient primal/dual accuracy. Adds audit details to each result.
+    objective_rtol, objective_atol
+        Relative and absolute tolerances for objective and optimality checks.
     return_dataframe
         If True and pandas is installed, return a pandas DataFrame. Otherwise a
         list of dictionaries is returned.
@@ -718,6 +766,12 @@ def run_gridsearch_benchmark(
         If ``as_markdown=True``, returns a Markdown table string.
     """
 
+    if verify_objective and n_jobs != 1:
+        raise ValueError("Objective verification requires n_jobs=1")
+    if verify_objective:
+        from benchmarks.fit_records import expected_keys
+        from benchmarks.objectives import record_solver_fits, validate_fit, validate_timed_fits
+
     task_list = _normalize_tasks(tasks)
     dataset_list = _normalize_datasets(datasets)
     rows = []
@@ -731,6 +785,8 @@ def run_gridsearch_benchmark(
             elapsed_values = []
             best_score = None
             best_params = None
+            timed_fits = []
+            timed_manifests = []
             for _ in range(repeats):
                 estimator = _make_pipeline(task.estimator, preprocess_X)
                 grid = GridSearchCV(
@@ -739,21 +795,71 @@ def run_gridsearch_benchmark(
                     cv=cv,
                     scoring=task.scoring,
                     n_jobs=n_jobs,
+                    error_score="raise" if verify_objective else np.nan,
                 )
 
-                start = time.perf_counter()
-                grid.fit(X, y)
-                elapsed_values.append(time.perf_counter() - start)
+                recorder = (
+                    record_solver_fits(cv=cv, n_candidates=_count_candidates(task.param_grid))
+                    if verify_objective
+                    else nullcontext([])
+                )
+                with recorder as fits:
+                    start = time.perf_counter()
+                    grid.fit(X, y)
+                    elapsed_values.append(time.perf_counter() - start)
+                timed_fits.extend(fits)
+                if verify_objective:
+                    timed_manifests.append(fits.manifest)
                 best_score = grid.best_score_
                 best_params = _json_safe(grid.best_params_)
 
+            objective_details = {}
+            if verify_objective:
+                audit_start = time.perf_counter()
+                with record_solver_fits(
+                    audit=True,
+                    rtol=objective_rtol,
+                    atol=objective_atol,
+                    cv=cv,
+                    n_candidates=_count_candidates(task.param_grid),
+                ) as audited:
+                    clone(grid).fit(X, y)
+                if any(manifest != audited.manifest for manifest in timed_manifests):
+                    raise ValueError("Timing and objective audit fitted different estimator subproblems")
+                native_count = len(expected_keys(audited.manifest, _count_candidates(task.param_grid), cv))
+                validate_timed_fits(
+                    timed_fits,
+                    audited,
+                    repeats=repeats,
+                    expected_per_repeat=native_count,
+                    rtol=objective_rtol,
+                    atol=objective_atol,
+                )
+                objective_details = {
+                    "objective_validation": "passed",
+                    "objective_repeats": 1,
+                    "n_objective_fits": len(audited),
+                    "n_estimator_fits": len(audited.manifest),
+                    "objective_manifest": audited.manifest,
+                    "objective_rtol": objective_rtol,
+                    "objective_atol": objective_atol,
+                    "max_relative_certified_gap": max(
+                        validate_fit(fit, rtol=objective_rtol, atol=objective_atol) for fit in audited
+                    ),
+                    "objective_audit_sec": time.perf_counter() - audit_start,
+                    "objective_fits": audited,
+                    "fits": timed_fits,
+                }
+
             rows.append(
                 {
+                    **objective_details,
                     "task": task.name,
                     "dataset": dataset.name,
                     "problem_type": task.problem_type,
                     "n_samples": int(X.shape[0]),
                     "n_features": int(X.shape[1]),
+                    "n_classes": int(len(np.unique(y))) if task.problem_type == "classification" else None,
                     "cv": int(cv),
                     "n_candidates": _count_candidates(task.param_grid),
                     "repeats": int(repeats),
@@ -787,6 +893,9 @@ def run_default_benchmark(
     quantile_grid: Iterable[float] | None = None,
     cqr_quantiles_grid: Iterable[Iterable[float]] | None = None,
     preprocess_X: str | None = "standard",
+    verify_objective: bool = False,
+    objective_rtol: float = 1e-8,
+    objective_atol: float = 1e-10,
     return_dataframe: bool = True,
     as_markdown: bool = False,
     markdown_columns: Iterable[str] | None = None,
@@ -807,6 +916,9 @@ def run_default_benchmark(
         repeats=repeats,
         n_jobs=n_jobs,
         preprocess_X=preprocess_X,
+        verify_objective=verify_objective,
+        objective_rtol=objective_rtol,
+        objective_atol=objective_atol,
         return_dataframe=return_dataframe,
         as_markdown=as_markdown,
         markdown_columns=markdown_columns,
@@ -825,6 +937,8 @@ def run_configured_benchmark(
 
     output_path = Path(output) if output is not None else _versioned_output_path(config["output_dir"])
     _write_markdown(rows, output_path, config=config)
+    if config["verify_objective"]:
+        _write_objective_report(rows, output_path.with_suffix(".json"), config)
     return output_path
 
 
@@ -851,6 +965,9 @@ def _run_config_rows(config: dict[str, Any]) -> list[dict[str, Any]]:
                 repeats=int(config["repeats"]),
                 n_jobs=config["n_jobs"],
                 preprocess_X=config["preprocess_X"],
+                verify_objective=config["verify_objective"],
+                objective_rtol=config["objective_rtol"],
+                objective_atol=config["objective_atol"],
                 return_dataframe=False,
             )
         )
@@ -910,12 +1027,17 @@ def _pivot_records_to_markdown(records: list[dict[str, Any]], float_digits: int)
         metric_rows = [
             "n_samples",
             "n_features",
+            "n_classes",
             "n_candidates",
             "elapsed_sec_mean",
             "elapsed_sec_std",
             "best_C",
             _score_metric_name(task_records[0]),
         ]
+        if any("objective_validation" in record for record in task_records):
+            metric_rows.extend(
+                ["objective_validation", "n_estimator_fits", "n_objective_fits", "max_relative_certified_gap"]
+            )
 
         header = "| metric | " + " | ".join(datasets) + " |"
         divider = "| " + " | ".join(["---"] * (len(datasets) + 1)) + " |"
@@ -1100,6 +1222,11 @@ def _write_markdown(rows: Any, path: Path, config: dict[str, Any] | None = None)
     path.write_text(markdown, encoding="utf-8")
 
 
+def _write_objective_report(rows: Any, path: Path, config: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"config": config, "rows": rows}, indent=2, allow_nan=False) + "\n", encoding="utf-8")
+
+
 def _versioned_output_path(output_dir: str | Path) -> Path:
     version = _safe_filename(rehline_version)
     return Path(output_dir) / f"rehline-{version}.md"
@@ -1127,6 +1254,13 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--n-jobs", type=int, default=None, help="GridSearchCV n_jobs.")
     parser.add_argument("--max-iter", type=int, help="ReHLine max_iter.")
     parser.add_argument("--tol", type=float, help="ReHLine convergence tolerance.")
+    parser.add_argument(
+        "--verify-objective", action="store_true", help="Audit objectives outside timing; requires --n-jobs 1."
+    )
+    parser.add_argument("--objective-rtol", type=float, help="Relative objective/optimality tolerance (default: 1e-8).")
+    parser.add_argument(
+        "--objective-atol", type=float, help="Absolute objective/optimality tolerance (default: 1e-10)."
+    )
     parser.add_argument("--preprocess-X", choices=["standard", "minmax", "none"], help="Feature preprocessing.")
     parser.add_argument(
         "--C",
@@ -1209,6 +1343,9 @@ def main(argv: list[str] | None = None) -> int:
         "quantile_grid": _float_list(quantile_grid, DEFAULT_QUANTILE_GRID),
         "cqr_quantiles_grid": _nested_float_list(cqr_quantiles_grid, DEFAULT_CQR_QUANTILES_GRID),
         "preprocess_X": preprocess_X,
+        "verify_objective": args.verify_objective or config["verify_objective"],
+        "objective_rtol": args.objective_rtol if args.objective_rtol is not None else config["objective_rtol"],
+        "objective_atol": args.objective_atol if args.objective_atol is not None else config["objective_atol"],
     }
     rows = _run_config_rows(rows_config)
 
@@ -1231,6 +1368,8 @@ def main(argv: list[str] | None = None) -> int:
             "output_dir": str(Path(output).parent),
         }
         _write_markdown(rows, output, config=active_config)
+    if rows_config["verify_objective"]:
+        _write_objective_report(rows, output.with_suffix(".json"), rows_config)
     print(f"Wrote {output}")
 
     return 0

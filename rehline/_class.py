@@ -10,15 +10,31 @@ import warnings
 import numpy as np
 from sklearn.base import BaseEstimator
 from sklearn.exceptions import ConvergenceWarning
-from sklearn.utils.validation import _check_sample_weight, check_array, check_is_fitted
+from sklearn.utils.validation import _check_sample_weight, check_array, check_is_fitted, check_X_y
 
 from ._base import (
     ReHLine_solver,
     _BaseReHLine,
     _cast_sample_weight,
+    _combined_constraints,
+    _fit_transaction,
     _make_constraint_rehline_param,
     _make_loss_rehline_param,
 )
+from ._validation import model_options, named_loss_parameters, numeric_array, quantiles, sample_weights
+
+
+def _problem_array(name, ndim):
+    """Keep legacy raw-problem attributes in sync with constructor parameters."""
+
+    def get(self):
+        value = getattr(self, name)
+        return np.empty((0,) * ndim) if value is None else np.asarray(value)
+
+    def set(self, value):
+        setattr(self, name, value)
+
+    return property(get, set)
 
 
 class ReHLine(_BaseReHLine, BaseEstimator):
@@ -128,6 +144,14 @@ class ReHLine(_BaseReHLine, BaseEstimator):
     .. [1] `Dai, B., Qiu, Y,. (2023). ReHLine: Regularized Composite ReLU-ReHU Loss Minimization with Linear Computation and Linear Convergence <https://openreview.net/pdf?id=3pEBW2UPAD>`_
     """
 
+    _U = _problem_array("U", 2)
+    _V = _problem_array("V", 2)
+    _S = _problem_array("S", 2)
+    _T = _problem_array("T", 2)
+    _Tau = _problem_array("Tau", 2)
+    _A = _problem_array("A", 2)
+    _b = _problem_array("b", 1)
+
     def __init__(
         self,
         C=1.0,
@@ -146,13 +170,13 @@ class ReHLine(_BaseReHLine, BaseEstimator):
         trace_freq=100,
     ):
         self.C = C
-        self._U = U if U is not None else np.empty(shape=(0, 0))
-        self._V = V if V is not None else np.empty(shape=(0, 0))
-        self._S = S if S is not None else np.empty(shape=(0, 0))
-        self._T = T if T is not None else np.empty(shape=(0, 0))
-        self._Tau = Tau if Tau is not None else np.empty(shape=(0, 0))
-        self._A = A if A is not None else np.empty(shape=(0, 0))
-        self._b = b if b is not None else np.empty(shape=(0))
+        self.U = U
+        self.V = V
+        self.S = S
+        self.T = T
+        self.Tau = Tau
+        self.A = A
+        self.b = b
         self.L = self._U.shape[0]
         self.H = self._S.shape[0]
         self.K = self._A.shape[0]
@@ -167,6 +191,7 @@ class ReHLine(_BaseReHLine, BaseEstimator):
         self._xi = np.empty(shape=(0, 0))
         self.coef_ = None
 
+    @_fit_transaction
     def fit(self, X, sample_weight=None):
         """Fit the model based on the given training data.
 
@@ -186,16 +211,16 @@ class ReHLine(_BaseReHLine, BaseEstimator):
         self : object
             An instance of the estimator.
         """
+
+        model_options(self)
+        X = check_array(X, dtype=np.float64, order="C")
+        self.n_features_in_ = X.shape[1]
         # X = check_array(X)
-        sample_weight = _check_sample_weight(sample_weight, X, dtype=X.dtype)
+        sample_weight = sample_weights(sample_weight, X.shape[0])
 
         U_weight, V_weight, Tau_weight, S_weight, T_weight = self.cast_sample_weight(sample_weight=sample_weight)
 
-        if not self.warm_start:
-            ## remove warm_start params
-            self._Lambda = np.empty(shape=(0, 0))
-            self._Gamma = np.empty(shape=(0, 0))
-            self._xi = np.empty(shape=(0, 0))
+        self._prepare_warm_start(X.shape[0])
 
         result = ReHLine_solver(
             X=X,
@@ -228,7 +253,15 @@ class ReHLine(_BaseReHLine, BaseEstimator):
         self.dual_obj_ = list(result.dual_objfns)
         self.primal_obj_ = list(result.primal_objfns)
 
-        if self.n_iter_ >= self.max_iter:
+        self.objective_ = result.objective
+        self.dual_objective_ = result.dual_objective
+        self.dual_gap_ = result.dual_gap
+        self.constraint_violation_ = result.constraint_violation
+        self.scaled_constraint_violation_ = result.scaled_constraint_violation
+        self.kkt_residual_ = result.kkt_residual
+        self.converged_ = result.converged
+
+        if not self.converged_:
             warnings.warn(
                 "ReHLine failed to converge, increase the number of iterations: `max_iter`.",
                 ConvergenceWarning,
@@ -299,17 +332,17 @@ class plqERM_Ridge(_BaseReHLine, BaseEstimator):
     max_iter : int, default=1000
         The maximum number of iterations to be run.
 
-    _U, _V: array of shape (L, n_samples), default=np.empty(shape=(0, 0))
-        The parameters pertaining to the ReLU part in the loss function.
+    U, V, S, T, Tau : None or empty array, default=None
+        Legacy parameters retained for constructor compatibility. Named-loss
+        estimators generate these matrices from ``loss``; nonempty values raise
+        ValueError at fit time. Use ReHLine or ReHLine_solver for manual matrices.
 
-    _Tau, _S, _T: array of shape (H, n_samples), default=np.empty(shape=(0, 0))
-        The parameters pertaining to the ReHU part in the loss function.
+    A: array of shape (K, n_features), default=None
+        Additional linear-constraint coefficients. When ``constraint`` is also
+        supplied, both constraint lists are enforced, with a warning per fit.
 
-    _A: array of shape (K, n_features), default=np.empty(shape=(0, 0))
-        The coefficient matrix in the linear constraint.
-
-    _b: array of shape (K, ), default=np.empty(shape=0)
-        The intercept vector in the linear constraint.
+    b: array of shape (K,), default=None
+        Offsets in ``A @ coef_ + b >= 0``; must be supplied together with A.
 
     Attributes
     ----------
@@ -364,13 +397,20 @@ class plqERM_Ridge(_BaseReHLine, BaseEstimator):
         self.loss = loss
         self.constraint = constraint if constraint is not None else []
         self.C = C
-        self._U = U if U is not None else np.empty(shape=(0, 0))
-        self._V = V if V is not None else np.empty(shape=(0, 0))
-        self._S = S if S is not None else np.empty(shape=(0, 0))
-        self._T = T if T is not None else np.empty(shape=(0, 0))
-        self._Tau = Tau if Tau is not None else np.empty(shape=(0, 0))
-        self._A = A if A is not None else np.empty(shape=(0, 0))
-        self._b = b if b is not None else np.empty(shape=(0))
+        self.U = U
+        self.V = V
+        self.S = S
+        self.T = T
+        self.Tau = Tau
+        self.A = A
+        self.b = b
+        self._U = np.empty(shape=(0, 0))
+        self._V = np.empty(shape=(0, 0))
+        self._S = np.empty(shape=(0, 0))
+        self._T = np.empty(shape=(0, 0))
+        self._Tau = np.empty(shape=(0, 0))
+        self._A = np.empty((0, 0))
+        self._b = np.empty(0)
         self.L = self._U.shape[0]
         self.H = self._S.shape[0]
         self.K = self._A.shape[0]
@@ -385,6 +425,7 @@ class plqERM_Ridge(_BaseReHLine, BaseEstimator):
         self._xi = np.empty(shape=(0, 0))
         self.coef_ = None
 
+    @_fit_transaction
     def fit(self, X, y, sample_weight=None):
         """Fit the model based on the given training data.
 
@@ -409,24 +450,27 @@ class plqERM_Ridge(_BaseReHLine, BaseEstimator):
 
 
         """
+
+        model_options(self)
+        named_loss_parameters(self)
+        X, y = check_X_y(X, y, dtype=np.float64, order="C")
+        self.n_features_in_ = X.shape[1]
         n, d = X.shape
 
         ## loss -> rehline params
         self._U, self._V, self._Tau, self._S, self._T = _make_loss_rehline_param(loss=self.loss, X=X, y=y)
 
         ## constrain -> rehline params
-        self._A, self._b = _make_constraint_rehline_param(constraint=self.constraint, X=X, y=y)
+        self._A, self._b = _make_constraint_rehline_param(
+            _combined_constraints(self.constraint, self.A, self.b), X=X, y=y
+        )
         self.auto_shape()
 
-        sample_weight = _check_sample_weight(sample_weight, X, dtype=X.dtype)
+        sample_weight = sample_weights(sample_weight, X.shape[0])
 
         U_weight, V_weight, Tau_weight, S_weight, T_weight = self.cast_sample_weight(sample_weight=sample_weight)
 
-        if not self.warm_start:
-            ## remove warm_start params
-            self._Lambda = np.empty(shape=(0, 0))
-            self._Gamma = np.empty(shape=(0, 0))
-            self._xi = np.empty(shape=(0, 0))
+        self._prepare_warm_start(X.shape[0])
 
         result = ReHLine_solver(
             X=X,
@@ -459,7 +503,15 @@ class plqERM_Ridge(_BaseReHLine, BaseEstimator):
         self.dual_obj_ = list(result.dual_objfns)
         self.primal_obj_ = list(result.primal_objfns)
 
-        if self.n_iter_ >= self.max_iter:
+        self.objective_ = result.objective
+        self.dual_objective_ = result.dual_objective
+        self.dual_gap_ = result.dual_gap
+        self.constraint_violation_ = result.constraint_violation
+        self.scaled_constraint_violation_ = result.scaled_constraint_violation
+        self.kkt_residual_ = result.kkt_residual
+        self.converged_ = result.converged
+
+        if not self.converged_:
             warnings.warn(
                 "ReHLine failed to converge, increase the number of iterations: `max_iter`.",
                 ConvergenceWarning,
@@ -528,7 +580,7 @@ class plqERM_ElasticNet(_BaseReHLine, BaseEstimator):
         is an L2 penalty. For 0 < l1_ratio < 1, the penalty is a combination of L1 and L2.
 
     omega : array of shape (n_features, ), default=np.empty(shape=0)
-        Non-negative weight coefficients for adaptive lasso. If not provided, all coefficients receive the 
+        Non-negative weight coefficients for adaptive lasso. If not provided, all coefficients receive the
         same L1 penalty controlled by ``l1_ratio``.
 
     verbose : int, default=0
@@ -539,17 +591,17 @@ class plqERM_ElasticNet(_BaseReHLine, BaseEstimator):
     max_iter : int, default=1000
         The maximum number of iterations to be run.
 
-    _U, _V: array of shape (L, n_samples), default=np.empty(shape=(0, 0))
-        The parameters pertaining to the ReLU part in the loss function.
+    U, V, S, T, Tau : None or empty array, default=None
+        Legacy parameters retained for constructor compatibility. Named-loss
+        estimators generate these matrices from ``loss``; nonempty values raise
+        ValueError at fit time. Use ReHLine or ReHLine_solver for manual matrices.
 
-    _Tau, _S, _T: array of shape (H, n_samples), default=np.empty(shape=(0, 0))
-        The parameters pertaining to the ReHU part in the loss function.
+    A: array of shape (K, n_features), default=None
+        Additional linear-constraint coefficients. When ``constraint`` is also
+        supplied, both constraint lists are enforced, with a warning per fit.
 
-    _A: array of shape (K, n_features), default=np.empty(shape=(0, 0))
-        The coefficient matrix in the linear constraint.
-
-    _b: array of shape (K, ), default=np.empty(shape=0)
-        The intercept vector in the linear constraint.
+    b: array of shape (K,), default=None
+        Offsets in ``A @ coef_ + b >= 0``; must be supplied together with A.
 
     Attributes
     ----------
@@ -608,13 +660,20 @@ class plqERM_ElasticNet(_BaseReHLine, BaseEstimator):
         self.C = C
         self.l1_ratio = l1_ratio
         self.omega = omega if omega is not None else np.empty(shape=(0))
-        self._U = U if U is not None else np.empty(shape=(0, 0))
-        self._V = V if V is not None else np.empty(shape=(0, 0))
-        self._S = S if S is not None else np.empty(shape=(0, 0))
-        self._T = T if T is not None else np.empty(shape=(0, 0))
-        self._Tau = Tau if Tau is not None else np.empty(shape=(0, 0))
-        self._A = A if A is not None else np.empty(shape=(0, 0))
-        self._b = b if b is not None else np.empty(shape=(0))
+        self.U = U
+        self.V = V
+        self.S = S
+        self.T = T
+        self.Tau = Tau
+        self.A = A
+        self.b = b
+        self._U = np.empty(shape=(0, 0))
+        self._V = np.empty(shape=(0, 0))
+        self._S = np.empty(shape=(0, 0))
+        self._T = np.empty(shape=(0, 0))
+        self._Tau = np.empty(shape=(0, 0))
+        self._A = np.empty((0, 0))
+        self._b = np.empty(0)
         self.L = self._U.shape[0]
         self.H = self._S.shape[0]
         self.K = self._A.shape[0]
@@ -630,6 +689,7 @@ class plqERM_ElasticNet(_BaseReHLine, BaseEstimator):
         self._mu = np.empty(shape=(0))
         self.coef_ = None
 
+    @_fit_transaction
     def fit(self, X, y, sample_weight=None):
         """Fit the model based on the given training data.
 
@@ -654,16 +714,24 @@ class plqERM_ElasticNet(_BaseReHLine, BaseEstimator):
 
 
         """
+
+        model_options(self)
+        named_loss_parameters(self)
+        X, y = check_X_y(X, y, dtype=np.float64, order="C")
+        self.n_features_in_ = X.shape[1]
+        omega = np.empty(0) if self.omega is None else numeric_array(self.omega, "omega", ndim=1)
         n, d = X.shape
 
         ## loss -> rehline params
         self._U, self._V, self._Tau, self._S, self._T = _make_loss_rehline_param(loss=self.loss, X=X, y=y)
 
         ## constrain -> rehline params
-        self._A, self._b = _make_constraint_rehline_param(constraint=self.constraint, X=X, y=y)
+        self._A, self._b = _make_constraint_rehline_param(
+            _combined_constraints(self.constraint, self.A, self.b), X=X, y=y
+        )
         self.auto_shape()
 
-        sample_weight = _check_sample_weight(sample_weight, X, dtype=X.dtype)
+        sample_weight = sample_weights(sample_weight, X.shape[0])
         C_eff = self.C / (1 - self.l1_ratio)
         U_weight, V_weight, Tau_weight, S_weight, T_weight = _cast_sample_weight(
             self._U,
@@ -675,31 +743,18 @@ class plqERM_ElasticNet(_BaseReHLine, BaseEstimator):
             sample_weight=sample_weight,
         )
 
-        if not self.warm_start:
-            ## remove warm_start params
-            self._Lambda = np.empty(shape=(0, 0))
-            self._Gamma = np.empty(shape=(0, 0))
-            self._xi = np.empty(shape=(0, 0))
-            self._mu = np.empty(shape=(0))
-
         if self.l1_ratio == 0:
             self.rho = None
-            if self.omega.size > 0:
-                warnings.warn(
-                    f"Omega will be ignored since l1_ratio=0.",
-                    UserWarning,
-                    stacklevel=2
-                )
+            if omega.size > 0:
+                warnings.warn("Omega will be ignored since l1_ratio=0.", UserWarning, stacklevel=2)
         else:
-            if self.omega.size not in (0, d):
-                raise ValueError(
-                    f"Omega length {self.omega.size} must be 0 or {d} (n_features)"
-                )
-            if not np.all(self.omega >= 0):
-                raise ValueError(
-                    "All elements in omega must be strictly non-negative."
-                )
-            self.rho = np.full(d, self.l1_ratio / (1 - self.l1_ratio)) * (self.omega if self.omega.size == d else 1.0)
+            if omega.size not in (0, d):
+                raise ValueError(f"Omega length {omega.size} must be 0 or {d} (n_features)")
+            if not np.all(omega >= 0):
+                raise ValueError("All elements in omega must be strictly non-negative.")
+            self.rho = np.full(d, self.l1_ratio / (1 - self.l1_ratio)) * (omega if omega.size == d else 1.0)
+
+        self._prepare_warm_start(X.shape[0], self.rho)
 
         result = ReHLine_solver(
             X=X,
@@ -735,7 +790,15 @@ class plqERM_ElasticNet(_BaseReHLine, BaseEstimator):
         self.dual_obj_ = list(result.dual_objfns)
         self.primal_obj_ = list(result.primal_objfns)
 
-        if self.n_iter_ >= self.max_iter:
+        self.objective_ = result.objective
+        self.dual_objective_ = result.dual_objective
+        self.dual_gap_ = result.dual_gap
+        self.constraint_violation_ = result.constraint_violation
+        self.scaled_constraint_violation_ = result.scaled_constraint_violation
+        self.kkt_residual_ = result.kkt_residual
+        self.converged_ = result.converged
+
+        if not self.converged_:
             warnings.warn(
                 "ReHLine failed to converge, increase the number of iterations: `max_iter`.",
                 ConvergenceWarning,
@@ -769,9 +832,15 @@ class CQR_Ridge(_BaseReHLine, BaseEstimator):
 
     It allows for the fitting of a linear regression model that minimizes a composite quantile loss function.
 
+    Slopes are shared across quantiles and fitted jointly with one intercept
+    per quantile. Both slopes and intercepts are regularized. The solver uses
+    the original feature matrix implicitly, without expanding it to
+    ``(n_samples * n_quantiles, n_features + n_quantiles)``. Loss and dual
+    storage still grows with ``n_samples * n_quantiles``.
+
     .. math::
 
-        \min_{\mathbf{\beta} \in \mathbb{R}^d, \mathbf{\beta_0} \in \mathbb{R}^K} \sum_{k=1}^K \sum_{i=1}^n \text{PLQ}(y_i, \mathbf{x}_i^T \mathbf{\beta} + \mathbf{\beta_0k}) + \frac{1}{2} \| \mathbf{\beta} \|_2^2.
+        \min_{\mathbf{\beta} \in \mathbb{R}^d, \mathbf{\beta_0} \in \mathbb{R}^K} C \sum_{k=1}^K \sum_{i=1}^n w_i \text{PLQ}(y_i, \mathbf{x}_i^T \mathbf{\beta} + \mathbf{\beta_0k}) + \frac{1}{2} (\| \mathbf{\beta} \|_2^2 + \| \mathbf{\beta_0} \|_2^2).
 
 
     Parameters
@@ -870,8 +939,8 @@ class CQR_Ridge(_BaseReHLine, BaseEstimator):
         self._Gamma = np.empty(shape=(0, 0))
         self._xi = np.empty(shape=(0, 0))
         self.coef_ = None
-        self.quantiles_ = np.array(quantiles)  # consistent with coef_ and intercept_ in sklearn
 
+    @_fit_transaction
     def fit(self, X, y, sample_weight=None):
         """Fit the model based on the given training data.
 
@@ -896,17 +965,16 @@ class CQR_Ridge(_BaseReHLine, BaseEstimator):
 
 
         """
+
+        model_options(self)
+        X, y = check_X_y(X, y, dtype=np.float64, order="C")
+        self.n_features_in_ = X.shape[1]
+        self.quantiles_ = quantiles(self.quantiles).copy()
         n, d = X.shape
         n_qt = len(self.quantiles_)
 
-        # transform X and sample_weight to fit the CQR
-        transform_X = np.zeros((n * n_qt, d + n_qt))
-
-        for q_idx, _ in enumerate(self.quantiles_):
-            transform_X[q_idx * n : (q_idx + 1) * n, :d] = X
-            transform_X[q_idx * n : (q_idx + 1) * n, d + q_idx] = 1.0
-
-        transform_sample_weight = np.tile(sample_weight, n_qt) if sample_weight is not None else None
+        # The native design evaluates virtual rows [X[i], e_q] from shared X.
+        transform_sample_weight = np.tile(sample_weights(sample_weight, n), n_qt)
 
         ## loss -> rehline params
         self._Tau = np.empty(shape=(0, 0))
@@ -926,20 +994,15 @@ class CQR_Ridge(_BaseReHLine, BaseEstimator):
         self._A, self._b = np.empty(shape=(0, 0)), np.empty(shape=(0))
         self.auto_shape()
 
-        transform_sample_weight = _check_sample_weight(transform_sample_weight, transform_X, dtype=transform_X.dtype)
-
         U_weight, V_weight, Tau_weight, S_weight, T_weight = self.cast_sample_weight(
             sample_weight=transform_sample_weight
         )
 
-        if not self.warm_start:
-            ## remove warm_start params
-            self._Lambda = np.empty(shape=(0, 0))
-            self._Gamma = np.empty(shape=(0, 0))
-            self._xi = np.empty(shape=(0, 0))
+        self._prepare_warm_start(n * n_qt)
 
         result = ReHLine_solver(
-            X=transform_X,
+            X=X,
+            _quantile_count=n_qt,
             U=U_weight,
             V=V_weight,
             Tau=Tau_weight,
@@ -970,7 +1033,15 @@ class CQR_Ridge(_BaseReHLine, BaseEstimator):
         self.dual_obj_ = list(result.dual_objfns)
         self.primal_obj_ = list(result.primal_objfns)
 
-        if self.n_iter_ >= self.max_iter:
+        self.objective_ = result.objective
+        self.dual_objective_ = result.dual_objective
+        self.dual_gap_ = result.dual_gap
+        self.constraint_violation_ = result.constraint_violation
+        self.scaled_constraint_violation_ = result.scaled_constraint_violation
+        self.kkt_residual_ = result.kkt_residual
+        self.converged_ = result.converged
+
+        if not self.converged_:
             warnings.warn(
                 "ReHLine failed to converge, increase the number of iterations: `max_iter`.",
                 ConvergenceWarning,
@@ -978,6 +1049,17 @@ class CQR_Ridge(_BaseReHLine, BaseEstimator):
             )
 
         return self
+
+    def to_inference(self):
+        """Return an independent prediction snapshot without loss/dual state.
+
+        The snapshot preserves fitted quantiles and final diagnostics, supports
+        pickle/joblib serialization, and cannot be fitted or warm-started.
+        The original estimator is unchanged and remains trainable.
+        """
+        from ._inference import _cqr_snapshot
+
+        return _cqr_snapshot(self)
 
     def predict(self, X):
         """The prediction for the given dataset.
@@ -996,19 +1078,9 @@ class CQR_Ridge(_BaseReHLine, BaseEstimator):
         check_is_fitted(self)
         X = check_array(X)
 
-        n, d = X.shape
-        n_qt = len(self.quantiles_)
-
-        # transform X for CQR prediction
-        transform_X = np.zeros((n * n_qt, d + n_qt))
-
-        for q_idx, _ in enumerate(self.quantiles_):
-            transform_X[q_idx * n : (q_idx + 1) * n, :d] = X
-            transform_X[q_idx * n : (q_idx + 1) * n, d + q_idx] = 1.0
-
-        # get beta by concatenating coef_ and intercept_
-        beta = np.concatenate((self.coef_, self.intercept_))
-        return np.dot(transform_X, beta).reshape(-1, n_qt, order="F")
+        if X.shape[1] != self.n_features_in_:
+            raise ValueError(f"X must have {self.n_features_in_} features")
+        return (X @ self.coef_)[:, None] + self.intercept_[None, :]
 
 
 # # ReHLine estimator with an option of additional linear term

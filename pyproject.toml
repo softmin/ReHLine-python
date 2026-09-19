@@ -15,26 +15,25 @@ requires-python = ">= 3.10"
 dependencies = [
     "numpy >= 1.23.5",
     "scipy >= 1.11.4",
-    "scikit-learn >= 1.2.2"
+    "scikit-learn >= 1.6.0"
 ]
 
 [tool.setuptools_scm]
-tag_prefix = "v"
 
-[pyproject.urls]
+[project.urls]
 homepage = "https://rehline.github.io/"
 repository = "https://github.com/softmin/ReHLine-python"
 documentation = "https://rehline-python.readthedocs.io/en/latest/index.html"
 
-[tool.setuptools]
-py-modules = ["build"]
-
 [tool.cibuildwheel]
 # Only build on CPython
 build = "cp*"
+test-extras = ["test"]
+test-command = "python {project}/tools/test_installed.py"
 
 [project.optional-dependencies]
 test = ["pytest >= 7.0", "pandas >= 1.5.0", "pytest-cov"]
+benchmark = ["cvxpy >= 1.6.0"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -43,9 +42,10 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "--cov=rehline --cov-report=term-missing"
+filterwarnings = ["error::sklearn.exceptions.ConvergenceWarning"]
 
 [build-system]
-requires = ["requests ~= 2.31.0", "pybind11 ~= 3.0.0", "setuptools >= 80.0.0", "wheel >= 0.42.0", "setuptools-scm >= 8.0"]
+requires = ["pybind11 ~= 3.0.0", "setuptools >= 80.0.0", "wheel >= 0.42.0", "setuptools-scm >= 8.0"]
 build-backend = "setuptools.build_meta"
 
 # --- Coverage ---

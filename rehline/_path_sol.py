@@ -1,4 +1,5 @@
 import time
+from copy import deepcopy
 
 import numpy as np
 
@@ -127,6 +128,9 @@ def plqERM_Ridge_path_sol(
         log_eps = np.log10(eps)
         Cs = np.logspace(log_eps, -log_eps, n_Cs)
 
+    if np.ndim(Cs) != 1 or len(Cs) == 0 or not np.all(np.isfinite(Cs)) or np.any(np.asarray(Cs) <= 0):
+        raise ValueError("Cs must be a nonempty array of finite positive values")
+
     # Sort Cs to ensure computation starts from the smallest value
     Cs = np.sort(Cs)
     n_Cs = len(Cs)
@@ -180,9 +184,9 @@ def plqERM_Ridge_path_sol(
         # Compute loss function parameters for ReHLoss
         l2_norm = np.linalg.norm(clf.coef_) ** 2
         score = clf.decision_function(X)
-        total_obj = loss_obj(score) + 0.5 * l2_norm
-        obj_values.append(round(total_obj, 4))
-        L2_norms.append(round(np.linalg.norm(clf.coef_), 4))
+        total_obj = C * loss_obj(score) + 0.5 * l2_norm
+        obj_values.append(float(total_obj))
+        L2_norms.append(float(np.linalg.norm(clf.coef_)))
 
         # if warm_start:
         #     Lambda_ws = clf.Lambda
@@ -203,9 +207,9 @@ def plqERM_Ridge_path_sol(
         print("\nPLQ ERM Path Solution Results")
         print("=" * 90)
         if return_time:
-            print(f"{'C Value':<15}{'Iterations':<15}{'Time (s)':<20}{'Loss':<20}{'L2 Norm':<20}")
+            print(f"{'C Value':<15}{'Iterations':<15}{'Time (s)':<20}{'Objective':<20}{'L2 Norm':<20}")
         else:
-            print(f"{'C Value':<15}{'Iterations':<15}{'Loss':<20}{'L2 Norm':<20}")
+            print(f"{'C Value':<15}{'Iterations':<15}{'Objective':<20}{'L2 Norm':<20}")
         print("-" * 90)
 
         if return_time:
@@ -241,6 +245,7 @@ def CQR_Ridge_path_sol(
     shrink=1,
     warm_start=False,
     return_time=True,
+    compact=False,
 ):
     """
     Compute the regularization path for Composite Quantile Regression (CQR) with ridge penalty.
@@ -286,13 +291,20 @@ def CQR_Ridge_path_sol(
     return_time : bool, default=True
         Whether to return a list of fit durations.
 
+    compact : bool, default=False
+        Return independent inference snapshots in ``models`` instead of full
+        fitted estimators. Snapshots retain prediction metadata and final
+        objective/convergence diagnostics but omit training loss/dual arrays.
+        They cannot fit or warm-start. The working estimator still uses
+        ``warm_start`` across the path, and returned array shapes are unchanged.
+
     Returns
     -------
     Cs : ndarray
         List of regularization strengths.
 
     models : list
-        List of fitted model objects.
+        Full fitted models, or inference snapshots when ``compact=True``.
 
     coefs : ndarray of shape (n_Cs, n_quantiles, n_features)
         Coefficient matrices per quantile and `C`.
@@ -334,11 +346,18 @@ def CQR_Ridge_path_sol(
 
     """
 
+    if not isinstance(compact, (bool, np.bool_)):
+        raise ValueError("compact must be boolean")
+
     if Cs is None:
         log_Cs = np.linspace(np.log10(eps), np.log10(10), n_Cs)
         Cs = np.power(10.0, log_Cs)
     else:
         Cs = np.array(Cs)
+
+    if np.ndim(Cs) != 1 or len(Cs) == 0 or not np.all(np.isfinite(Cs)) or np.any(Cs <= 0):
+        raise ValueError("Cs must be a nonempty array of finite positive values")
+    Cs = np.sort(Cs)
 
     models = []
     fit_times = []
@@ -368,7 +387,7 @@ def CQR_Ridge_path_sol(
         coef_matrix = np.tile(clf.coef_, (n_qt, 1))
         intercept_vector = clf.intercept_
 
-        models.append(clf)
+        models.append(clf.to_inference() if compact else deepcopy(clf))
         coefs.append(coef_matrix)
         intercepts.append(intercept_vector)
 

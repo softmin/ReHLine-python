@@ -99,7 +99,7 @@ def test_elasticnet_clf_l1_ratio_zero():
 
 def test_elasticnet_clf_l1_ratio_invalid_raises():
     with pytest.raises(ValueError, match="l1_ratio"):
-        plq_ElasticNet_Classifier(loss={"name": "svm"}, C=1.0, l1_ratio=1.0)
+        plq_ElasticNet_Classifier(loss={"name": "svm"}, C=1.0, l1_ratio=1.0).fit(*_binary_dataset())
 
 def test_elasticnet_clf_binary_omega_effect():
     """Model coefficient with higher omega weights should be smaller."""
@@ -291,7 +291,7 @@ def test_elasticnet_reg_l1_ratio_zero():
 
 def test_elasticnet_reg_l1_ratio_invalid_raises():
     with pytest.raises(ValueError, match="l1_ratio"):
-        plq_ElasticNet_Regressor(loss={"name": "QR", "qt": 0.5}, C=1.0, l1_ratio=1.0)
+        plq_ElasticNet_Regressor(loss={"name": "QR", "qt": 0.5}, C=1.0, l1_ratio=1.0).fit(*_reg_dataset())
 
 
 def test_elasticnet_reg_intercept_on():
@@ -314,12 +314,13 @@ def test_elasticnet_reg_intercept_off():
     assert reg.coef_.shape == (X.shape[1],)
 
 
-def test_elasticnet_reg_predict_equals_decision_function():
+def test_elasticnet_reg_uses_predict_for_regression():
     X, y = _reg_dataset()
     X_tr, X_te, y_tr, _ = train_test_split(X, y, test_size=0.2, random_state=0)
     reg = plq_ElasticNet_Regressor(loss={"name": "QR", "qt": 0.5}, C=1.0, l1_ratio=0.5)
     reg.fit(X_tr, y_tr)
-    np.testing.assert_array_equal(reg.predict(X_te), reg.decision_function(X_te))
+    np.testing.assert_allclose(reg.predict(X_te), X_te @ reg.coef_ + reg.intercept_)
+    assert not hasattr(reg, "decision_function")
 
 def test_elasticnet_reg_omega_effect():
     """Model coefficient with higher omega weights should be smaller."""

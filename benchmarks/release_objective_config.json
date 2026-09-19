@@ -1,0 +1,66 @@
+{
+  "task_datasets": {
+    "ridge_quantile": [
+      "diabetes",
+      "make_regression_10k"
+    ],
+    "ridge_quantile_monotonic": [
+      "diabetes",
+      "make_regression_10k"
+    ],
+    "elasticnet_quantile": [
+      "diabetes",
+      "make_regression_10k"
+    ],
+    "elasticnet_quantile_monotonic": [
+      "diabetes",
+      "make_regression_10k"
+    ],
+    "ridge_svm": [
+      "breast_cancer",
+      "digits_low_high"
+    ],
+    "elasticnet_svm": [
+      "breast_cancer",
+      "digits_low_high"
+    ],
+    "ridge_svm_ovr": [
+      "iris",
+      "wine",
+      "digits"
+    ],
+    "ridge_svm_ovo": [
+      "iris",
+      "wine",
+      "digits"
+    ],
+    "elasticnet_svm_ovr": [
+      "iris",
+      "wine",
+      "digits"
+    ],
+    "elasticnet_svm_ovo": [
+      "iris",
+      "wine",
+      "digits"
+    ]
+  },
+  "cv": 3,
+  "repeats": 3,
+  "n_jobs": 1,
+  "max_iter": 1000000,
+  "tol": 1e-09,
+  "C_grid": [
+    0.01,
+    0.1,
+    1.0
+  ],
+  "l1_ratio_grid": [
+    0.2
+  ],
+  "quantile_grid": [
+    0.25
+  ],
+  "preprocess_X": "standard",
+  "output_dir": "benchmarks/results/release"
+}

@@ -47,7 +47,7 @@ def mf_data():
 # ---------------------------------------------------------------------------
 
 
-def test_mf_mae_regression_fits(mf_data):
+def test_mf_mae_regression_fits(mf_data, fit_mf):
     """plqMF_Ridge with MAE loss should fit and return a finite objective."""
     d = mf_data
     model = plqMF_Ridge(
@@ -59,13 +59,13 @@ def test_mf_mae_regression_fits(mf_data):
         max_iter=5000,
         tol=0.01,
     )
-    model.fit(d["X_train"], d["y_train"])
+    fit_mf(model, d["X_train"], d["y_train"])
 
     obj = model.obj(d["X_test"], d["y_test"])
     assert np.isfinite(obj[0]), f"Objective should be finite, got {obj}"
 
 
-def test_mf_mse_regression_fits(mf_data):
+def test_mf_mse_regression_fits(mf_data, fit_mf):
     """plqMF_Ridge with MSE loss should fit and return a finite objective."""
     d = mf_data
     model = plqMF_Ridge(
@@ -77,7 +77,7 @@ def test_mf_mse_regression_fits(mf_data):
         max_iter=5000,
         tol=0.01,
     )
-    model.fit(d["X_train"], d["y_train"])
+    fit_mf(model, d["X_train"], d["y_train"])
 
     obj = model.obj(d["X_test"], d["y_test"])
     assert np.isfinite(obj[0]), f"Objective should be finite, got {obj}"
@@ -202,7 +202,7 @@ def test_mf_biased_false():
     assert np.isfinite(obj_val)
 
 
-def test_mf_verbose_output(capsys):
+def test_mf_verbose_output(capsys, fit_mf):
     """Test verbose printing (lines 308, 464-466)."""
     X = np.array([[0, 0], [0, 1], [1, 0], [1, 1]])
     y = np.array([1.0, 2.0, 3.0, 4.0])
@@ -219,7 +219,7 @@ def test_mf_verbose_output(capsys):
         max_iter_CD=2,
         verbose=1,
     )
-    model.fit(X, y)
+    fit_mf(model, X, y)
     captured = capsys.readouterr()
     assert "Iteration" in captured.out
     assert "Average Loss" in captured.out
@@ -235,12 +235,13 @@ def test_mf_convergence_warning():
     model = plqMF_Ridge(
         n_users=2,
         n_items=2,
-        loss={"name": "mae"},
+        loss={"name": "MSE"},
         rank=2,
         C=0.1,
-        max_iter=1,  # Only 1 iteration to guarantee non-convergence
+        max_iter=1,  # The coupled quadratic subproblem needs multiple sweeps
         tol=1e-10,
         max_iter_CD=1,
+        random_state=0,
     )
     with pytest.warns(ConvergenceWarning, match="ReHLine failed to converge"):
         model.fit(X, y)
@@ -258,22 +259,22 @@ def test_mf_param_validation_errors():
         model.fit(np.array([[0, 0]]), np.array([1.0]))
 
     # Test invalid C (must be positive)
-    with pytest.raises(ValueError, match="C must be positive"):
+    with pytest.raises(ValueError, match="C must be .*positive"):
         model = plqMF_Ridge(n_users=10, n_items=10, loss={"name": "mae"}, C=0.0)
         model.fit(np.array([[0, 0]]), np.array([1.0]))
 
     # Test invalid tol_CD (must be positive)
-    with pytest.raises(ValueError, match="tol_CD must be positive"):
+    with pytest.raises(ValueError, match="tol_CD must be .*positive"):
         model = plqMF_Ridge(n_users=10, n_items=10, loss={"name": "mae"}, tol_CD=0.0)
         model.fit(np.array([[0, 0]]), np.array([1.0]))
 
     # Test invalid tol (must be positive)
-    with pytest.raises(ValueError, match="tol must be positive"):
+    with pytest.raises(ValueError, match="tol must be .*positive"):
         model = plqMF_Ridge(n_users=10, n_items=10, loss={"name": "mae"}, tol=0.0)
         model.fit(np.array([[0, 0]]), np.array([1.0]))
 
 
-def test_mf_nonneg_constraint(mf_data):
+def test_mf_nonneg_constraint(mf_data, fit_mf):
     """plqMF_Ridge with non-negative constraints should produce non-negative factors."""
     d = mf_data
     model = plqMF_Ridge(
@@ -282,16 +283,15 @@ def test_mf_nonneg_constraint(mf_data):
         n_items=d["n_items"],
         rank=3,
         C=0.001,
-        max_iter=3000,
-        tol=0.05,
+        max_iter=10000,
+        tol=1e-7,
+        random_state=0,
         constraint_user=[{"name": ">=0"}],
         constraint_item=[{"name": ">=0"}],
     )
-    model.fit(d["X_train"], d["y_train"])
+    fit_mf(model, d["X_train"], d["y_train"])
 
     # P: user factor matrix, shape (n_users, rank)
     assert np.all(model.P >= -1e-4), "User factors (P) should be non-negative (within numerical tolerance)"
-    # Ui: list of item factor vectors (length n_items); check each individually
-    for i, ui in enumerate(model.Ui):
-        if ui is not None and hasattr(ui, "__len__"):
-            assert np.all(np.asarray(ui) >= -1e-4), f"Item factor Ui[{i}] should be non-negative"
+    # Q contains item factors; Ui contains interaction row indices.
+    assert np.all(model.Q >= -1e-4), "Item factors (Q) should be non-negative (within numerical tolerance)"

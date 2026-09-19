@@ -50,7 +50,7 @@ def test_path_sol_loss_range_with_larger_C():
     # than a small C, allowing generous tolerance for convergence noise.
     Cs = np.array([0.01, 0.1, 1.0, 10.0])
 
-    _, _, _, loss_vals, _, _ = plqERM_Ridge_path_sol(
+    _, _, _, objective_vals, _, coefs = plqERM_Ridge_path_sol(
         X,
         y,
         loss=loss,
@@ -62,6 +62,8 @@ def test_path_sol_loss_range_with_larger_C():
         constraint=[],
         return_time=True,
     )
+
+    loss_vals = np.maximum(1 - y[:, None] * (X @ coefs), 0).sum(axis=0)
 
     # Loss at the largest C should be no more than 5% above loss at the smallest C
     # (allows for convergence noise, verifies the general trend)

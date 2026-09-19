@@ -1,6 +1,7 @@
 name: CI Tests
 
 on:
+  workflow_call:
   push:
     branches: [main]
     paths-ignore:
@@ -12,6 +13,113 @@ on:
     branches: [main]
 
 jobs:
+  correctness-benchmark:
+    name: "Small convex problems / CVXPY ${{ matrix.reference }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        reference: [latest, minimum]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install benchmark dependencies
+        run: |
+          if [ "${{ matrix.reference }}" = "minimum" ]; then
+            printf '%s\n' 'cvxpy==1.6.0' 'numpy==1.26.4' 'scipy==1.13.1' > /tmp/reference-constraints.txt
+            python -m pip install -c /tmp/reference-constraints.txt -e ".[test,benchmark]"
+          else
+            python -m pip install -e ".[test,benchmark]"
+          fi
+          python -m pip check
+      - name: Test benchmark validation
+        run: >-
+          pytest tests/test_benchmark_objectives.py tests/test_multiclass_benchmark_audit.py
+          tests/test_correctness_benchmark.py tests/test_estimator_correctness_benchmark.py
+          tests/test_api_correctness_benchmark.py tests/test_cqr_implicit.py
+          tests/test_public_fit_transactions.py tests/test_zero_margin_policy.py
+          tests/test_numerical_range.py tests/test_quantile_snapshot.py
+          tests/test_inference_snapshots.py tests/test_constraint_scaling.py
+          tests/test_mf_outer_warning.py tests/test_release_artifact_gate.py
+          tests/test_weighted_balance.py tests/test_mf_constraint_scaling.py
+          tests/test_review_correctness_fixes.py tests/test_target_dtypes.py
+          tests/test_constant_fairness.py tests/test_mf_sampling.py --no-cov -q
+      - name: Check equivalent constraint representations against CVXPY
+        env:
+          OPENBLAS_NUM_THREADS: "1"
+          OMP_NUM_THREADS: "1"
+        run: python -m benchmarks.constraint_scaling --cases 600
+      - name: Compare 1200 small problems against CVXPY
+        env:
+          OPENBLAS_NUM_THREADS: "1"
+          OMP_NUM_THREADS: "1"
+        run: python -m benchmarks.correctness --cases 1200
+      - name: Check 1200 public estimator problems
+        env:
+          OPENBLAS_NUM_THREADS: "1"
+          OMP_NUM_THREADS: "1"
+        run: python -m benchmarks.estimator_correctness --cases 1200
+      - name: Check implicit CQR against dense and CVXPY references
+        env:
+          OPENBLAS_NUM_THREADS: "1"
+          OMP_NUM_THREADS: "1"
+        run: python -m benchmarks.cqr_correctness --cases 600
+      - name: Check 1200 constraint and multiclass API problems
+        env:
+          OPENBLAS_NUM_THREADS: "1"
+          OMP_NUM_THREADS: "1"
+        run: python -m benchmarks.api_correctness --cases 1200
+      - name: Check fairness reference and examples
+        run: pytest tests/test_fairness_centering.py tests/test_fairness_benchmark.py --no-cov -q
+      - name: Compare 600 small fairness problems against CVXPY
+        env:
+          OPENBLAS_NUM_THREADS: "1"
+          OMP_NUM_THREADS: "1"
+        run: python -m benchmarks.fairness_correctness --cases 600
+      - name: Save correctness report and failing problems
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: correctness-benchmark-${{ matrix.reference }}
+          path: benchmarks/results/correctness/
+
+  wheel-correctness:
+    name: "Installed wheel objectives / ${{ matrix.os }}"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      VECLIB_MAXIMUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build wheel
+        run: python -m pip wheel . --no-deps --wheel-dir wheelhouse
+      - name: Install wheel and reference dependencies
+        run: >-
+          python -c "import pathlib, subprocess, sys;
+          wheel, = pathlib.Path('wheelhouse').glob('*.whl');
+          subprocess.run([sys.executable, '-m', 'pip', 'install',
+          str(wheel) + '[test,benchmark]'], check=True)"
+      - name: Test installed wheel and independent objectives outside checkout
+        run: python tools/test_installed.py --correctness-cases 256
+      - name: Save wheel correctness reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheel-correctness-${{ matrix.os }}
+          path: benchmarks/results/wheel-correctness/
+
   test:
     name: "Python ${{ matrix.python-version }} / ${{ matrix.os }}"
     runs-on: ${{ matrix.os }}
@@ -19,7 +127,12 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        dependencies: [latest]
+        include:
+          - os: ubuntu-latest
+            python-version: "3.10"
+            dependencies: minimum
 
     steps:
       - uses: actions/checkout@v4
@@ -29,10 +142,16 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Install minimum dependencies
+        if: matrix.dependencies == 'minimum'
+        run: pip install "numpy==1.23.5" "scipy==1.11.4" "scikit-learn==1.6.0" "pandas==1.5.0"
+
       - name: Install package and test dependencies
         run: pip install -e ".[test]" pytest-cov
 
       - name: Run tests
+        env:
+          SCIPY_ARRAY_API: "1"
         run: pytest -v --tb=short --cov-report=xml
 
       - name: Upload coverage to Codecov

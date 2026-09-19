@@ -4,25 +4,43 @@
 *.o
 *.so
 *.dll
+*.pyd
+*.dylib
 .DS_Store
 *.csv
 
 # Python cache and build files
 **/__pycache__/
+*.py[cod]
 build/
-rehline.egg-info/
+dist/
+wheelhouse/
+*.egg-info/
+.eggs/
 *.log
 env/
+venv/
+.venv/
+
+# Test, lint and environment caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.tox/
+.nox/
 
 # Coverage reports
-.coverage
+.coverage*
 coverage.xml
 htmlcov/
 
 # Files during package building
-eigen-3.4.0/
-eigen-5.0.1/
-eigen3.zip
+/eigen-3.4.0/
+/eigen-5.0.1/
+/eigen3.zip
+# Prepared Eigen headers are bundled in sdists, but not committed to Git.
+/vendor/eigen-5.0.1/
+/vendor/.eigen-*/
 
 # Package sdist
 *.tar.gz
@@ -42,11 +60,20 @@ eigen3.zip
 *.vsix
 
 # python checkpoint
+.ipynb_checkpoints/
 *-checkpoint.ipynb
 *-checkpoint.py
 
 # local
 local/
 
+# Generated benchmark outputs are local/CI artifacts; publish only reviewed reports.
+/benchmarks/results/*
+!/benchmarks/results/README.md
+
 # auto API
 doc/source/autoapi/
+
+# Built documentation
+doc/build/
+doc/_build/

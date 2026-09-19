@@ -70,7 +70,7 @@ class ReHLoss:
         self.L = relu_coef.shape[0]
         self.n = relu_coef.shape[1]
 
-    def __call__(self, x):
+    def values(self, x):
         """Evaluate ReHLoss given a data matrix
 
         Parameters
@@ -93,12 +93,22 @@ class ReHLoss:
             self.relu_coef.shape[1],
         )
 
-        ans = 0
+        x = np.asarray(x)
+        if x.ndim != 1:
+            raise ValueError("x must be one-dimensional")
+        for matrix in (self.relu_coef, self.rehu_coef):
+            if matrix.shape[0] and matrix.shape[1] != len(x):
+                raise ValueError("x and loss parameters must have the same number of samples")
+        ans = np.zeros(len(x), dtype=np.float64)
         if len(self.relu_coef) > 0:
             relu_input = (self.relu_coef.T * x[:, np.newaxis]).T + self.relu_intercept
-            ans += np.sum(_relu(relu_input), 0).sum()
+            ans += np.sum(_relu(relu_input), 0)
         if len(self.rehu_coef) > 0:
             rehu_input = (self.rehu_coef.T * x[:, np.newaxis]).T + self.rehu_intercept
-            ans += np.sum(_rehu(rehu_input, cut=self.rehu_cut), 0).sum()
+            ans += np.sum(_rehu(rehu_input, cut=self.rehu_cut), 0)
 
         return ans
+
+    def __call__(self, x):
+        """Return the sum of the per-observation PLQ losses."""
+        return self.values(x).sum()

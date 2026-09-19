@@ -37,7 +37,7 @@ For contributors and developers:
 ```bash
 git clone https://github.com/softmin/ReHLine-python.git
 cd ReHLine-python
-pip install -e ".[dev]"
+pip install -e ".[test]"
 ```
 
 To run tests:
@@ -112,10 +112,11 @@ clf._U = -(C*y).reshape(1,-1)
 clf._V = (C*np.ones(n)).reshape(1,-1)
 
 # Set custom linear constraints A*beta + b >= 0
-X_sen = X[:,0]
+X_sen = X[:,0] - X[:,0].mean()
 tol_sen = 0.1
 clf._A = np.repeat([X_sen @ X], repeats=[2], axis=0) / n
 clf._A[1] = -clf._A[1]
+clf._b = np.full(2, tol_sen)
 
 clf.fit(X)
 ```
@@ -130,7 +131,7 @@ ReHLine excels at solving a wide range of machine learning problems:
 | **Problem** | **Description** | **Key Benefits** |
 |------------|-----------------|------------------|
 | **Support Vector Machines** | Binary and multi-class classification | 100-400× faster than CVXPY solvers |
-| **Fair Machine Learning** | Classification with fairness constraints | Handles demographic parity efficiently |
+| **Fair Machine Learning** | Classification with fairness constraints | Bounds sensitive-attribute/score covariance |
 | **Quantile Regression** | Robust conditional quantile estimation | 2800× faster than general solvers |
 | **Huber Regression** | Outlier-resistant regression | Superior to specialized solvers |
 | **Sparse Learning** | Feature selection with L1 regularization | Scales to high dimensions |
@@ -234,3 +235,34 @@ If you use ReHLine in your research, please cite our NeurIPS 2023 paper:
 </td>
 </tr>
 </table>
+
+Source distributions include Eigen 5.0.1 headers and licenses, so compiling a
+published source package does not require an Eigen download. A C++ compiler and
+the Python build dependencies are still required.
+
+Git checkouts do not include Eigen. Editable installs, wheel builds and source
+distribution builds automatically download the pinned release when needed and
+check its SHA-256 and individual file checksums against `tools/eigen-5.0.1.json`.
+No separate preparation command is required. The files in
+`vendor/eigen-5.0.1/` are ignored by Git and reused after verification on later
+builds. For offline preparation, use
+`python tools/prepare_eigen.py --archive /path/to/eigen-5.0.1.zip`; the same
+checksums are required. Running `python tools/prepare_eigen.py` without
+`--archive` is an optional way to download Eigen ahead of time. Builds from
+published source packages use only the bundled headers and do not download
+Eigen, including when their contents are missing or corrupted.
+
+Set `EIGEN3_INCLUDE_DIR` to a local directory containing `Eigen/Core` to compile
+against a different local Eigen installation without preparing the default
+headers. Creating an sdist still prepares the pinned headers automatically so
+the resulting package remains self-contained, regardless of this override.
+To build an sdist:
+
+```bash
+python -m build --sdist
+```
+
+The sdist command verifies all pinned headers and licenses before packaging.
+An incomplete or modified existing copy fails verification instead of being
+silently reused. CI exercises automatic preparation and rebuilds the sdist with
+Python network access disabled.

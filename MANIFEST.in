@@ -1,0 +1,14 @@
+include README.md LICENSE pyproject.toml
+recursive-include src *.cpp *.h
+recursive-include rehline *.py *.pyi
+recursive-include tests *.py
+recursive-include benchmarks *.py *.json *.md
+recursive-include tools *.py *.json
+prune benchmarks/results
+include benchmarks/results/README.md
+prune local
+recursive-include vendor/eigen-5.0.1/Eigen *
+include vendor/eigen-5.0.1/LICENSE vendor/eigen-5.0.1/COPYING*
+prune **/.ipynb_checkpoints
+prune **/__pycache__
+global-exclude *.py[cod]

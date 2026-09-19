@@ -1,21 +1,25 @@
 """Matrix Factorization Optimization with Various Loss Functions Based on ReHLine"""
 
 import warnings
+from copy import deepcopy
+from numbers import Integral
 
 import numpy as np
 from sklearn.base import BaseEstimator
 from sklearn.exceptions import ConvergenceWarning
-from sklearn.utils.validation import _check_sample_weight
+from sklearn.utils.validation import check_is_fitted
 
 from ._base import (
     ReHLine_solver,
     _BaseReHLine,
     _cast_sample_bias,
     _cast_sample_weight,
+    _fit_transaction,
     _make_constraint_rehline_param,
     _make_loss_rehline_param,
 )
 from ._loss import ReHLoss
+from ._validation import model_options, numeric_array, positive_real, sample_weights
 
 
 class plqMF_Ridge(_BaseReHLine, BaseEstimator):
@@ -93,14 +97,15 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
     init_sd : float, default=0.1
         Standard deviation of the Gaussian distribution for initializing latent factors.
 
-    random_state : int or RandomState, default=None
+    random_state : int, RandomState or Generator, default=None
         Random seed for reproducible initialization of latent factors.
 
     max_iter : int, default=10000
         The maximum number of iterations to be run for the ReHLine solver.
 
     tol : float, default=1e-4
-        The tolerance for the stopping criterion for the ReHLine solver.
+        Convergence tolerance for each ReHLine block solve and the final
+        row-normalized factor constraint violation.
 
     shrink : float, default=1
         The shrinkage of dual variables for the ReHLine solver.
@@ -154,7 +159,32 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
 
     history : ndarray of shape (max_iter_CD + 1, 2)
         Optimization history containing loss and objective values at each coordinate descent iteration.
-        First column: cumulative loss term values. Second column: objective function values (with penalty).
+        First column: weighted cumulative loss. Second column: weighted objective including the penalty.
+        Unused rows after early stopping are NaN.
+
+    objective_ : float
+        Final training objective, including sample weights and both penalties.
+
+    n_iter_ : int
+        Number of completed outer coordinate-descent sweeps.
+
+    converged_ : bool
+        Whether the weighted objective stopping criterion, inner convergence and
+        final feasibility checks passed. This does not certify a global MF optimum.
+        False when the outer iteration budget is exhausted without convergence.
+        An exhausted outer budget emits ConvergenceWarning mentioning max_iter_CD.
+
+    inner_converged_ : bool
+        Whether all block solves in the last sweep converged.
+
+    constraint_violation_ : float
+        Maximum violation of the final user/item constraints in original units.
+
+    scaled_constraint_violation_ : float
+        Maximum violation after each constraint row (A, b) is divided by
+        max(abs(A)). A zero row uses scale 1. This diagnostic is compared
+        with tol for outer convergence and constraint warnings; it is
+        invariant to positive row rescaling within floating-point accuracy.
 
     sample_weight : ndarray of shape (n_ratings,)
         Sample weights used during fitting. Available after fitting.
@@ -223,6 +253,116 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
         self.shrink = shrink
         self.trace_freq = trace_freq
 
+    def __sklearn_is_fitted__(self):
+        return hasattr(self, "P") and hasattr(self, "Q")
+
+    def _fitted_param(self, name):
+        return self._fit_params_[name] if hasattr(self, "_fit_params_") else getattr(self, name)
+
+    def _validate_pairs(self, X, *, fitted=False):
+        X = numeric_array(X, "X", ndim=2)
+        if X.shape[1] != 2:
+            raise ValueError("X must have shape (n_ratings, 2)")
+        if np.any(X != np.floor(X)):
+            raise ValueError("User and item IDs must be integers")
+        n_users = self._fitted_param("n_users") if fitted else self.n_users
+        n_items = self._fitted_param("n_items") if fitted else self.n_items
+        if np.any(X[:, 0] < 0) or np.any(X[:, 0] >= n_users):
+            raise ValueError("User IDs must be in [0, n_users)")
+        if np.any(X[:, 1] < 0) or np.any(X[:, 1] >= n_items):
+            raise ValueError("Item IDs must be in [0, n_items)")
+        return X.astype(np.intp)
+
+    def _block_constraints(self, constraint, design):
+        # Empirical fairness statistics have no definition for an empty block.
+        if len(design) == 0 and any(
+            isinstance(c, dict) and c.get("name") in ("fair", "fairness")
+            for c in ([] if constraint is None else constraint)
+        ):
+            raise ValueError("Fairness constraints require observations for every constrained user/item")
+        return _make_constraint_rehline_param(constraint, design)
+
+    def _solve_block(self, design, target, weight, bias, constraint, C, cache):
+        """Solve one convex factor update, including blocks with no effective loss."""
+        A, b = self._block_constraints(constraint, design)
+        d = design.shape[1]
+        no_loss = not np.any(weight > 0)
+        if no_loss:
+            if np.all(b >= 0):
+                return np.zeros(d), True
+            key = (A.shape, A.tobytes(), b.tobytes())
+            if key in cache:
+                return cache[key].copy(), True
+            # No terms depend on this placeholder design row.
+            design = np.zeros((1, d))
+            U = V = S = T = Tau = np.empty((0, 1))
+        else:
+            U, V, Tau, S, T = _make_loss_rehline_param(self.loss, design, target)
+            U, V, Tau, S, T = _cast_sample_bias(U, V, Tau, S, T, sample_bias=bias)
+            U, V, Tau, S, T = _cast_sample_weight(U, V, Tau, S, T, C=C, sample_weight=weight)
+        result = ReHLine_solver(
+            X=design,
+            U=U,
+            V=V,
+            S=S,
+            T=T,
+            Tau=Tau,
+            A=A,
+            b=b,
+            max_iter=self.max_iter,
+            tol=self.tol,
+            shrink=self.shrink,
+            verbose=int(self.verbose in (2, 3)),
+            trace_freq=self.trace_freq,
+        )
+        if not result.converged:
+            warnings.warn(
+                "ReHLine failed to converge, increase the number of iterations: `max_iter`.",
+                ConvergenceWarning,
+                stacklevel=3,
+            )
+        elif no_loss:
+            cache[key] = result.beta.copy()
+        return result.beta.copy(), result.converged
+
+    def _factor_constraint_violations(self, X):
+        """Return original-unit and row-normalized violations of all factors."""
+        violation = scaled_violation = 0.0
+        for groups, column, opposite, factors, biases, constraints in (
+            (self.Iu, 1, self.Q, self.P, self.bu, self.constraint_user),
+            (self.Ui, 0, self.P, self.Q, self.bi, self.constraint_item),
+        ):
+            if constraints is None or len(constraints) == 0:
+                continue
+            for index, rows in enumerate(groups):
+                design = opposite[X[rows, column]]
+                z = factors[index]
+                if self.biased:
+                    design = np.column_stack((np.ones(len(rows)), design))
+                    z = np.r_[biases[index], z]
+                A, b = self._block_constraints(constraints, design)
+                if len(b):
+                    row_scale = np.max(abs(A), axis=1)
+                    row_scale[row_scale == 0] = 1
+                    # Normalize before the product: a huge original row can
+                    # otherwise hide a small but representable normalized slack.
+                    try:
+                        with np.errstate(over="raise", invalid="raise", under="ignore"):
+                            raw_slack = A @ z + b
+                            scaled_slack = (A / row_scale[:, None]) @ z + b / row_scale
+                    except FloatingPointError as exc:
+                        raise OverflowError("MF constraint diagnostics exceed the floating-point range") from exc
+                    if not np.isfinite(raw_slack).all() or not np.isfinite(scaled_slack).all():
+                        raise OverflowError("MF constraint diagnostics exceed the floating-point range")
+                    violation = max(violation, float(-raw_slack.min()))
+                    scaled_violation = max(scaled_violation, float(-scaled_slack.min()))
+        return violation, scaled_violation
+
+    def _factor_constraint_violation(self, X):
+        """Original-unit diagnostic retained for existing internal callers."""
+        return self._factor_constraint_violations(X)[0]
+
+    @_fit_transaction
     def fit(self, X, y, sample_weight=None):
         """Fit the model based on the given training data.
 
@@ -245,229 +385,115 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
             An instance of the estimator.
 
         """
-        # check input
-        ## parameter validation
-        errors = []
-        checks = [
-            (0 < self.rho < 1, "rho must be between 0 and 1"),
-            (self.C > 0, "C must be positive"),
-            (self.tol_CD > 0, "tol_CD must be positive"),
-            (self.tol > 0, "tol must be positive"),
-        ]
-        for condition, error_msg in checks:
-            if not condition:
-                errors.append(error_msg)
-        if errors:
-            raise ValueError("; ".join(errors))
-        
-        ## data validation
-        X = np.asarray(X)
-        y = np.asarray(y)
-        if X.ndim != 2 or X.shape[1] != 2:
-            raise ValueError("X must have shape (n_ratings, 2)")
-        if X.shape[0] != len(y):
+        model_options(self)
+        positive_real(self.rho, "rho", allow_zero=True)
+        if not 0 < self.rho < 1:
+            raise ValueError("rho must be between 0 and 1")
+        positive_real(self.tol_CD, "tol_CD")
+        positive_real(self.init_sd, "init_sd", allow_zero=True)
+        numeric_array(self.init_mean, "init_mean", ndim=0)
+        for name in ("n_users", "n_items", "rank", "max_iter_CD"):
+            value = getattr(self, name)
+            if (
+                isinstance(value, (bool, np.bool_))
+                or not isinstance(value, Integral)
+                or not 1 <= value <= np.iinfo(np.int32).max
+            ):
+                raise ValueError(f"{name} must be a positive integer fitting in int32")
+        if not isinstance(self.biased, (bool, np.bool_)):
+            raise ValueError("biased must be boolean")
+        X = self._validate_pairs(X)
+        y = numeric_array(y, "y", ndim=1)
+        if len(X) != len(y):
             raise ValueError("X and y must have the same number of samples")
-        user_ids = X[:, 0].astype(int)
-        item_ids = X[:, 1].astype(int)
-        if np.any(user_ids < 0) or np.any(user_ids >= self.n_users):
-            raise ValueError("User IDs must be in [0, n_users)")
-        if np.any(item_ids < 0) or np.any(item_ids >= self.n_items):
-            raise ValueError("Item IDs must be in [0, n_items)")
-        
-        # Preparation
-        ## number of training observations
-        self.n_ratings = len(y) 
-        ## convergence trace 
+        if len(y) == 0:
+            raise ValueError("At least one rating is required")
+        self._fit_params_ = {
+            name: deepcopy(getattr(self, name)) for name in ("n_users", "n_items", "biased", "C", "rho", "loss")
+        }
+        self.n_ratings = len(y)
         self.history = np.full((self.max_iter_CD + 1, 2), np.nan)
-        ## sample weights
-        self.sample_weight = _check_sample_weight(sample_weight, X, dtype=X.dtype)
-        ## random number generator
-        rng = np.random.default_rng(self.random_state) 
+        self.sample_weight = sample_weights(sample_weight, len(y)).copy()
+        rng = (
+            self.random_state
+            if isinstance(self.random_state, np.random.RandomState)
+            else np.random.default_rng(self.random_state)
+        )
 
-        ## indices to locate interactions given a user or item id
-        ### user side: Iu[u] = row indices of interactions by user u
-        sort_idx_users = np.argsort(X[:, 0], kind='stable')
-        sorted_users = X[sort_idx_users, 0]
-        counts = np.unique(sorted_users, return_counts=True)[1]
-        self.Iu = [np.array([], dtype=int) for _ in range(self.n_users)]
-        for u, idxs in zip(sorted_users[np.cumsum(counts) - counts], np.split(sort_idx_users, np.cumsum(counts)[:-1])):
-            self.Iu[u] = idxs
-        ### item side: Ui[i] = row indices of interactions that involve item i
-        sort_idx_items = np.argsort(X[:, 1], kind='stable')
-        sorted_items = X[sort_idx_items, 1]
-        counts = np.unique(sorted_items, return_counts=True)[1]
-        self.Ui = [np.array([], dtype=int) for _ in range(self.n_items)]
-        for i, idxs in zip(sorted_items[np.cumsum(counts) - counts], np.split(sort_idx_items, np.cumsum(counts)[:-1])):
-            self.Ui[i] = idxs
+        def groups(column, count):
+            order = np.argsort(X[:, column], kind="stable")
+            ids, counts = np.unique(X[order, column], return_counts=True)
+            result = [np.empty(0, dtype=np.intp) for _ in range(count)]
+            for index, rows in zip(ids, np.split(order, np.cumsum(counts)[:-1])):
+                result[index] = rows
+            return result
 
-        ## effective C when updating user/item blocks (to match rehline formulation: C * PLQ_loss + 0.5 * l_2)
-        C_user = self.C * self.n_users / (self.rho) / 2
+        self.Iu = groups(0, self.n_users)
+        self.Ui = groups(1, self.n_items)
+        C_user = self.C * self.n_users / self.rho / 2
         C_item = self.C * self.n_items / (1 - self.rho) / 2
-
-        if self.verbose in (1, 3):
-            print(
-                "{:<12} {:<20} {:<20}".format(
-                    "Iteration",
-                    f"Average Loss({self.loss['name']})",
-                    "Objective Function",
-                )
-            )
-
-        # Model Initialization
-        self.P = rng.normal(loc=self.init_mean, scale=self.init_sd, size=(self.n_users, self.rank))
-        self.Q = rng.normal(loc=self.init_mean, scale=self.init_sd, size=(self.n_items, self.rank))
+        self.P = rng.normal(self.init_mean, self.init_sd, (self.n_users, self.rank))
+        self.Q = rng.normal(self.init_mean, self.init_sd, (self.n_items, self.rank))
         self.bu = np.zeros(self.n_users) if self.biased else None
         self.bi = np.zeros(self.n_items) if self.biased else None
-
-        # CD algorithm
-        self.history[0] = self.obj(X, y)
-        for iter_idx in range(self.max_iter_CD):
-            ## User side update
-            for user in range(self.n_users):
-                ### item indices given current user
-                index_tmp = self.Iu[user]
-                len_tmp = len(index_tmp)
-
-                ### if lack of interaction(cold start)
-                if len_tmp == 0:
-                    self.P[user, :] = 0.0
+        if self.verbose in (1, 3):
+            print(f"{'Iteration':<12} {'Average Loss(' + self.loss['name'] + ')':<20} Objective Function")
+        self.history[0] = self.obj(X, y, sample_weight=self.sample_weight)
+        self.converged_ = False
+        self.inner_converged_ = False
+        self.n_iter_ = 0
+        cache = {}
+        for iteration in range(self.max_iter_CD):
+            self.inner_converged_ = True
+            for groups_, column, opposite, opposite_bias, factors, biases, constraint, C in (
+                (self.Iu, 1, self.Q, self.bi, self.P, self.bu, self.constraint_user, C_user),
+                (self.Ui, 0, self.P, self.bu, self.Q, self.bi, self.constraint_item, C_item),
+            ):
+                for index, rows in enumerate(groups_):
+                    other_ids = X[rows, column]
+                    design = opposite[other_ids]
+                    bias = opposite_bias[other_ids] if self.biased else None
                     if self.biased:
-                        self.bu[user] = 0.0
-                    continue
-
-                ### prepare sub-optimization data
-                y_tmp = y[index_tmp]
-                item_tmp = X[index_tmp][:, 1]
-                Q_tmp = np.c_[np.ones((len_tmp, 1)), self.Q[item_tmp]] if self.biased else self.Q[item_tmp]
-                bias_tmp = self.bi[item_tmp] if self.biased else None
-                weight_tmp = self.sample_weight[index_tmp]
-
-                ### prepare rehline parameters
-                U, V, Tau, S, T = _make_loss_rehline_param(loss=self.loss, X=Q_tmp, y=y_tmp)
-                U_bias, V_bias, Tau_bias, S_bias, T_bias = _cast_sample_bias(U, V, Tau, S, T, sample_bias=bias_tmp)
-                U_weight, V_weight, Tau_weight, S_weight, T_weight = _cast_sample_weight(
-                    U_bias,
-                    V_bias,
-                    Tau_bias,
-                    S_bias,
-                    T_bias,
-                    C=C_user,
-                    sample_weight=weight_tmp,
-                )
-                A, b = _make_constraint_rehline_param(constraint=self.constraint_user, X=Q_tmp, y=y_tmp)
-
-                ### solve and update
-                result_tmp = ReHLine_solver(
-                    X=Q_tmp,
-                    U=U_weight,
-                    V=V_weight,
-                    Tau=Tau_weight,
-                    S=S_weight,
-                    T=T_weight,
-                    A=A,
-                    b=b,
-                    max_iter=self.max_iter,
-                    tol=self.tol,
-                    shrink=self.shrink,
-                    verbose=(self.verbose == 2 or self.verbose == 3),
-                    trace_freq=self.trace_freq,
-                )
-
-                if self.biased:
-                    self.bu[user], self.P[user, :] = (
-                        result_tmp.beta[0],
-                        result_tmp.beta[1:],
+                        design = np.column_stack((np.ones(len(rows)), design))
+                    z, converged = self._solve_block(
+                        design,
+                        y[rows],
+                        self.sample_weight[rows],
+                        bias,
+                        constraint,
+                        C,
+                        cache,
                     )
-                else:
-                    self.P[user, :] = result_tmp.beta
-
-                ### algo convergence
-                if result_tmp.niter >= self.max_iter:
-                    warnings.warn(
-                        "ReHLine failed to converge, increase the number of iterations: `max_iter`.",
-                        ConvergenceWarning,
-                        stacklevel=2,
-                    )
-
-            ## Item side update
-            for item in range(self.n_items):
-                ### user indices given current item
-                index_tmp = self.Ui[item]
-                len_tmp = len(index_tmp)
-
-                ### if lack of interaction(cold start)
-                if len_tmp == 0:
-                    self.Q[item, :] = 0.0
+                    self.inner_converged_ &= converged
                     if self.biased:
-                        self.bi[item] = 0.0
-                    continue
-
-                ### prepare sub-optimization data
-                y_tmp = y[index_tmp]
-                user_tmp = X[index_tmp][:, 0]
-                P_tmp = np.c_[np.ones((len_tmp, 1)), self.P[user_tmp]] if self.biased else self.P[user_tmp]
-                weight_tmp = self.sample_weight[index_tmp]
-                bias_tmp = self.bu[user_tmp] if self.biased else None
-
-                ### prepare rehline parameters
-                U, V, Tau, S, T = _make_loss_rehline_param(loss=self.loss, X=P_tmp, y=y_tmp)
-                U_bias, V_bias, Tau_bias, S_bias, T_bias = _cast_sample_bias(U, V, Tau, S, T, sample_bias=bias_tmp)
-                U_weight, V_weight, Tau_weight, S_weight, T_weight = _cast_sample_weight(
-                    U_bias,
-                    V_bias,
-                    Tau_bias,
-                    S_bias,
-                    T_bias,
-                    C=C_item,
-                    sample_weight=weight_tmp,
-                )
-                A, b = _make_constraint_rehline_param(constraint=self.constraint_item, X=P_tmp, y=y_tmp)
-
-                ### solve and update
-                result_tmp = ReHLine_solver(
-                    X=P_tmp,
-                    U=U_weight,
-                    V=V_weight,
-                    Tau=Tau_weight,
-                    S=S_weight,
-                    T=T_weight,
-                    A=A,
-                    b=b,
-                    max_iter=self.max_iter,
-                    tol=self.tol,
-                    shrink=self.shrink,
-                    verbose=(self.verbose == 2 or self.verbose == 3),
-                    trace_freq=self.trace_freq,
-                )
-
-                if self.biased:
-                    self.bi[item], self.Q[item, :] = (
-                        result_tmp.beta[0],
-                        result_tmp.beta[1:],
-                    )
-                else:
-                    self.Q[item, :] = result_tmp.beta
-
-                ### algo convergence
-                if result_tmp.niter >= self.max_iter:
-                    warnings.warn(
-                        "ReHLine failed to converge, increase the number of iterations: `max_iter`.",
-                        ConvergenceWarning,
-                        stacklevel=2,
-                    )
-
-            ## Check convergence
-            self.history[iter_idx + 1] = self.obj(X, y)
-            obj_diff = (self.history[iter_idx] - self.history[iter_idx + 1])[1]
-
+                        biases[index], factors[index] = z[0], z[1:]
+                    else:
+                        factors[index] = z
+            self.n_iter_ = iteration + 1
+            self.history[self.n_iter_] = self.obj(X, y, sample_weight=self.sample_weight)
+            previous = self.history[iteration, 1]
+            self.objective_ = self.history[self.n_iter_, 1]
+            improvement = previous - self.objective_
+            roundoff = 64 * np.finfo(float).eps * max(1, abs(previous), abs(self.objective_))
             if self.verbose in (1, 3):
-                mean_loss = f"{self.history[iter_idx + 1][0] / self.n_ratings:.6f}"
-                obj = f"{self.history[iter_idx + 1][1]:.6f}"
-                print(f"{iter_idx + 1:<12} {mean_loss:<20} {obj:<20}")
-
-            if abs(obj_diff) < self.tol_CD:
-                break
-
+                print(
+                    f"{self.n_iter_:<12} {self.history[self.n_iter_, 0] / self.n_ratings:<20.6f} {self.objective_:.6f}"
+                )
+            if self.inner_converged_ and -roundoff <= improvement < self.tol_CD:
+                if self._factor_constraint_violations(X)[1] <= self.tol:
+                    self.converged_ = True
+                    break
+        self.constraint_violation_, self.scaled_constraint_violation_ = self._factor_constraint_violations(X)
+        if self.scaled_constraint_violation_ > self.tol and self.inner_converged_:
+            warnings.warn(
+                "MF factors do not satisfy all final constraints within scaled tol.", ConvergenceWarning, stacklevel=2
+            )
+        elif not self.converged_ and self.inner_converged_:
+            warnings.warn(
+                "MF outer iterations failed to converge; increase `max_iter_CD`.",
+                ConvergenceWarning,
+                stacklevel=2,
+            )
         return self
 
     def decision_function(self, X):
@@ -484,18 +510,20 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
         prediction : ndarray of shape (n_samples,)
             Predicted ratings for the input pairs.
         """
+        check_is_fitted(self)
+        X = self._validate_pairs(X, fitted=True)
         users = X[:, 0]
         items = X[:, 1]
         dot_products = np.einsum("ij,ij->i", self.P[users], self.Q[items])
 
-        if self.biased:
+        if self._fitted_param("biased"):
             user_biases = self.bu[users]
             item_biases = self.bi[items]
             return user_biases + item_biases + dot_products
         else:
             return dot_products
 
-    def obj(self, X, y):
+    def obj(self, X, y, sample_weight=None):
         """
         Compute the values of loss term and objective function.
 
@@ -507,6 +535,10 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
         y : array-like of shape (n_ratings,)
             Actual rating values.
 
+        sample_weight : array-like or float, default=None
+            Evaluation weights; None means equal weights. Training weights are
+            not implicitly reused for evaluation on another dataset.
+
         Returns
         -------
         loss_term : float
@@ -517,19 +549,28 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
 
         """
 
-        if self.biased:
-            user_penalty = (np.sum(self.P**2) + np.sum(self.bu**2)) * self.rho / self.n_users
-            item_penalty = (np.sum(self.Q**2) + np.sum(self.bi**2)) * (1 - self.rho) / self.n_items
+        check_is_fitted(self)
+        X = self._validate_pairs(X, fitted=True)
+        y = numeric_array(y, "y", ndim=1)
+        if len(X) != len(y):
+            raise ValueError("X and y must have the same number of samples")
+        weight = sample_weights(sample_weight, len(y), allow_all_zero=True)
+
+        rho = self._fitted_param("rho")
+        if self._fitted_param("biased"):
+            user_penalty = (np.sum(self.P**2) + np.sum(self.bu**2)) * rho / self._fitted_param("n_users")
+            item_penalty = (np.sum(self.Q**2) + np.sum(self.bi**2)) * (1 - rho) / self._fitted_param("n_items")
             penalty = user_penalty + item_penalty
         else:
-            user_penalty = np.sum(self.P**2) * self.rho / self.n_users
-            item_penalty = np.sum(self.Q**2) * (1 - self.rho) / self.n_items
+            user_penalty = np.sum(self.P**2) * rho / self._fitted_param("n_users")
+            item_penalty = np.sum(self.Q**2) * (1 - rho) / self._fitted_param("n_items")
             penalty = user_penalty + item_penalty
 
-        X_dummy = np.ones((len(y), 1)) # not used in loss computation, only shape matters for loss param construction
-        U, V, Tau, S, T = _make_loss_rehline_param(loss=self.loss, X=X_dummy, y=y)
+        X_dummy = np.ones((len(y), 1))  # not used in loss computation, only shape matters for loss param construction
+        U, V, Tau, S, T = _make_loss_rehline_param(loss=self._fitted_param("loss"), X=X_dummy, y=y)
         loss = ReHLoss(U, V, S, T, Tau)
         y_pred = self.decision_function(X)
-        loss_term = loss(y_pred)
+        active = weight > 0
+        loss_term = float(weight[active] @ loss.values(y_pred)[active])
 
-        return loss_term, self.C * loss_term + penalty
+        return loss_term, self._fitted_param("C") * loss_term + penalty

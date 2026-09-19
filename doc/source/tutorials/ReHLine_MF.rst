@@ -62,6 +62,20 @@ Implementation Guide
 
 A simple synthetic dataset is used for illustration. The implementation can be easily adapted to your specific triplet data, allowing you to experiment with various loss functions.
 
+``make_mf_dataset`` samples unique user/item pairs uniformly without replacement.
+``n_interactions`` is a non-negative integer, capped at ``n_users * n_items``;
+an explicit zero returns empty data. When omitted, the count is
+``int(density * n_users * n_items)`` with finite ``density`` in ``[0, 1]``.
+User/item counts must be non-negative integers, the factor count must be
+positive, and the pair population must fit in int64.
+
+Pair-index storage is ``O(n_interactions)``. Factor and bias storage still
+depends on all users and items: ``O((n_users + n_items) * n_factors)``, even
+with ``return_params=False``. Sparse sampling no longer allocates a permutation
+of every possible pair. For fewer than 10% of pairs, the changed sampling
+sequence can produce different pairs and ratings from older releases for the
+same seed. Repeated calls with the same arguments remain reproducible.
+
 Setup
 ^^^^^
 
@@ -214,9 +228,39 @@ The model complexity is mainly controlled by :code:`C` and :code:`rank`.
 Practical Guidance
 ^^^^^^^^^^^^^^^^^^
 
+If ``fit`` raises, the previous successful factors, biases, objective history
+and diagnostics remain usable. A failed first fit remains unfitted. Prediction
+and ``obj`` use the configuration saved by the successful fit, including bias
+mode, user/item counts, loss, ``C`` and ``rho``. Changing parameters with
+``set_params`` affects the next fit; it does not reinterpret existing factors.
+Parameter changes are not rolled back when fitting fails.
+
 - The first column of :code:`X` corresponds to **users**, and the second column corresponds to **items**. Please ensure this aligns with your :code:`n_users` and :code:`n_items` parameters.
 - The default penalty strength is relatively weak; it is recommended to set a relatively small :code:`C` value initially.
 - When using larger :code:`C` values, consider increasing :code:`max_iter` to avoid ConvergenceWarning.
+
+MF reports separate inner and outer convergence. ``max_iter`` limits each convex
+ReHLine block solve; ``max_iter_CD`` limits complete alternating sweeps. If the
+blocks converge but the outer objective criterion is not met before the sweep
+budget is exhausted, ``fit`` emits ``ConvergenceWarning`` mentioning
+``max_iter_CD`` and sets ``converged_=False``. Increasing ``max_iter`` alone does
+not address this warning. When the warning is allowed, the fitted factors,
+``objective_`` and history describe the completed sweeps. If warnings are treated
+as errors, a failed refit preserves the previous fitted state. MF convergence
+does not certify a global optimum of the nonconvex factorization problem.
+
+Final feasibility uses the same constraint units as the block solvers.
+``constraint_violation_`` reports the maximum violation in the original units;
+``scaled_constraint_violation_`` divides each inequality :math:`A_j z+b_j\geq0`
+by :math:`\max_k|A_{jk}|` before evaluating its violation (zero rows use scale 1).
+The latter must be at most ``tol`` for ``converged_=True``. Multiplying a row
+and its offset by a positive constant therefore preserves the feasibility
+criterion within floating-point accuracy. The factors and features are not
+rescaled. A large raw residual may be acceptable for a large row, while a tiny
+raw residual can still fail for a tiny row. Final constraints are rebuilt from
+the final opposite factors, including when constraint statistics depend on them.
+A failed final feasibility check emits ``ConvergenceWarning`` and keeps
+``converged_=False``.
 
 Example
 -------

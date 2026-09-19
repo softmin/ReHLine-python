@@ -13,7 +13,7 @@ namespace py = pybind11;
 using Matrix = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
 using MapMat = Eigen::Ref<const Matrix>;
 using Vector = Eigen::VectorXd;
-using MapVec = Eigen::Ref<Vector>;
+using MapVec = Eigen::Ref<const Vector>;
 
 using ReHLineResult = rehline::ReHLineResult<Matrix>;
 
@@ -30,6 +30,20 @@ void rehline_internal(
                             max_iter, tol, shrink, verbose, trace_freq);
 }
 
+void rehline_cqr_internal(
+    ReHLineResult& result,
+    const MapMat& X, const MapMat& A, const MapVec& b, const MapVec& rho,
+    const MapMat& U, const MapMat& V,
+    const MapMat& S, const MapMat& T, const MapMat& Tau,
+    int quantile_count, int max_iter, double tol, int shrink = 1,
+    int verbose = 0, int trace_freq = 100
+)
+{
+    rehline::rehline_solver<MapMat, MapVec, int, true>(
+        result, X, A, b, rho, U, V, S, T, Tau,
+        max_iter, tol, shrink, verbose, trace_freq, std::cout, quantile_count);
+}
+
 PYBIND11_MODULE(_internal, m) {
     py::class_<ReHLineResult>(m, "rehline_result")
         .def(py::init<>())
@@ -38,6 +52,13 @@ PYBIND11_MODULE(_internal, m) {
         .def_readwrite("Lambda",        &ReHLineResult::Lambda)
         .def_readwrite("Gamma",         &ReHLineResult::Gamma)
         .def_readwrite("mu",            &ReHLineResult::mu)
+        .def_readwrite("objective", &ReHLineResult::objective)
+        .def_readwrite("dual_objective", &ReHLineResult::dual_objective)
+        .def_readwrite("dual_gap", &ReHLineResult::dual_gap)
+        .def_readwrite("constraint_violation", &ReHLineResult::constraint_violation)
+        .def_readwrite("scaled_constraint_violation", &ReHLineResult::scaled_constraint_violation)
+        .def_readwrite("kkt_residual", &ReHLineResult::kkt_residual)
+        .def_readwrite("converged", &ReHLineResult::converged)
         .def_readwrite("niter",         &ReHLineResult::niter)
         .def_readwrite("dual_objfns",   &ReHLineResult::dual_objfns)
         .def_readwrite("primal_objfns", &ReHLineResult::primal_objfns);
@@ -45,5 +66,6 @@ PYBIND11_MODULE(_internal, m) {
     // https://hopstorawpointers.blogspot.com/2018/06/pybind11-and-python-sub-modules.html
     m.attr("__name__") = "rehline._internal";
     m.doc() = "rehline";
-    m.def("rehline_internal", &rehline_internal);
+    m.def("rehline_internal", &rehline_internal, py::call_guard<py::gil_scoped_release>());
+    m.def("rehline_cqr_internal", &rehline_cqr_internal, py::call_guard<py::gil_scoped_release>());
 }

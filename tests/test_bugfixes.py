@@ -80,15 +80,18 @@ class TestMutableDefaults:
         plq_Ridge_Classifier(loss={"name": "svm"}, multi_class="ovr")
         b = plq_Ridge_Classifier(loss={"name": "svm"})
         # b should get a fresh default, not be affected by a's value
-        assert b.multi_class == []
+        assert b.multi_class is None
 
     def test_plq_Ridge_Regressor_loss_independence(self):
         """Default loss dict on instance A must not leak to instance B."""
         a = plq_Ridge_Regressor()
-        a.loss["qt"] = 0.9  # mutate A's loss
+        a.set_params(loss={"name": "QR", "qt": 0.9})
 
         b = plq_Ridge_Regressor()
-        assert b.loss["qt"] == 0.5, f"Instance B should have default qt=0.5, got {b.loss['qt']}"
+        assert b.loss is None
+        X, y = _make_regression_data()
+        b.fit(X, y)
+        assert b._model_.loss["qt"] == 0.5
 
     def test_plqMF_Ridge_constraint_independence(self):
         a = plqMF_Ridge(n_users=10, n_items=10, loss={"name": "MAE"})

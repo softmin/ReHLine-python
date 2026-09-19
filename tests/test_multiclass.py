@@ -209,9 +209,10 @@ def test_decision_function_shapes():
         max_iter=1_000_000,
     )
     clf_ovo.fit(X, y_multi)
-    assert clf_ovo.decision_function(X).shape == (n_samples, 6), (
-        "OvO decision_function should have shape (n_samples, 6)"
+    assert clf_ovo.decision_function(X).shape == (n_samples, 4), (
+        "OvO decision_function should have one column per class"
     )
+    assert clf_ovo.set_params(decision_function_shape="ovo").decision_function(X).shape == (n_samples, 6)
 
 
 def test_ovo_coef_sign_convention():
@@ -266,8 +267,7 @@ def test_ovo_coef_sign_convention():
 
 def test_ovo_predict_consistency():
     """
-    OvO predict() and decision_function() must be consistent: manually
-    reconstructing predictions from decision_function() must match predict().
+    Reconstruct predictions from pairwise margins and check class-score argmax.
     """
     np.random.seed(7)
     n_samples, n_features, n_classes, C = 1500, 5, 4, 1.0
@@ -295,23 +295,25 @@ def test_ovo_predict_consistency():
     clf.fit(X, y)
 
     y_pred = clf.predict(X)
-    scores = clf.decision_function(X)
+    scores = clf.set_params(decision_function_shape="ovo").decision_function(X)
     n_cls = len(clf.classes_)
     votes = np.zeros((n_samples, n_cls))
     confidences = np.zeros((n_samples, n_cls))
     for k, (_, _, cls_i, cls_j) in enumerate(clf.estimators_):
         i = np.where(clf.classes_ == cls_i)[0][0]
         j = np.where(clf.classes_ == cls_j)[0][0]
-        pred = (scores[:, k] > 0).astype(int)
+        pred = (scores[:, k] < 0).astype(int)
         votes[:, j] += pred
         votes[:, i] += 1 - pred
-        confidences[:, j] += scores[:, k]
-        confidences[:, i] -= scores[:, k]
+        confidences[:, j] -= scores[:, k]
+        confidences[:, i] += scores[:, k]
     transformed = confidences / (3 * (np.abs(confidences) + 1))
     y_manual = clf.classes_[np.argmax(votes + transformed, axis=1)]
 
     n_disagree = np.sum(y_pred != y_manual)
     assert n_disagree == 0, f"predict() and decision_function() are inconsistent: {n_disagree} samples disagree."
+    clf.set_params(decision_function_shape="ovr")
+    np.testing.assert_array_equal(y_pred, clf.classes_[clf.decision_function(X).argmax(axis=1)])
 
 
 def test_ovo_fit_intercept_false():

@@ -12,6 +12,9 @@ on:
       - published
 
 jobs:
+  test:
+    uses: ./.github/workflows/ci.yml
+
   build_wheels:
     name: Build wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -22,6 +25,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.3.1
@@ -33,14 +38,59 @@ jobs:
           name: rehline-wheels-${{ matrix.os }}-${{ strategy.job-index }}
           path: ./wheelhouse/*.whl
 
+  test_release_wheels:
+    name: Independent objectives on release wheel / ${{ matrix.os }}
+    needs: build_wheels
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      VECLIB_MAXIMUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: rehline-wheels-${{ matrix.os }}-*
+          path: wheelhouse
+          merge-multiple: true
+      - run: python -m pip install packaging
+      - name: Install exact release artifact and verify objectives
+        run: >-
+          python tools/test_release_wheel.py --wheel-dir wheelhouse
+          --correctness-cases 256 --report-dir benchmarks/results/release-wheel
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: release-wheel-validation-${{ matrix.os }}
+          path: benchmarks/results/release-wheel/
+
   build_sdist:
     name: Build source distribution
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
-      - name: Build sdist
-        run: pipx run build --sdist
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Build and validate sdist
+        run: |
+          python -m pip install build twine "pybind11~=3.0.0" "setuptools>=80" setuptools-scm wheel
+          python -m build --sdist
+          python -m twine check dist/*
+          python tools/check_sdist.py dist/*.tar.gz --wheel-dir sdist-wheel
+          python -m pip install sdist-wheel/*.whl pytest pandas
+          python tools/test_installed.py
 
       - uses: actions/upload-artifact@v6
         with:
@@ -48,7 +98,7 @@ jobs:
           path: dist/*.tar.gz
 
   upload_pypi:
-    needs: [build_wheels, build_sdist]
+    needs: [test, build_wheels, test_release_wheels, build_sdist]
     runs-on: ubuntu-latest
     environment: pypi
     permissions:

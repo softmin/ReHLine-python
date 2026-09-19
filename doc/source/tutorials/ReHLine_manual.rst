@@ -115,7 +115,12 @@ where :math:`\mathbf{x}_i \in \mathbb{R}^d` is a feature vector, and :math:`y_i 
 .. math::
   \sum_{i=1}^n z_{ij} = 0,
 
-such as gender and/or race. The constraints limit the correlation between the $d_0$-length sensitive features :math:`\mathbf{z}_ i \in \mathbb{R}^{d_0}` and the decision function :math:`\mathbf{\beta}^\intercal \mathbf{x}`, and the constants :math:`\mathbf{\rho} \in \mathbb{R}_+^{d_0}` trade-offs predictive accuracy and fairness. Note that the FairSVM can be rewritten as a ReHLine optimization with
+such as gender and/or race. The constraints bound empirical covariance between
+each sensitive feature and the linear decision score. They do not normalize by
+standard deviations. The constants :math:`\mathbf{\rho} \in \mathbb{R}_+^{d_0}`
+set the allowed covariance magnitudes. See :doc:`constraint` for the automatic
+centering and reference-row rules of the high-level fairness constraint.
+FairSVM can be rewritten as a ReHLine optimization with
 
 .. math::
   \mathbf{U} \leftarrow -C \mathbf{y}^\intercal/n, \quad
@@ -131,25 +136,23 @@ such as gender and/or race. The constraints limit the correlation between the $d
     \mathbf{\rho}
     \end{pmatrix}
 
-The python implementation is:
+The Python implementation below uses the mean hinge loss in this equation,
+hence the factor ``C/n``. The sklearn classifiers instead use ``C`` times the
+sum of weighted losses; use ``C/n`` there to match this particular objective.
 
 .. code-block:: python
 
-  ## FairSVM ReHLine parameters
-  clf = ReHLine()
-  ## U
-  clf.U = -(C*y).reshape(1,-1)
-  ## V
-  clf.V = (C*np.array(np.ones(n))).reshape(1,-1)
-  ## A
-  ## we illustrate that the first column of X as sensitive features, and tol is 0.1
-  X_sen = X[:,0]
+  # Construct covariance constraints for the first column of X.
+  X_sen = X[:,0] - X[:,0].mean()
   tol_sen = 0.1
-  clf.A = np.repeat([X_sen @ X], repeats=[2], axis=0) / n
-  clf.A[1] = -clf.A[1]
-  ## b
-  clf.b = np.array([tol_sen, tol_sen])
-  ## Fit
+  A = np.repeat([X_sen @ (X - X.mean(axis=0))], repeats=[2], axis=0) / n
+  A[1] = -A[1]
+  clf = ReHLine(
+      U=-(C*y/n).reshape(1, -1),
+      V=np.full((1, n), C/n),
+      A=A,
+      b=np.full(2, tol_sen),
+  )
   clf.fit(X)
 
 Ridge Huber regression
