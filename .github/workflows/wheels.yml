@@ -19,7 +19,9 @@ jobs:
     name: Build wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
-      # macos-latest is Apple silicon, macos-latest-large is an Intel runner
+      fail-fast: false
+      # Native targets: Linux x86-64, Windows x86-64, macOS ARM64.
+      # Keep these runners aligned with tool.cibuildwheel in pyproject.toml.
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
 

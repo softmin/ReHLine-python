@@ -48,6 +48,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Restrict Windows release wheels to x86-64, matching available SciPy wheels.
+  Read the README example as UTF-8 so its test also runs with Windows' default
+  text encoding. A failed wheel platform no longer cancels the other platforms.
+
 - Named losses convert numeric targets to float64 before arithmetic, preventing
   unsigned negation and signed integer overflow from silently changing the
   objective. Regression tests and CVXPY API benchmarks cover integer targets.
@@ -134,6 +138,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Limit release wheels to standard CPython 3.10–3.14 on Linux/glibc x86-64,
+  macOS ARM64 and Windows x86-64. Drop automatic musllinux and free-threaded
+  builds; additional Python versions and architectures require matching CI
+  coverage before inclusion. Keep source distributions available.
+
 - CQR training evaluates its joint design implicitly from the original features,
   avoiding the `(n * q, d + q)` dense matrix. Shared slopes, quantile intercepts,
   both ridge penalties and convergence requirements are unchanged.
@@ -177,11 +186,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   expected-failure exceptions.
 - Historical `dual_obj_` traces retain the minimized negative-dual convention.
   The new scalar `dual_objective_` is the maximized dual lower bound.
-- `dual_gap_` is infinite when constraint violation exceeds `tol`. Within
-  feasibility tolerance it reports the non-negative difference between the unconstrained
+- `dual_gap_` is infinite when `scaled_constraint_violation_` exceeds `tol`.
+  Within that feasibility tolerance it reports the non-negative difference between the unconstrained
   objective (loss and penalties) and the dual bound; it is not an exact certificate
   for a strictly infeasible iterate. Use `kkt_residual_` and
-  `constraint_violation_` alongside it.
+  `scaled_constraint_violation_` alongside it; `constraint_violation_` reports
+  the residual in the original constraint units and can exceed `tol` even when
+  the normalized residual meets the tolerance.
 - With intercept scaling `s`, the regularized synthetic coefficient is
   `intercept_ / s`; intercept regularization is retained.
 

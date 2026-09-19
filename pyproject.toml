@@ -26,10 +26,22 @@ repository = "https://github.com/softmin/ReHLine-python"
 documentation = "https://rehline-python.readthedocs.io/en/latest/index.html"
 
 [tool.cibuildwheel]
-# Only build on CPython
-build = "cp*"
+# Release only the Python versions and native platforms covered by CI.
+# Excludes musllinux (no scikit-learn wheels), free-threaded Python, and
+# untested architectures. Update this list together with the CI matrix.
+build = "cp3{10,11,12,13,14}-{manylinux_x86_64,macosx_arm64,win_amd64}"
 test-extras = ["test"]
 test-command = "python {project}/tools/test_installed.py"
+
+[tool.cibuildwheel.linux]
+archs = ["x86_64"]
+
+[tool.cibuildwheel.macos]
+archs = ["arm64"]
+
+[tool.cibuildwheel.windows]
+# Supported SciPy versions provide Windows x86-64 wheels, not win32 wheels.
+archs = ["AMD64"]
 
 [project.optional-dependencies]
 test = ["pytest >= 7.0", "pandas >= 1.5.0", "pytest-cov"]

@@ -56,7 +56,7 @@ def test_readme_low_level_example_runs():
     path = Path(__file__).resolve().parents[1] / "README.md"
     if not path.exists():
         pytest.skip("Source README is absent from the isolated wheel test directory")
-    example = path.read_text().split("### Low-Level API for Custom Problems", 1)[1]
+    example = path.read_text(encoding="utf-8").split("### Low-Level API for Custom Problems", 1)[1]
     code = example.split("```python", 1)[1].split("```", 1)[0]
     namespace = {}
     exec(compile(code, str(path), "exec"), namespace)

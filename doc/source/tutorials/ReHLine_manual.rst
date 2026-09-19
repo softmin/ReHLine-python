@@ -49,9 +49,9 @@ The python implementation is:
   ## SVM ReHLine parameters
   clf = ReHLine()
   ## U
-  clf.U = -(C*y).reshape(1,-1)
+  clf.U = -(C*y/n).reshape(1,-1)
   ## V
-  clf.V = (C*np.array(np.ones(n))).reshape(1,-1)
+  clf.V = np.full((1, n), C/n)
   ## Fit
   clf.fit(X)
 

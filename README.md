@@ -30,6 +30,21 @@ See more details in the [ReHLine documentation](https://rehline-python.readthedo
 pip install rehline
 ```
 
+Release wheels and CI cover standard CPython 3.10–3.14 on these platforms:
+
+| Operating system | Architecture | Wheel family |
+| --- | --- | --- |
+| Linux with glibc | x86-64 | manylinux |
+| macOS (Apple Silicon) | ARM64 | macosx |
+| Windows | x86-64, with 64-bit Python | win_amd64 |
+
+We do not publish wheels for 32-bit systems, Alpine/musl, Intel macOS, Linux
+ARM, Windows ARM, or free-threaded Python. Alpine/musl lacks compatible
+scikit-learn wheels, and the extension has not been validated for free-threaded
+Python. Intel macOS and the other ARM targets are outside the current CI matrix.
+Source distributions remain available; builds on other targets are not covered
+by the release tests.
+
 ### Development Install
 
 For contributors and developers:
