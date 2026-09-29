@@ -5,10 +5,10 @@ import tracemalloc
 
 import numpy as np
 import pytest
-from benchmarks.common.objectives import audit_solver_result
-from benchmarks.correctness.cqr import check_case, dense_problem, make_case, run_suite
 
 from rehline import CQR_Ridge, ReHLine_solver
+from tests._helpers.cqr import check_case, dense_problem, make_case, run_suite
+from tests._helpers.objectives import audit_solver_result
 
 
 def test_cqr_against_dense_and_cvxpy():
@@ -26,7 +26,7 @@ def test_cqr_tight_objective_gate_for_small_scale_and_warm_refits(index):
 
 def test_cqr_reference_gate_rejects_wrong_solution(monkeypatch):
     pytest.importorskip("cvxpy")
-    import benchmarks.correctness.cqr as benchmark
+    import tests._helpers.cqr as benchmark
 
     original = benchmark.CQR_Ridge.fit
 

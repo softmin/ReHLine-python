@@ -2,7 +2,8 @@
 
 import numpy as np
 import pytest
-from benchmarks.correctness.fairness import covariance_rows, run_suite
+
+from tests._helpers.fairness import covariance_rows, run_suite
 
 
 def test_pairwise_covariance_oracle():

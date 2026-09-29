@@ -4,7 +4,8 @@ from types import SimpleNamespace
 
 import numpy as np
 import pytest
-from benchmarks.correctness import api as benchmark
+
+from tests._helpers import api as benchmark
 
 
 def test_small_public_api_suite():

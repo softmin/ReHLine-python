@@ -13,11 +13,6 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--correctness-cases", type=int, default=0)
     parser.add_argument("--report-dir", type=Path, default=Path("test-results/wheel-correctness"))
-    parser.add_argument(
-        "--benchmark-source",
-        type=Path,
-        help="ReHLine-benchmarking checkout to copy into the isolated test directory; otherwise use its installed package",
-    )
     args = parser.parse_args()
     if args.correctness_cases < 0:
         parser.error("--correctness-cases must be nonnegative")
@@ -26,13 +21,6 @@ def main():
     with tempfile.TemporaryDirectory(prefix="rehline-wheel-test-") as directory:
         target = Path(directory)
         shutil.copytree(project / "tests", target / "tests", ignore=shutil.ignore_patterns("__pycache__"))
-        if args.benchmark_source is not None:
-            benchmark_source = args.benchmark_source.resolve() / "benchmarks"
-            if not (benchmark_source / "common/objectives.py").is_file():
-                raise ValueError(f"Not a ReHLine-benchmarking checkout: {args.benchmark_source}")
-            shutil.copytree(
-                benchmark_source, target / "benchmarks", ignore=shutil.ignore_patterns("__pycache__", "results", "data")
-            )
         env = os.environ.copy()
         env.pop("PYTHONPATH", None)
         env["SCIPY_ARRAY_API"] = "1"
@@ -55,7 +43,7 @@ def main():
                 [
                     sys.executable,
                     "-m",
-                    "benchmarks.correctness.core",
+                    "tests._helpers.core",
                     "--profile",
                     "routine",
                     "--tol",

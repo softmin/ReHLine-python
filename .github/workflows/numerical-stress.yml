@@ -32,14 +32,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - uses: ./.github/actions/setup-benchmarking
-        with:
-          ref: ${{ vars.REHLINE_BENCHMARKING_REF || 'main' }}
-          ssh-key: ${{ secrets.REHLINE_BENCHMARKING_SSH_KEY }}
       - run: python -m pip install -e ".[test]"
       - name: Measure accuracy and validate solver diagnostics
         run: >-
-          python -m benchmarks.diagnostics.numerical_stress --max-iter "$STRESS_MAX_ITER"
+          python -m tests._helpers.numerical_stress --max-iter "$STRESS_MAX_ITER"
           --output test-results/numerical-stress/report.json
       - name: Show budget misses explicitly
         if: always()
@@ -68,10 +64,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - uses: ./.github/actions/setup-benchmarking
-        with:
-          ref: ${{ vars.REHLINE_BENCHMARKING_REF || 'main' }}
-          ssh-key: ${{ secrets.REHLINE_BENCHMARKING_SSH_KEY }}
       - run: python -m pip install -e ".[test,benchmark]"
       - name: Preserve strict stress assertions and their failures
         run: >-
@@ -92,12 +84,12 @@ jobs:
       matrix:
         reference: [latest, minimum]
         suite:
-          - {name: correctness, module: correctness.core, cases: 1200}
-          - {name: estimator_correctness, module: correctness.estimators, cases: 1200}
-          - {name: api_correctness, module: correctness.api, cases: 1200}
-          - {name: cqr_correctness, module: correctness.cqr, cases: 600}
-          - {name: constraint_scaling, module: correctness.constraint_scaling, cases: 600}
-          - {name: fairness_correctness, module: correctness.fairness, cases: 600}
+          - {name: correctness, module: core, cases: 1200}
+          - {name: estimator_correctness, module: estimators, cases: 1200}
+          - {name: api_correctness, module: api, cases: 1200}
+          - {name: cqr_correctness, module: cqr, cases: 600}
+          - {name: constraint_scaling, module: constraint_scaling, cases: 600}
+          - {name: fairness_correctness, module: fairness, cases: 600}
     env:
       OPENBLAS_NUM_THREADS: "1"
       OMP_NUM_THREADS: "1"
@@ -108,10 +100,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - uses: ./.github/actions/setup-benchmarking
-        with:
-          ref: ${{ vars.REHLINE_BENCHMARKING_REF || 'main' }}
-          ssh-key: ${{ secrets.REHLINE_BENCHMARKING_SSH_KEY }}
       - name: Install reference dependencies
         run: |
           if [ "${{ matrix.reference }}" = "minimum" ]; then
@@ -123,7 +111,7 @@ jobs:
           python -m pip check
       - name: Run full numerical scan with its strict assertions
         run: >-
-          python -m benchmarks.${{ matrix.suite.module }} --cases ${{ matrix.suite.cases }}
+          python -m tests._helpers.${{ matrix.suite.module }} --cases ${{ matrix.suite.cases }}
           --output test-results/reference-stress/${{ matrix.suite.name }}.json
       - uses: actions/upload-artifact@v4
         if: always()

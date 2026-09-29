@@ -5,10 +5,10 @@ import warnings
 
 import numpy as np
 import pytest
-from benchmarks.correctness.estimators import LOSSES, direct_loss
 from sklearn.exceptions import ConvergenceWarning
 
 from rehline import plqMF_Ridge
+from tests._helpers.estimators import LOSSES, direct_loss
 
 
 def test_mf_equivalent_constraints_preserve_objective_and_stopping():

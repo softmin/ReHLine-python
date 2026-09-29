@@ -96,9 +96,12 @@ def test_mf_hinge_classification_fits(mf_data):
         rank=5,
         C=0.001,
         max_iter=5000,
+        max_iter_CD=100,
+        random_state=0,
         tol=0.01,
     )
     model.fit(d["X_train"], y_train_bin)
+    assert model.converged_ and model.inner_converged_
 
     # decision_function should return a 1-D array of length n_test
     scores = model.decision_function(d["X_test"])

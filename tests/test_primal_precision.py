@@ -4,7 +4,8 @@ from itertools import product
 
 import numpy as np
 import pytest
-from benchmarks.correctness.core import constraint_violation, make_case, objective, solve_rehline
+
+from tests._helpers.core import constraint_violation, make_case, objective, solve_rehline
 
 
 @pytest.mark.numerical_stress

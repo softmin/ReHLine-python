@@ -1,32 +1,41 @@
 # Test policy
 
-Benchmark runners and independent reference helpers live in the separate
-[ReHLine-benchmarking](https://github.com/softmin/ReHLine-benchmarking) repository.
-Install the sibling checkout into the test environment before running tests:
+All solver tests and independent numerical references live in this repository.
+Install the test dependencies (CVXPY is optional locally and required in the
+reference CI jobs):
 
 ```sh
 python -m pip install -e ".[test,benchmark]"
-python -m pip install --no-deps -e ../ReHLine-benchmarking
 ```
 
-The benchmark package is a test dependency, not a ReHLine runtime dependency.
-CI checks it out explicitly; `REHLINE_BENCHMARKING_REF` (repository variable)
-can select a matching commit/tag instead of `main`. Publish the benchmark
-migration before enabling the corresponding Python-repository CI changes.
-Performance-runner tests now live in ReHLine-benchmarking/tests. Numerical solver
-acceptance and release/wheel gates remain here and continue to use their shared
-independent references. CI report artifacts go to `test-results/`.
+The `benchmark` extra installs CVXPY only; it does not install or access the
+separate ReHLine-benchmarking repository. `tests/_helpers/` contains the small
+problem generators, independent objective/feasibility checks and reference
+solvers used by these tests. Their acceptance thresholds are versioned together
+with the solver tests. Helpers ship in the sdist, not in the runtime wheel.
 
-For a wheel-test environment without an installed benchmark package, use
-`python tools/test_installed.py --benchmark-source ../ReHLine-benchmarking`.
-This copies only benchmark helpers/configs into the temporary test directory;
-it does not add the Python source checkout to the import path.
+Performance runners, grid search, dense suites and CrowdStrike benchmarks remain
+in [ReHLine-benchmarking](https://github.com/softmin/ReHLine-benchmarking) and run
+independently. This repository's CI needs no benchmark checkout or access key.
+CI reports go to `test-results/`.
+
+Run `python tools/test_installed.py` after installing a wheel to copy only this
+repository's tests (including helpers) into a temporary directory. The runner
+removes `PYTHONPATH` and verifies that it imports the installed solver binary,
+not the source checkout. Add `--correctness-cases 256` for the CVXPY reference gate.
 
 Routine PR, source and installed-wheel CI runs:
 
 ```sh
 python -m pytest tests -m "not numerical_stress"
 ```
+
+The Linux minimum-dependency job retains NumPy 1.23.5 and selects the Haswell
+OpenBLAS kernel to avoid its bundled BLAS's known incorrect matrix products on
+Sapphire Rapids CPUs ([NumPy issue 24903](https://github.com/numpy/numpy/issues/24903)).
+`tools/check_blas.py` verifies matrix products against direct summation before
+the solver tests. This setting applies only to that compatibility job; solver
+code and numerical acceptance thresholds are unchanged.
 
 Numerical acceptance uses independently evaluated objectives, with
 `abs(f - reference) / max(1, abs(reference)) <= 1e-8`, and normalized constraint
@@ -50,7 +59,7 @@ lower bound; the absolute KKT residual remains a separately recorded diagnostic.
 Source and exact installed-wheel reference jobs run 256 such problems (768 fits):
 
 ```sh
-python -m benchmarks.correctness.core --profile routine --cases 256 \
+python -m tests._helpers.core --profile routine --cases 256 \
   --max-samples 20 --max-dim 5 --tol 1e-8 --max-iter 1000000 \
   --output test-results/correctness/routine.json
 ```
@@ -62,7 +71,7 @@ Coordinate-order regressions cover both cyclic/random orders with shrinking
 enabled/disabled, legacy defaults and native positional calls, reproducible
 seeds, warm refits, full dual descent, mixed-loss references, compact/dense CQR
 and parameter forwarding through estimators/path helpers. Timing comparisons
-run separately with `python -m benchmarks.diagnostics.coordinate_order`; they do not gate CI.
+run separately in ReHLine-benchmarking; they do not gate CI.
 
 Shrinking regressions also verify that relaxed `eps_shrink` recovery happens
 before final accuracy without declaring an unfinished prefix converged. They
@@ -98,8 +107,8 @@ Box references are analytic optimal corners; MSE references enumerate primal
 sign patterns; SVM references solve an independent primal epigraph QP with SciPy.
 
 ```sh
-python -m benchmarks.diagnostics.numerical_stress --max-iter 1000000 --output test-results/numerical-stress/report.json
-python -m benchmarks.diagnostics.numerical_stress --max-iter 20000000 --output /tmp/stress.json
+python -m tests._helpers.numerical_stress --max-iter 1000000 --output test-results/numerical-stress/report.json
+python -m tests._helpers.numerical_stress --max-iter 20000000 --output /tmp/stress.json
 python -m pytest tests -m numerical_stress --no-cov -o junit_family=legacy --junitxml=stress.xml
 ```
 

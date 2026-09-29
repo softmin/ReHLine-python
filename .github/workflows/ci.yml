@@ -3,9 +3,6 @@ name: CI Tests
 on:
   workflow_call:
     secrets:
-      REHLINE_BENCHMARKING_SSH_KEY:
-        description: Read-only deploy key for the private benchmark repository
-        required: true
       CODECOV_TOKEN:
         required: false
   push:
@@ -19,7 +16,7 @@ on:
     branches: [main]
 
 jobs:
-  correctness-benchmark:
+  correctness-reference:
     name: "Small convex problems / CVXPY ${{ matrix.reference }}"
     runs-on: ubuntu-latest
     strategy:
@@ -33,11 +30,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - uses: ./.github/actions/setup-benchmarking
-        with:
-          ref: ${{ vars.REHLINE_BENCHMARKING_REF || 'main' }}
-          ssh-key: ${{ secrets.REHLINE_BENCHMARKING_SSH_KEY }}
-      - name: Install benchmark dependencies
+      - name: Install reference dependencies
         run: |
           if [ "${{ matrix.reference }}" = "minimum" ]; then
             printf '%s\n' 'cvxpy==1.6.0' 'numpy==1.26.4' 'scipy==1.13.1' > /tmp/reference-constraints.txt
@@ -46,7 +39,7 @@ jobs:
             python -m pip install -e ".[test,benchmark]"
           fi
           python -m pip check
-      - name: Test benchmark validation
+      - name: Test independent numerical references
         run: >-
           pytest
           tests/test_correctness_benchmark.py tests/test_estimator_correctness_benchmark.py
@@ -60,14 +53,12 @@ jobs:
           tests/test_constant_fairness.py tests/test_mf_sampling.py
           tests/test_coordinate_order.py tests/test_coordinate_descent.py
           -m "not numerical_stress" --no-cov -q
-      - name: Check the external benchmark integration
-        run: python -m pytest -c .ci/benchmarking/pyproject.toml .ci/benchmarking/tests -q
       - name: Compare routine losses and constraints against CVXPY
         env:
           OPENBLAS_NUM_THREADS: "1"
           OMP_NUM_THREADS: "1"
         run: >-
-          python -m benchmarks.correctness.core --profile routine --cases 256
+          python -m tests._helpers.core --profile routine --cases 256
           --max-samples 20 --max-dim 5 --tol 1e-8 --max-iter 1000000
           --output test-results/correctness/routine.json
       - name: Check fairness reference and examples
@@ -76,7 +67,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: correctness-benchmark-${{ matrix.reference }}
+          name: correctness-reference-${{ matrix.reference }}
           path: test-results/correctness/
 
   wheel-correctness:
@@ -97,10 +88,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - uses: ./.github/actions/setup-benchmarking
-        with:
-          ref: ${{ vars.REHLINE_BENCHMARKING_REF || 'main' }}
-          ssh-key: ${{ secrets.REHLINE_BENCHMARKING_SSH_KEY }}
       - name: Build wheel
         run: python -m pip wheel . --no-deps --wheel-dir wheelhouse
       - name: Install wheel and reference dependencies
@@ -142,14 +129,20 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - uses: ./.github/actions/setup-benchmarking
-        with:
-          ref: ${{ vars.REHLINE_BENCHMARKING_REF || 'main' }}
-          ssh-key: ${{ secrets.REHLINE_BENCHMARKING_SSH_KEY }}
+      # NumPy 1.23.5's bundled OpenBLAS can return incorrect GEMM results on
+      # Sapphire Rapids CPUs: https://github.com/numpy/numpy/issues/24903
+      - name: Use a compatible BLAS kernel for minimum dependencies
+        if: matrix.dependencies == 'minimum'
+        shell: bash
+        run: echo "OPENBLAS_CORETYPE=Haswell" >> "$GITHUB_ENV"
 
       - name: Install minimum dependencies
         if: matrix.dependencies == 'minimum'
         run: pip install "numpy==1.23.5" "scipy==1.11.4" "scikit-learn==1.6.0" "pandas==1.5.0"
+
+      - name: Verify minimum-dependency matrix arithmetic
+        if: matrix.dependencies == 'minimum'
+        run: python tools/check_blas.py
 
       - name: Install package and test dependencies
         run: pip install -e ".[test]" pytest-cov

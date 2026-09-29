@@ -15,7 +15,6 @@ jobs:
   test:
     uses: ./.github/workflows/ci.yml
     secrets:
-      REHLINE_BENCHMARKING_SSH_KEY: ${{ secrets.REHLINE_BENCHMARKING_SSH_KEY }}
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   build_wheels:
@@ -33,11 +32,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: ./.github/actions/setup-benchmarking
-        with:
-          ref: ${{ vars.REHLINE_BENCHMARKING_REF || 'main' }}
-          ssh-key: ${{ secrets.REHLINE_BENCHMARKING_SSH_KEY }}
-          install: "false"
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.3.1
@@ -66,10 +60,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - uses: ./.github/actions/setup-benchmarking
-        with:
-          ref: ${{ vars.REHLINE_BENCHMARKING_REF || 'main' }}
-          ssh-key: ${{ secrets.REHLINE_BENCHMARKING_SSH_KEY }}
       - uses: actions/download-artifact@v7
         with:
           pattern: rehline-wheels-${{ matrix.os }}-*
@@ -98,10 +88,6 @@ jobs:
         with:
           python-version: "3.13"
 
-      - uses: ./.github/actions/setup-benchmarking
-        with:
-          ref: ${{ vars.REHLINE_BENCHMARKING_REF || 'main' }}
-          ssh-key: ${{ secrets.REHLINE_BENCHMARKING_SSH_KEY }}
       - name: Build and validate sdist
         run: |
           python -m pip install build twine "pybind11~=3.0.0" "setuptools>=80" setuptools-scm wheel

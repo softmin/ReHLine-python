@@ -227,8 +227,8 @@ def test_classifier_export_storage_is_independent_of_training_sample_count(class
 @pytest.mark.parametrize("family", ["cqr", "regression", "classification"])
 def test_benchmark_gate_detects_corrupted_export(family, monkeypatch):
     pytest.importorskip("cvxpy")
-    from benchmarks.correctness import api as api_correctness
-    from benchmarks.correctness import cqr as cqr_correctness
+    from tests._helpers import api as api_correctness
+    from tests._helpers import cqr as cqr_correctness
 
     estimator = {"cqr": CQR_Ridge, "regression": plq_Ridge_Regressor, "classification": plq_Ridge_Classifier}[family]
     original = estimator.to_inference

@@ -2,7 +2,8 @@
 
 import numpy as np
 import pytest
-from benchmarks.correctness.estimators import agree, run_suite
+
+from tests._helpers.estimators import agree, run_suite
 
 
 @pytest.mark.numerical_stress

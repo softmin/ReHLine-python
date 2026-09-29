@@ -43,9 +43,8 @@ def assert_objective_close():
 @pytest.fixture
 def fit_mf_objective(monkeypatch, assert_objective_close, record_property):
     """Certify convex MF blocks by independently recomputed primal/dual bounds."""
-    from benchmarks.common.objectives import audit_solver_result
-
     import rehline._mf_class as mf
+    from tests._helpers.objectives import audit_solver_result
 
     def checked(model, X, y, **kwargs):
         original = mf.ReHLine_solver

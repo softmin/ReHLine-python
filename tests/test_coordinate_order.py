@@ -2,11 +2,11 @@
 
 import numpy as np
 import pytest
-from benchmarks.correctness.core import _native_problem, make_case, solve_reference
-from benchmarks.diagnostics.numerical_stress import ACCURACY, measure
 from sklearn.base import clone
 
 import rehline
+from tests._helpers.core import _native_problem, make_case, solve_reference
+from tests._helpers.numerical_stress import ACCURACY, measure
 
 
 def problem(index=71):

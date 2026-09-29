@@ -2,7 +2,8 @@ import json
 
 import numpy as np
 import pytest
-from benchmarks.correctness import core as correctness
+
+from tests._helpers import core as correctness
 
 
 def test_case_generation_and_replay_are_exact(tmp_path):

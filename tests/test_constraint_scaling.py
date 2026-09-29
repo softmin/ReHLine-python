@@ -226,7 +226,7 @@ def test_row_permutation_duplicates_and_direct_dual_transfer(shrink):
 
 def test_scaled_constraint_benchmark_and_failure_gate(monkeypatch):
     pytest.importorskip("cvxpy")
-    import benchmarks.correctness.constraint_scaling as module
+    import tests._helpers.constraint_scaling as module
 
     report = module.run_suite(cases=12)
     assert report["passed"] == 12, report
