@@ -2,6 +2,12 @@ name: CI Tests
 
 on:
   workflow_call:
+    secrets:
+      REHLINE_BENCHMARKING_SSH_KEY:
+        description: Read-only deploy key for the private benchmark repository
+        required: true
+      CODECOV_TOKEN:
+        required: false
   push:
     branches: [main]
     paths-ignore:
@@ -28,6 +34,7 @@ jobs:
       - uses: ./.github/actions/setup-benchmarking
         with:
           ref: ${{ vars.REHLINE_BENCHMARKING_REF || 'main' }}
+          ssh-key: ${{ secrets.REHLINE_BENCHMARKING_SSH_KEY }}
       - name: Install benchmark dependencies
         run: |
           if [ "${{ matrix.reference }}" = "minimum" ]; then
@@ -91,6 +98,7 @@ jobs:
       - uses: ./.github/actions/setup-benchmarking
         with:
           ref: ${{ vars.REHLINE_BENCHMARKING_REF || 'main' }}
+          ssh-key: ${{ secrets.REHLINE_BENCHMARKING_SSH_KEY }}
       - name: Build wheel
         run: python -m pip wheel . --no-deps --wheel-dir wheelhouse
       - name: Install wheel and reference dependencies
@@ -133,6 +141,7 @@ jobs:
       - uses: ./.github/actions/setup-benchmarking
         with:
           ref: ${{ vars.REHLINE_BENCHMARKING_REF || 'main' }}
+          ssh-key: ${{ secrets.REHLINE_BENCHMARKING_SSH_KEY }}
 
       - name: Install minimum dependencies
         if: matrix.dependencies == 'minimum'
