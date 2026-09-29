@@ -11,7 +11,6 @@
 #include <stdexcept>
 #include <algorithm>
 #include <Eigen/Core>
-#include <Eigen/Cholesky>
 #include <Eigen/QR>
 #include "design.h"
 
@@ -281,7 +280,8 @@ private:
             const Scalar newxi = std::max(Scalar(0), candid);
             // Update xi and beta
             m_xi[k] = newxi;
-            m_beta.noalias() += (newxi - xi_k) * m_A.row(k).transpose();
+            if (newxi != xi_k)
+                m_beta.noalias() += (newxi - xi_k) * m_A.row(k).transpose();
         }
     }
 
@@ -310,7 +310,8 @@ private:
                 const Scalar newl = std::max(Scalar(0), std::min(Scalar(1), candid));
                 // Update Lambda and beta
                 m_Lambda(l, i) = newl;
-                m_X.subtract_row(m_beta, i, (newl - lambda_li) * u_li);
+                if (newl != lambda_li)
+                    m_X.subtract_row(m_beta, i, (newl - lambda_li) * u_li);
             }
         }
     }
@@ -338,7 +339,8 @@ private:
                 const Scalar newg = std::max(Scalar(0), std::min(tau_hi, candid));
                 // Update Gamma and beta
                 m_Gamma(h, i) = newg;
-                m_X.subtract_row(m_beta, i, (newg - gamma_hi) * s_hi);
+                if (newg != gamma_hi)
+                    m_X.subtract_row(m_beta, i, (newg - gamma_hi) * s_hi);
             }
         }
     }
@@ -372,16 +374,19 @@ private:
     }
     // Update xi and beta
     // Overloaded version based on free variable set
-    inline void update_xi_beta(std::vector<Index>& fv_set, Scalar& min_pg, Scalar& max_pg)
+    template <bool Shrinking = true>
+    inline void update_xi_beta(std::vector<Index>& fv_set, Scalar& min_pg, Scalar& max_pg,
+                                 bool random_order = true)
     {
         if (m_K < 1)
             return;
 
         // Permutation
-        internal::random_shuffle(fv_set.begin(), fv_set.end(), m_rng);
+        if (random_order)
+            internal::random_shuffle(fv_set.begin(), fv_set.end(), m_rng);
         // New free variable set
         std::vector<Index> new_set;
-        new_set.reserve(fv_set.size());
+        if (Shrinking) new_set.reserve(fv_set.size());
 
         // Compute shrinking threshold ub
         // ub is kept unchanged in each outer iteration,
@@ -403,31 +408,34 @@ private:
             const Scalar g_k = m_A.row(k).dot(m_beta) + m_b[k];
             if (m_gk_denom[k] == Scalar(0)) {
                 m_xi[k] = Scalar(0);
-                new_set.push_back(k);
+                if (Shrinking) new_set.push_back(k);
                 continue;
             }
             // PG and shrink
-            Scalar pg;
-            const bool shrink = pg_xi(xi_k, g_k, ub, pg);
-            if (shrink)
-               continue;
+            if (Shrinking) {
+                Scalar pg;
+                const bool shrink = pg_xi(xi_k, g_k, ub, pg);
+                if (shrink)
+                   continue;
 
-            // Update PG bounds
-            max_pg = std::max(max_pg, pg);
-            min_pg = std::min(min_pg, pg);
+                // Update PG bounds
+                max_pg = std::max(max_pg, pg);
+                min_pg = std::min(min_pg, pg);
+            }
             // Compute new xi_k
             const Scalar candid = xi_k - g_k / m_gk_denom[k];
             const Scalar newxi = std::max(Scalar(0), candid);
             // Update xi and beta
             m_xi[k] = newxi;
-            m_beta.noalias() += (newxi - xi_k) * m_A.row(k).transpose();
+            if (newxi != xi_k)
+                m_beta.noalias() += (newxi - xi_k) * m_A.row(k).transpose();
 
             // Add to new free variable set
-            new_set.push_back(k);
+            if (Shrinking) new_set.push_back(k);
         }
 
         // Update free variable set
-        fv_set.swap(new_set);
+        if (Shrinking) fv_set.swap(new_set);
     }
 
     // Determine whether to shrink lambda, and compute the projected gradient (PG)
@@ -443,16 +451,19 @@ private:
     }
     // Update Lambda and beta
     // Overloaded version based on free variable set
-    inline void update_Lambda_beta(std::vector<std::pair<Index, Index>>& fv_set, Scalar& min_pg, Scalar& max_pg)
+    template <bool Shrinking = true>
+    inline void update_Lambda_beta(std::vector<std::pair<Index, Index>>& fv_set, Scalar& min_pg, Scalar& max_pg,
+                                 bool random_order = true)
     {
         if (m_L < 1)
             return;
 
         // Permutation
-        internal::random_shuffle(fv_set.begin(), fv_set.end(), m_rng);
+        if (random_order)
+            internal::random_shuffle(fv_set.begin(), fv_set.end(), m_rng);
         // New free variable set
         std::vector<std::pair<Index, Index>> new_set;
-        new_set.reserve(fv_set.size());
+        if (Shrinking) new_set.reserve(fv_set.size());
 
         // Compute shrinking thresholds lb and ub
         // More details explained in update_xi_beta()
@@ -473,33 +484,36 @@ private:
 
             if (m_gli_denom(l, i) == Scalar(0)) {
                 m_Lambda(l, i) = v_li > Scalar(0) ? Scalar(1) : Scalar(0);
-                new_set.emplace_back(l, i);
+                if (Shrinking) new_set.emplace_back(l, i);
                 continue;
             }
             // Compute g_li
             const Scalar g_li = -(u_li * m_X.dot(i, m_beta) + v_li);
             // PG and shrink
-            Scalar pg;
-            const bool shrink = pg_lambda(lambda_li, g_li, lb, ub, pg);
-            if (shrink)
-                continue;
+            if (Shrinking) {
+                Scalar pg;
+                const bool shrink = pg_lambda(lambda_li, g_li, lb, ub, pg);
+                if (shrink)
+                    continue;
 
-            // Update PG bounds
-            max_pg = std::max(max_pg, pg);
-            min_pg = std::min(min_pg, pg);
+                // Update PG bounds
+                max_pg = std::max(max_pg, pg);
+                min_pg = std::min(min_pg, pg);
+            }
             // Compute new lambda_li
             const Scalar candid = lambda_li - g_li / m_gli_denom(l, i);
             const Scalar newl = std::max(Scalar(0), std::min(Scalar(1), candid));
             // Update Lambda and beta
             m_Lambda(l, i) = newl;
-            m_X.subtract_row(m_beta, i, (newl - lambda_li) * u_li);
+            if (newl != lambda_li)
+                m_X.subtract_row(m_beta, i, (newl - lambda_li) * u_li);
 
             // Add to new free variable set
-            new_set.emplace_back(l, i);
+            if (Shrinking) new_set.emplace_back(l, i);
         }
 
         // Update free variable set
-        fv_set.swap(new_set);
+        if (Shrinking) fv_set.swap(new_set);
     }
 
     // Determine whether to shrink gamma, and compute the projected gradient (PG)
@@ -515,16 +529,19 @@ private:
     }
     // Update Gamma and beta
     // Overloaded version based on free variable set
-    inline void update_Gamma_beta(std::vector<std::pair<Index, Index>>& fv_set, Scalar& min_pg, Scalar& max_pg)
+    template <bool Shrinking = true>
+    inline void update_Gamma_beta(std::vector<std::pair<Index, Index>>& fv_set, Scalar& min_pg, Scalar& max_pg,
+                                 bool random_order = true)
     {
         if (m_H < 1)
             return;
 
         // Permutation
-        internal::random_shuffle(fv_set.begin(), fv_set.end(), m_rng);
+        if (random_order)
+            internal::random_shuffle(fv_set.begin(), fv_set.end(), m_rng);
         // New free variable set
         std::vector<std::pair<Index, Index>> new_set;
-        new_set.reserve(fv_set.size());
+        if (Shrinking) new_set.reserve(fv_set.size());
 
         // Compute shrinking thresholds lb and ub
         // More details explained in update_xi_beta()
@@ -548,27 +565,30 @@ private:
             // Compute g_hi
             const Scalar g_hi = gamma_hi - (s_hi * m_X.dot(i, m_beta) + t_hi);
             // PG and shrink
-            Scalar pg;
-            const bool shrink = pg_gamma(gamma_hi, g_hi, tau_hi, lb, ub, pg);
-            if (shrink)
-                continue;
+            if (Shrinking) {
+                Scalar pg;
+                const bool shrink = pg_gamma(gamma_hi, g_hi, tau_hi, lb, ub, pg);
+                if (shrink)
+                    continue;
 
-            // Update PG bounds
-            max_pg = std::max(max_pg, pg);
-            min_pg = std::min(min_pg, pg);
+                // Update PG bounds
+                max_pg = std::max(max_pg, pg);
+                min_pg = std::min(min_pg, pg);
+            }
             // Compute new gamma_hi
             const Scalar candid = gamma_hi - g_hi / m_ghi_denom(h, i);
             const Scalar newg = std::max(Scalar(0), std::min(tau_hi, candid));
             // Update Gamma and beta
             m_Gamma(h, i) = newg;
-            m_X.subtract_row(m_beta, i, (newg - gamma_hi) * s_hi);
+            if (newg != gamma_hi)
+                m_X.subtract_row(m_beta, i, (newg - gamma_hi) * s_hi);
 
             // Add to new free variable set
-            new_set.emplace_back(h, i);
+            if (Shrinking) new_set.emplace_back(h, i);
         }
 
         // Update free variable set
-        fv_set.swap(new_set);
+        if (Shrinking) fv_set.swap(new_set);
     }
 
     // Determine whether to shrink mu, and compute the projected gradient (PG)
@@ -584,16 +604,19 @@ private:
     }
     // Update mu and beta
     // Overloaded version based on free variable set
-    inline void update_mu_beta(std::vector<Index>& fv_set, Scalar& min_pg, Scalar& max_pg)
+    template <bool Shrinking = true>
+    inline void update_mu_beta(std::vector<Index>& fv_set, Scalar& min_pg, Scalar& max_pg,
+                                 bool random_order = true)
     {
         if (m_W <= 0)
             return;
 
         // Permutation
-        internal::random_shuffle(fv_set.begin(), fv_set.end(), m_rng);
+        if (random_order)
+            internal::random_shuffle(fv_set.begin(), fv_set.end(), m_rng);
         // New free variable set
         std::vector<Index> new_set;
-        new_set.reserve(fv_set.size());
+        if (Shrinking) new_set.reserve(fv_set.size());
 
         // Compute shrinking thresholds lb and ub
         // More details explained in update_xi_beta()
@@ -611,26 +634,29 @@ private:
             // Compute g_j
             const Scalar g_j = m_beta[j];
             // PG and shrink
-            Scalar pg;
-            const bool shrink = pg_mu(mu_j, g_j, rho_j, lb, ub, pg);
-            if (shrink)
-               continue;
+            if (Shrinking) {
+                Scalar pg;
+                const bool shrink = pg_mu(mu_j, g_j, rho_j, lb, ub, pg);
+                if (shrink)
+                   continue;
 
-            // Update PG bounds
-            max_pg = std::max(max_pg, pg);
-            min_pg = std::min(min_pg, pg);
+                // Update PG bounds
+                max_pg = std::max(max_pg, pg);
+                min_pg = std::min(min_pg, pg);
+            }
             // Compute new mu_j
             const Scalar candid = mu_j - g_j * Scalar(0.5);
             const Scalar newmu = std::max(Scalar(0), std::min(rho_j, candid));
             // Update mu and beta
             m_mu[j] = newmu;
-            m_beta[j] += Scalar(2.0) * (newmu - mu_j);
+            if (newmu != mu_j)
+                m_beta[j] += Scalar(2.0) * (newmu - mu_j);
 
             // Add to new free variable set
-            new_set.push_back(j);
+            if (Shrinking) new_set.push_back(j);
         }
         // Update free variable set
-        fv_set.swap(new_set);
+        if (Shrinking) fv_set.swap(new_set);
     }
 public:
     ReHLineSolver(ConstRefMat X, ConstRefMat U, ConstRefMat V,
@@ -810,17 +836,25 @@ public:
         return residual;
     }
 
-    // A small projected gradient alone is not an objective certificate: its
-    // units depend on the dual coordinates and multipliers can be large.
-    inline bool certificate(Scalar tol) const
+    // Share the stopping rule with final diagnostics. Absolute projected
+    // gradients have coordinate-dependent units and remain diagnostic only.
+    // Feasibility uses the normalized constraint rows; a gap at an iterate
+    // feasible only within tol is a numerical, not an exact, primal bound.
+    static inline bool objective_converged(Scalar primal, Scalar dual, Scalar violation, Scalar tol)
     {
-        if (kkt_residual() > tol || constraint_violation() > tol) return false;
-        const Scalar primal = primal_objfn(), dual = -dual_objfn();
         const Scalar gap = primal - dual;
-        if (!std::isfinite(primal) || !std::isfinite(dual) || !std::isfinite(gap))
+        if (!std::isfinite(primal) || !std::isfinite(dual) ||
+            !std::isfinite(violation) || !std::isfinite(gap))
             numerical_failure();
         const Scalar scale = std::max(Scalar(1), std::max(std::abs(primal), std::abs(dual)));
-        return std::abs(gap) / scale <= tol;
+        return violation <= tol && std::abs(gap) / scale <= tol;
+    }
+
+    inline bool certificate(Scalar tol) const
+    {
+        const Scalar violation = constraint_violation();
+        if (violation > tol) return false;
+        return objective_converged(primal_objfn(), -dual_objfn(), violation, tol);
     }
 
     // Compensated products/sums retain small residuals under cancellation.
@@ -858,7 +892,7 @@ public:
 
     // Primal refinement near the precision floor; the caller has recovered the
     // dual coefficient vector. Only accept a correction passing the original
-    // tolerance, including the formerly implicit stationarity equation.
+    // objective-gap and feasibility tolerance.
     inline bool polish_primal(Scalar tol)
     {
         if (m_K == 0) return false;
@@ -903,137 +937,12 @@ public:
             numerical_failure();
         const Scalar gap = result.objective - result.dual_objective;
         if (!std::isfinite(gap)) numerical_failure();
-        const Scalar scale = std::max(Scalar(1), std::max(std::abs(result.objective), std::abs(result.dual_objective)));
-        result.converged = result.kkt_residual <= tol && result.constraint_violation <= tol &&
-            std::abs(gap) / scale <= tol;
+        result.converged = objective_converged(
+            result.objective, result.dual_objective, result.constraint_violation, tol);
         // For infeasible iterates the unconstrained loss is not a primal bound.
         result.dual_gap = result.constraint_violation > tol ?
             std::numeric_limits<Scalar>::infinity() :
             std::max(Scalar(0), gap);
-    }
-
-    // Correlated coordinates can make individual updates arbitrarily slow.
-    // Periodically minimize a small block of the same dual quadratic. Bounds
-    // and an explicit descent check keep this acceleration feasible and monotone.
-    inline bool update_block()
-    {
-        struct Coordinate {
-            Index kind, row, col;
-            Scalar value, upper, gradient;
-        };
-        std::vector<Coordinate> candidates;
-        const Vector scores = m_X.multiply(m_beta);
-        const auto add = [&](Index kind, Index row, Index col, Scalar value, Scalar upper, Scalar gradient) {
-            if (upper == Scalar(0) || (value == Scalar(0) && gradient > Scalar(0)) ||
-                (value == upper && gradient < Scalar(0))) return;
-            candidates.push_back({kind, row, col, value, upper, gradient});
-        };
-        for (Index k = 0; k < m_K; ++k)
-            add(0, k, 0, m_xi[k], std::numeric_limits<Scalar>::infinity(), m_A.row(k).dot(m_beta) + m_b[k]);
-        for (Index i = 0; i < m_n; ++i) {
-            for (Index l = 0; l < m_L; ++l)
-                add(1, l, i, m_Lambda(l, i), Scalar(1), -(m_U(l, i) * scores[i] + m_V(l, i)));
-            for (Index h = 0; h < m_H; ++h)
-                add(2, h, i, m_Gamma(h, i), m_Tau(h, i), m_Gamma(h, i) - m_S(h, i) * scores[i] - m_T(h, i));
-        }
-        for (Index j = 0; j < m_W; ++j)
-            add(3, j, 0, m_mu[j], m_rho[j], Scalar(2) * m_beta[j]);
-        // ReHU blocks may need many simultaneous quadratic coordinates. For
-        // piecewise-linear losses, use a smaller block tied to primal dimension.
-        const Index limit = m_H > 0 ? Index(256) :
-            std::min(Index(128), std::max(Index(32), 2 * m_d + m_K + m_W));
-        if (candidates.size() > static_cast<std::size_t>(limit)) {
-            std::partial_sort(candidates.begin(), candidates.begin() + limit, candidates.end(),
-                [](const Coordinate& a, const Coordinate& b) {
-                    const bool a_penalty = a.kind == 0 || a.kind == 3;
-                    const bool b_penalty = b.kind == 0 || b.kind == 3;
-                    if (a_penalty != b_penalty) return a_penalty;
-                    return std::abs(a.gradient) > std::abs(b.gradient);
-                });
-            candidates.resize(limit);
-        }
-        Index count = static_cast<Index>(candidates.size());
-        if (count == 0) return false;
-        Matrix B(m_d, count);
-        Vector gradient(count), diagonal = Vector::Zero(count);
-        for (Index k = 0; k < count; ++k) {
-            const auto& c = candidates[k];
-            gradient[k] = c.gradient;
-            if (c.kind == 0) B.col(k) = m_A.row(c.row).transpose();
-            else if (c.kind == 1) m_X.scaled_column(B, k, c.col, -m_U(c.row, c.col));
-            else if (c.kind == 2) {
-                m_X.scaled_column(B, k, c.col, -m_S(c.row, c.col));
-                diagonal[k] = Scalar(1);
-            } else {
-                B.col(k).setZero();
-                B(c.row, k) = Scalar(2);
-            }
-        }
-        Matrix hessian = B.transpose() * B;
-        hessian.diagonal() += diagonal;
-        // A tiny positive diagonal also gives a descent direction for singular
-        // blocks. The line search below uses the original, unmodified Hessian.
-        const Scalar damping = std::max(Scalar(1), hessian.diagonal().maxCoeff()) * Scalar(1e-12);
-        std::vector<Index> free(count);
-        std::iota(free.begin(), free.end(), Index(0));
-        Vector direction = Vector::Zero(count);
-        while (!free.empty()) {
-            const Index size = static_cast<Index>(free.size());
-            Matrix reduced(size, size);
-            Vector rhs(size);
-            for (Index i = 0; i < size; ++i) {
-                rhs[i] = -gradient[free[i]];
-                for (Index j = 0; j < size; ++j) reduced(i, j) = hessian(free[i], free[j]);
-            }
-            reduced.diagonal().array() += damping;
-            Eigen::LDLT<Matrix> factor(reduced);
-            if (factor.info() != Eigen::Success) return false;
-            const Vector step = factor.solve(rhs);
-            if (!step.allFinite()) return false;
-            direction.setZero();
-            std::vector<Index> next;
-            for (Index i = 0; i < size; ++i) {
-                const Index k = free[i];
-                const auto& c = candidates[k];
-                if ((c.value == Scalar(0) && step[i] < Scalar(0)) ||
-                    (c.value == c.upper && step[i] > Scalar(0))) continue;
-                direction[k] = step[i];
-                next.push_back(k);
-            }
-            if (next.size() == free.size()) break;
-            free.swap(next);
-        }
-        const Scalar slope = gradient.dot(direction);
-        const Scalar curvature = direction.dot(hessian * direction);
-        if (!(slope < Scalar(0)) || !std::isfinite(curvature)) return false;
-        Scalar alpha = curvature > Scalar(0) ? -slope / curvature : Scalar(1);
-        for (Index k = 0; k < count; ++k) {
-            const auto& c = candidates[k];
-            if (direction[k] > Scalar(0)) alpha = std::min(alpha, (c.upper - c.value) / direction[k]);
-            else if (direction[k] < Scalar(0)) alpha = std::min(alpha, -c.value / direction[k]);
-        }
-        if (!(alpha > Scalar(0)) || !std::isfinite(alpha)) return false;
-        Vector delta(count), values(count);
-        for (Index k = 0; k < count; ++k) {
-            const auto& c = candidates[k];
-            values[k] = std::max(Scalar(0), std::min(c.upper, c.value + alpha * direction[k]));
-            // Snap the limiting coordinate exactly to its bound, preventing a
-            // tiny rounding remainder from blocking subsequent Newton steps.
-            if (direction[k] < Scalar(0) && alpha >= -c.value / direction[k]) values[k] = Scalar(0);
-            if (direction[k] > Scalar(0) && alpha >= (c.upper - c.value) / direction[k]) values[k] = c.upper;
-            delta[k] = values[k] - c.value;
-        }
-        const Scalar change = gradient.dot(delta) + Scalar(0.5) * delta.dot(hessian * delta);
-        if (!std::isfinite(change) || change >= Scalar(0)) return false;
-        for (Index k = 0; k < count; ++k) {
-            const auto& c = candidates[k];
-            if (c.kind == 0) m_xi[c.row] = values[k];
-            else if (c.kind == 1) m_Lambda(c.row, c.col) = values[k];
-            else if (c.kind == 2) m_Gamma(c.row, c.col) = values[k];
-            else m_mu[c.row] = values[k];
-        }
-        set_primal();
-        return true;
     }
 
     inline void set_seed(Index seed) { m_rng.seed(seed); }
@@ -1042,26 +951,35 @@ public:
         std::vector<Scalar>& dual_objfns, std::vector<Scalar>& primal_objfns,
         Index max_iter, Scalar tol,
         Index verbose = 0, Index trace_freq = 100,
-        std::ostream& cout = std::cout)
+        std::ostream& cout = std::cout, bool random_order = false)
     {
+        if (random_order) {
+            internal::reset_fv_set(m_fv_feas, m_K);
+            internal::reset_fv_set(m_fv_relu, m_L, m_n);
+            internal::reset_fv_set(m_fv_rehu, m_H, m_n);
+            internal::reset_fv_set(m_fv_l1mu, m_W);
+        }
+        // Unused when shrinking is disabled; the template removes PG bookkeeping.
+        Scalar min_pg = Scalar(0), max_pg = Scalar(0);
         // Main iterations
         Index i = 0;
         Vector old_xi(m_K), old_beta(m_d);
-        // With many samples and constraints, shrinking makes individual sweeps
-        // cheap. Space out full block scans to preserve that advantage.
-        const Index block_period = m_K > 0 ? std::max(Index(50), m_n) : Index(50);
         for(; i < max_iter; i++)
         {
             old_xi.noalias() = m_xi;
             old_beta.noalias() = m_beta;
 
-            update_xi_beta();
-            update_Lambda_beta();
-            update_Gamma_beta();
-            update_mu_beta();
-            if ((i + 1) % block_period == 0)
-                for (Index block = 0; block < 64; ++block)
-                    if (!update_block() || kkt_residual() <= tol) break;
+            if (random_order) {
+                update_xi_beta<false>(m_fv_feas, min_pg, max_pg);
+                update_Lambda_beta<false>(m_fv_relu, min_pg, max_pg);
+                update_Gamma_beta<false>(m_fv_rehu, min_pg, max_pg);
+                update_mu_beta<false>(m_fv_l1mu, min_pg, max_pg);
+            } else {
+                update_xi_beta();
+                update_Lambda_beta();
+                update_Gamma_beta();
+                update_mu_beta();
+            }
 
             // Compute difference of xi and beta
             const Scalar xi_diff = (m_K > 0) ? (m_xi - old_xi).norm() : Scalar(0);
@@ -1095,7 +1013,7 @@ public:
         std::vector<Scalar>& dual_objfns, std::vector<Scalar>& primal_objfns,
         Index max_iter, Scalar tol,
         Index verbose = 0, Index trace_freq = 100,
-        std::ostream& cout = std::cout)
+        std::ostream& cout = std::cout, bool random_order = true)
     {
         // Free variable sets
         internal::reset_fv_set(m_fv_feas, m_K);
@@ -1110,29 +1028,45 @@ public:
         Scalar xi_min_pg = Scalar(0), lambda_min_pg = Scalar(0), gamma_min_pg = Scalar(0), mu_min_pg = Scalar(0);
         Scalar xi_max_pg = Scalar(0), lambda_max_pg = Scalar(0), gamma_max_pg = Scalar(0), mu_max_pg = Scalar(0);
 
+        // Restore the full working set before solving each restricted problem
+        // to the final tolerance. Scale the initial threshold from the first
+        // full sweep, then tighten it after each restoration. This scheduling
+        // tolerance never replaces tol in the final convergence certificate.
+        Scalar eps_shrink = tol;
+        bool shrink_scale_set = false;
+        const auto pg_size = [](Scalar min_pg, Scalar max_pg) {
+            // Empty groups (or groups with only zero-curvature coordinates)
+            // retain the +Inf/-Inf sentinels and contribute no local residual.
+            if (min_pg > max_pg) return Scalar(0);
+            return std::max({max_pg - min_pg, std::abs(max_pg), std::abs(min_pg)});
+        };
+
+        // Amortize optional recovery probes over coordinate visits, rather
+        // than counting restricted sweeps of very different sizes. This is a
+        // work proxy, not a wall-clock bound. Count the incoming working sets:
+        // coordinates removed during this sweep still require evaluation.
+        constexpr std::size_t recovery_gap_sweeps = 2;
+        const std::size_t full_visits = m_fv_feas.size() + m_fv_relu.size() +
+                                        m_fv_rehu.size() + m_fv_l1mu.size();
+        const std::size_t gap_budget = std::min(full_visits,
+            std::numeric_limits<std::size_t>::max() / recovery_gap_sweeps) * recovery_gap_sweeps;
+        std::size_t gap_work = 0;
+
         // Main iterations
         Index i = 0;
         Vector old_xi(m_K), old_beta(m_d);
-        const Index block_period = m_K > 0 ? std::max(Index(50), m_n) : Index(50);
         for(; i < max_iter; i++)
         {
             old_xi.noalias() = m_xi;
             old_beta.noalias() = m_beta;
 
-            update_xi_beta(m_fv_feas, xi_min_pg, xi_max_pg);
-            update_Lambda_beta(m_fv_relu, lambda_min_pg, lambda_max_pg);
-            update_Gamma_beta(m_fv_rehu, gamma_min_pg, gamma_max_pg);
-            update_mu_beta(m_fv_l1mu, mu_min_pg, mu_max_pg);
-            if ((i + 1) % block_period == 0) {
-                for (Index block = 0; block < 64; ++block)
-                    if (!update_block() || kkt_residual() <= tol) break;
-                internal::reset_fv_set(m_fv_feas, m_K);
-                internal::reset_fv_set(m_fv_relu, m_L, m_n);
-                internal::reset_fv_set(m_fv_rehu, m_H, m_n);
-                internal::reset_fv_set(m_fv_l1mu, m_W);
-                xi_min_pg = lambda_min_pg = gamma_min_pg = mu_min_pg = Scalar(0);
-                xi_max_pg = lambda_max_pg = gamma_max_pg = mu_max_pg = Scalar(0);
-            }
+            const std::size_t visits = m_fv_feas.size() + m_fv_relu.size() +
+                                       m_fv_rehu.size() + m_fv_l1mu.size();
+            gap_work += std::min(gap_budget - gap_work, visits);
+            update_xi_beta(m_fv_feas, xi_min_pg, xi_max_pg, random_order);
+            update_Lambda_beta(m_fv_relu, lambda_min_pg, lambda_max_pg, random_order);
+            update_Gamma_beta(m_fv_rehu, gamma_min_pg, gamma_max_pg, random_order);
+            update_mu_beta(m_fv_l1mu, mu_min_pg, mu_max_pg, random_order);
 
             // Compute difference of xi and beta
             const Scalar xi_diff = (m_K > 0) ? (m_xi - old_xi).norm() : Scalar(0);
@@ -1153,6 +1087,13 @@ public:
                                  (mu_max_pg - mu_min_pg < tol) &&
                                  (std::abs(mu_max_pg) < tol) &&
                                  (std::abs(mu_min_pg) < tol);
+            const Scalar pg_violation = std::max({
+                pg_size(xi_min_pg, xi_max_pg), pg_size(lambda_min_pg, lambda_max_pg),
+                pg_size(gamma_min_pg, gamma_max_pg), pg_size(mu_min_pg, mu_max_pg)});
+            if (!shrink_scale_set && std::isfinite(pg_violation)) {
+                eps_shrink = std::max(tol, Scalar(0.1) * pg_violation);
+                shrink_scale_set = true;
+            }
             // Whether we are using all variables
             const bool all_vars = (m_fv_feas.size() == static_cast<std::size_t>(m_K)) &&
                                   (m_fv_relu.size() == static_cast<std::size_t>(m_L * m_n)) &&
@@ -1181,14 +1122,38 @@ public:
                 }
             }
 
-            // If variable value or PG converges but not on all variables,
-            // use all variables in the next iteration
-            if ((vars_conv || pg_conv) && (!all_vars))
+            // Before paying for a full sweep, check the global objective and
+            // feasibility certificate, including every shrunken coordinate.
+            if ((vars_conv || pg_conv || pg_violation < eps_shrink) && (!all_vars))
             {
+                // Probe using beta recovered from the duals. If the certificate
+                // fails, retain the incremental beta exactly so this additional
+                // check does not perturb the coordinate trajectory or RNG.
+                if (gap_work == gap_budget) {
+                    if (verbose >= 2)
+                        cout << "*** Iter " << i << ", recovery gap probe; coordinate_budget = "
+                            << gap_budget << std::endl;
+                    gap_work = 0;
+                    Vector incremental_beta = m_beta;
+                    const bool was_polished = m_primal_polished;
+                    set_primal();
+                    if (certificate(tol)) {
+                        if (verbose)
+                            cout << "*** Iter " << i <<
+                                ", global gap and feasibility passed before restoration" << std::endl;
+                        return i + 1;
+                    }
+                    m_beta.swap(incremental_beta);
+                    m_primal_polished = was_polished;
+                } else if (verbose >= 2) {
+                    cout << "*** Iter " << i << ", recovery gap probe deferred; coordinate_work = "
+                        << gap_work << "/" << gap_budget << std::endl;
+                }
                 if (verbose)
                 {
                     cout << "*** Iter " << i <<
-                        ", free variables converge; next test on all variables" << std::endl;
+                        ", restoring all variables; local_pg = " << pg_violation <<
+                        ", eps_shrink = " << eps_shrink << std::endl;
                 }
                 internal::reset_fv_set(m_fv_feas, m_K);
                 internal::reset_fv_set(m_fv_relu, m_L, m_n);
@@ -1196,11 +1161,11 @@ public:
                 internal::reset_fv_set(m_fv_l1mu, m_W);
                 xi_min_pg = lambda_min_pg = gamma_min_pg = mu_min_pg = Scalar(0);
                 xi_max_pg = lambda_max_pg = gamma_max_pg = mu_max_pg = Scalar(0);
-                // Also recompute beta to improve precision
-                // set_primal();
+                eps_shrink = std::max(tol, Scalar(0.5) * eps_shrink);
                 continue;
             }
             if (all_vars && (vars_conv || pg_conv)) {
+                gap_work = 0;
                 set_primal();
                 if (certificate(tol) || polish_primal(tol)) return i + 1;
             }
@@ -1225,9 +1190,10 @@ void rehline_solver(
     const Eigen::MatrixBase<DerivedVec>& b, const Eigen::MatrixBase<DerivedVec>& rho,
     const Eigen::MatrixBase<DerivedMat>& U, const Eigen::MatrixBase<DerivedMat>& V,
     const Eigen::MatrixBase<DerivedMat>& S, const Eigen::MatrixBase<DerivedMat>& T, const Eigen::MatrixBase<DerivedMat>& Tau,
-    Index max_iter, typename DerivedMat::Scalar tol, 
+    Index max_iter, typename DerivedMat::Scalar tol,
     Index shrink = 1, Index verbose = 0, Index trace_freq = 100,
-    std::ostream& cout = std::cout, Index quantile_count = 0
+    std::ostream& cout = std::cout, Index quantile_count = 0,
+    Index coordinate_order = 0, Index coordinate_seed = -1
 )
 {
     if (Composite && (quantile_count <= 0 || X.rows() > std::numeric_limits<Index>::max() / quantile_count ||
@@ -1236,7 +1202,8 @@ void rehline_solver(
     const auto n = X.rows() * (Composite ? quantile_count : 1);
     const auto d = X.cols() + (Composite ? quantile_count : 0);
     if (n <= 0 || d <= 0 || max_iter <= 0 || !std::isfinite(tol) || tol <= 0 ||
-        shrink < 0 || verbose < 0 || trace_freq <= 0)
+        shrink < 0 || verbose < 0 || trace_freq <= 0 ||
+        coordinate_order < 0 || coordinate_order > 2 || coordinate_seed < -1)
         throw std::invalid_argument("Invalid dimensions or solver options");
     if (!X.allFinite() || !A.allFinite() || !b.allFinite() || !rho.allFinite() ||
         !U.allFinite() || !V.allFinite() || !S.allFinite() || !T.allFinite())
@@ -1294,12 +1261,15 @@ void rehline_solver(
     std::vector<typename DerivedMat::Scalar> dual_objfns;
     std::vector<typename DerivedMat::Scalar> primal_objfns;
     Index niter;
+    // Order: 0 = legacy auto, 1 = cyclic, 2 = random permutation per sweep.
+    // A negative seed preserves the legacy positive-shrink seed (or 1 without shrinking).
+    const bool random_order = coordinate_order == 2 || (coordinate_order == 0 && shrink > 0);
+    solver.set_seed(coordinate_seed >= 0 ? coordinate_seed : (shrink > 0 ? shrink : Index(1)));
     if (shrink > 0)
     {
-        solver.set_seed(shrink);
-        niter = solver.solve(dual_objfns, primal_objfns, max_iter, tol, verbose, trace_freq, cout);
+        niter = solver.solve(dual_objfns, primal_objfns, max_iter, tol, verbose, trace_freq, cout, random_order);
     } else {
-        niter = solver.solve_vanilla(dual_objfns, primal_objfns, max_iter, tol, verbose, trace_freq, cout);
+        niter = solver.solve_vanilla(dual_objfns, primal_objfns, max_iter, tol, verbose, trace_freq, cout, random_order);
     }
 
     solver.diagnostics(result, tol);

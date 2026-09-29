@@ -24,7 +24,7 @@ def test_blocked_scores_match_full_pair_formula_and_keep_objective(estimator, cl
         n_clusters_per_class=1,
         random_state=14,
     )
-    model = estimator(loss={"name": "svm"}, C=0.03, multi_class="ovo", tol=1e-10, max_iter=100000).fit(X, y)
+    model = estimator(loss={"name": "svm"}, C=0.03, multi_class="ovo", tol=1e-8, max_iter=100000).fit(X, y)
     before = pickle.dumps(vars(model))
     probe = np.asfortranarray(X) if layout == "fortran" else (X[::2] if layout == "strided" else X)
     margins = probe @ model.coef_.T + model.intercept_

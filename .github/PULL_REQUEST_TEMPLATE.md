@@ -18,7 +18,8 @@
 ## Checklist
 
 - [ ] I have tested my changes locally
-- [ ] Tests pass: `pytest tests/ -v`
+- [ ] Routine tests pass: `pytest tests/ -m "not numerical_stress" -v`
+- [ ] Relevant numerical stress results reviewed (see `tests/README.md`)
 - [ ] Code follows the style guidelines (PEP 8)
 - [ ] Documentation has been updated (if applicable)
 - [ ] Commits are properly formatted

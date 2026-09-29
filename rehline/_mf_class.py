@@ -107,8 +107,19 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
         Convergence tolerance for each ReHLine block solve and the final
         row-normalized factor constraint violation.
 
-    shrink : float, default=1
-        The shrinkage of dual variables for the ReHLine solver.
+    shrink : int, default=1
+        Zero disables shrinking; a positive integer enables it. With
+        coordinate_seed=None, the positive value also supplies the legacy seed.
+
+    coordinate_order : {"auto", "cyclic", "random"}, default="auto"
+        Coordinate order within each group. Auto uses cyclic when shrink=0
+        and random permutations when shrink>0. Explicit orders work with either
+        shrinking setting. The group order remains xi, Lambda, Gamma, mu.
+
+    coordinate_seed : int or None, default=None
+        Non-negative int32 seed for random coordinate permutations. None uses
+        the positive shrink value, or 1 when shrink=0. Reset for each solver call,
+        including warm refits. Ignored for cyclic order.
 
     trace_freq : int, default=100
         The frequency at which to print the optimization trace for the ReHLine solver.
@@ -227,6 +238,9 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
         max_iter_CD=10,
         tol_CD=1e-4,
         verbose=0,
+        *,
+        coordinate_order="auto",
+        coordinate_seed=None,
     ):
         # parameter initialization
         ## -----------------------------basic parameters-----------------------------
@@ -251,6 +265,8 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
         self.tol = tol
         self.max_iter = max_iter
         self.shrink = shrink
+        self.coordinate_order = coordinate_order
+        self.coordinate_seed = coordinate_seed
         self.trace_freq = trace_freq
 
     def __sklearn_is_fitted__(self):
@@ -312,6 +328,8 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
             max_iter=self.max_iter,
             tol=self.tol,
             shrink=self.shrink,
+            coordinate_order=self.coordinate_order,
+            coordinate_seed=self.coordinate_seed,
             verbose=int(self.verbose in (2, 3)),
             trace_freq=self.trace_freq,
         )
@@ -395,12 +413,12 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
         for name in ("n_users", "n_items", "rank", "max_iter_CD"):
             value = getattr(self, name)
             if (
-                isinstance(value, (bool, np.bool_))
+                isinstance(value, bool | np.bool_)
                 or not isinstance(value, Integral)
                 or not 1 <= value <= np.iinfo(np.int32).max
             ):
                 raise ValueError(f"{name} must be a positive integer fitting in int32")
-        if not isinstance(self.biased, (bool, np.bool_)):
+        if not isinstance(self.biased, bool | np.bool_):
             raise ValueError("biased must be boolean")
         X = self._validate_pairs(X)
         y = numeric_array(y, "y", ndim=1)

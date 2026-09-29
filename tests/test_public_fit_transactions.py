@@ -24,7 +24,7 @@ def test_failed_convex_refit_preserves_state_and_recovers(kind, failure, monkeyp
 
     rng = np.random.default_rng(18)
     X, y = rng.normal(size=(24, 3)), rng.normal(size=24)
-    options = dict(C=0.1, tol=1e-9, max_iter=100000, warm_start=True)
+    options = dict(C=0.1, tol=1e-8, max_iter=100000, warm_start=True)
     if kind == "raw":
         model = ReHLine(U=-np.ones((1, len(y))), V=np.ones((1, len(y))), **options)
     elif kind == "cqr":
@@ -101,7 +101,7 @@ def test_mf_failed_refit_preserves_factors_metadata_and_full_objective(failure, 
         biased=biased,
         random_state=42,
         max_iter=100000,
-        tol=1e-9,
+        tol=1e-8,
         max_iter_CD=5,
     )
     fit_mf(model, X, y, sample_weight=weight)

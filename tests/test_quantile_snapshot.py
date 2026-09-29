@@ -28,7 +28,7 @@ def test_quantile_snapshot_is_independent_and_refits_use_new_parameters(layout, 
         levels.setflags(write=False)
     elif layout == "list":
         levels = levels.tolist()
-    model = CQR_Ridge(levels, C=0.1, tol=1e-10, max_iter=100000, warm_start=warm_start).fit(X, y, sample_weight=weights)
+    model = CQR_Ridge(levels, C=0.1, tol=1e-8, max_iter=100000, warm_start=warm_start).fit(X, y, sample_weight=weights)
     assert model.quantiles is levels  # Constructor semantics are unchanged.
     assert not np.shares_memory(model.quantiles_, np.asarray(levels))
     before = model.predict(X).copy()

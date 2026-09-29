@@ -56,7 +56,7 @@ def test_native_and_python_entry_reject_nonfinite_computations(kind, quantiles, 
             Tau,
             *extra,
             3,
-            1e-10,
+            1e-8,
             shrink,
             0,
             100,
@@ -66,7 +66,7 @@ def test_native_and_python_entry_reject_nonfinite_computations(kind, quantiles, 
 @pytest.mark.parametrize("estimator", [plqERM_Ridge, plqERM_ElasticNet, plq_Ridge_Regressor, plq_ElasticNet_Regressor])
 @pytest.mark.parametrize("warm_start", [False, True])
 def test_overflow_refit_rolls_back_and_first_fit_remains_unfitted(estimator, warm_start):
-    options = dict(loss={"name": "MSE"}, C=0.1, warm_start=warm_start, tol=1e-10, max_iter=100000)
+    options = dict(loss={"name": "MSE"}, C=0.1, warm_start=warm_start, tol=1e-8, max_iter=100000)
     if estimator in (plq_Ridge_Regressor, plq_ElasticNet_Regressor):
         options["fit_intercept"] = False
     X, y = np.zeros((4, 2)), np.arange(4.0)
@@ -114,9 +114,7 @@ def test_overflow_classification_weights_preserve_the_model(estimator):
 
 def test_overflow_mf_block_preserves_factors_and_history():
     X, y = np.array([[0, 0], [0, 1], [1, 0], [1, 1]]), np.arange(4.0)
-    model = plqMF_Ridge(2, 2, loss={"name": "MSE"}, rank=1, C=0.1, random_state=42, max_iter=100000, tol=1e-10).fit(
-        X, y
-    )
+    model = plqMF_Ridge(2, 2, loss={"name": "MSE"}, rank=1, C=0.1, random_state=42, max_iter=100000, tol=1e-8).fit(X, y)
     before = pickle.dumps(vars(model))
     with pytest.raises(OverflowError):
         model.fit(X, np.full(4, 1e155))
@@ -134,7 +132,7 @@ def test_representable_rescaled_quadratic_preserves_analytic_objective(scale, sh
         S=np.array([[1 / scale], [-1 / scale]]),
         T=np.array([[-1.0], [1.0]]),
         Tau=np.full((2, 1), np.inf),
-        tol=1e-10,
+        tol=1e-8,
         max_iter=100000,
         shrink=shrink,
         verbose=0,
@@ -142,7 +140,7 @@ def test_representable_rescaled_quadratic_preserves_analytic_objective(scale, sh
     result = ReHLine_solver(**problem)
     for _ in range(2):
         assert result.converged
-        assert result.kkt_residual <= 1e-10
+        assert result.kkt_residual <= problem["tol"]
         np.testing.assert_allclose(result.beta, [0.5], rtol=1e-10, atol=1e-12)
         actual = 0.5 * (result.beta[0] - 1) ** 2 + 0.5 * result.beta[0] ** 2
         assert actual == pytest.approx(0.25, rel=1e-12)

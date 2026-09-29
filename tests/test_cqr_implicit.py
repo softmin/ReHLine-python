@@ -5,9 +5,9 @@ import tracemalloc
 
 import numpy as np
 import pytest
+from benchmarks.common.objectives import audit_solver_result
+from benchmarks.correctness.cqr import check_case, dense_problem, make_case, run_suite
 
-from benchmarks.cqr_correctness import check_case, dense_problem, make_case, run_suite
-from benchmarks.objectives import audit_solver_result
 from rehline import CQR_Ridge, ReHLine_solver
 
 
@@ -26,7 +26,7 @@ def test_cqr_tight_objective_gate_for_small_scale_and_warm_refits(index):
 
 def test_cqr_reference_gate_rejects_wrong_solution(monkeypatch):
     pytest.importorskip("cvxpy")
-    import benchmarks.cqr_correctness as benchmark
+    import benchmarks.correctness.cqr as benchmark
 
     original = benchmark.CQR_Ridge.fit
 
@@ -42,8 +42,9 @@ def test_cqr_reference_gate_rejects_wrong_solution(monkeypatch):
 
 
 @pytest.mark.parametrize("shrink", [0, 1])
+@pytest.mark.parametrize("coordinate_order", ["auto", "cyclic", "random"])
 @pytest.mark.parametrize("layout", ["c", "fortran", "strided"])
-def test_cqr_audit_matches_dense_problem_hash_and_full_bounds(shrink, layout, monkeypatch):
+def test_cqr_audit_matches_dense_problem_hash_and_full_bounds(shrink, coordinate_order, layout, monkeypatch):
     import rehline._class as module
 
     case = make_case(19)
@@ -62,9 +63,15 @@ def test_cqr_audit_matches_dense_problem_hash_and_full_bounds(shrink, layout, mo
         return result
 
     monkeypatch.setattr(module, "ReHLine_solver", record)
-    CQR_Ridge(case["quantiles"], C=case["C"], shrink=shrink, tol=1e-9, max_iter=100000).fit(
-        X, case["y"], sample_weight=case["weight"]
-    )
+    CQR_Ridge(
+        case["quantiles"],
+        C=case["C"],
+        shrink=shrink,
+        coordinate_order=coordinate_order,
+        coordinate_seed=7,
+        tol=1e-8,
+        max_iter=100000,
+    ).fit(X, case["y"], sample_weight=case["weight"])
     problem, result = calls[0]
     dense = dict(problem, X=dense_problem(case)["X"])
     dense.pop("_quantile_count")
@@ -80,7 +87,7 @@ def test_cqr_audit_matches_dense_problem_hash_and_full_bounds(shrink, layout, mo
 def test_cqr_warm_refit_with_changed_problem_matches_cold(change):
     rng = np.random.default_rng(39)
     X, y = rng.normal(size=(24, 3)), rng.normal(size=24)
-    model = CQR_Ridge([0.2, 0.8], C=0.1, warm_start=True, tol=1e-9, max_iter=100000).fit(X, y)
+    model = CQR_Ridge([0.2, 0.8], C=0.1, warm_start=True, tol=1e-8, max_iter=100000).fit(X, y)
     weight = np.ones(len(y))
     if change == "samples":
         X, y, weight = X[:12], y[:12], weight[:12]

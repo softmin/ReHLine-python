@@ -4,8 +4,8 @@ Test ElasticNet on simulated dataset.
 Tests PR #7fd2ab1: add ElasticNet penalty support to ReHLine solver.
 Dataset sizes are controlled to prevent slow CI runs.
 
-Note on parameterisation mismatch
------------------------------------
+Equivalent parameterisations
+----------------------------
 rehline objective:
     min_beta  C * sum_i PLQ(y_i, x_i^T beta) + l1_ratio * ||beta||_1
               + 0.5*(1-l1_ratio)*||beta||_2^2
@@ -15,12 +15,16 @@ sklearn ElasticNet objective:
               + alpha*l1_ratio*||beta||_1
               + (alpha/2)*(1-l1_ratio)*||beta||_2^2
 
-The L2 penalty scales differently, so the two are NOT directly equivalent.
-test_elasticnet_vs_sklearn_mse documents this known discrepancy and is
-marked xfail.
+Multiplying sklearn's objective by 2*n*C gives the rehline objective when
+alpha=1/(2*n*C). Compare these complete objectives at the requested accuracy.
 """
 
 import numpy as np
+
+# ---------------------------------------------------------------------------
+# Helper
+# ---------------------------------------------------------------------------
+import pytest
 from sklearn.datasets import make_regression
 from sklearn.linear_model import ElasticNet
 from sklearn.model_selection import train_test_split
@@ -28,10 +32,6 @@ from sklearn.preprocessing import StandardScaler
 
 from rehline import plqERM_ElasticNet, plqERM_Ridge
 
-# ---------------------------------------------------------------------------
-# Helper
-# ---------------------------------------------------------------------------
-import pytest
 
 def _regression_dataset(n, n_features, n_informative, seed=42):
     X, y = make_regression(
@@ -58,8 +58,8 @@ def _regression_dataset(n, n_features, n_informative, seed=42):
 # ---------------------------------------------------------------------------
 
 
-def test_elasticnet_vs_sklearn_mse():
-    """ElasticNet vs sklearn (MSE loss, no intercept) — expected to differ."""
+def test_elasticnet_vs_sklearn_mse(assert_objective_close, record_property):
+    """Equivalent ElasticNet MSE formulations attain the same objective."""
     n, n_features = 5000, 20
     C, l1_ratio = 0.1, 0.5
 
@@ -69,7 +69,7 @@ def test_elasticnet_vs_sklearn_mse():
         alpha=1 / (C * 2 * len(X_train)),
         l1_ratio=l1_ratio,
         max_iter=10000,
-        tol=1e-5,
+        tol=1e-8,
         fit_intercept=False,
     )
     clf_skl.fit(X_train, y_train)
@@ -80,16 +80,24 @@ def test_elasticnet_vs_sklearn_mse():
         C=C,
         l1_ratio=l1_ratio,
         max_iter=10000,
-        tol=1e-5,
+        tol=1e-8,
     )
     clf_reh.fit(X_train, y_train)
-    sol_reh = np.where(np.abs(clf_reh.coef_.flatten()) < 1e-8, 0, clf_reh.coef_.flatten())
+    sol_reh = clf_reh.coef_.flatten()
 
-    max_diff = np.max(np.abs(sol_skl - sol_reh))
-    assert max_diff <= 1e-4, (
-        f"Solutions differ by {max_diff:.6e} > 1e-4. "
-        f"Known parameterisation issue between rehline and sklearn ElasticNet."
-    )
+    def objective(beta):
+        return (
+            C * np.square(y_train - X_train @ beta).sum()
+            + l1_ratio * abs(beta).sum()
+            + 0.5 * (1 - l1_ratio) * beta @ beta
+        )
+
+    actual = objective(sol_reh)
+    assert clf_reh.converged_
+    assert_objective_close(actual, objective(sol_skl))
+    assert_objective_close(actual, clf_reh.objective_ * (1 - l1_ratio))
+    assert_objective_close(actual, clf_reh.dual_objective_ * (1 - l1_ratio))
+    record_property("coefficient_max_difference", float(np.max(abs(sol_skl - sol_reh))))
 
 
 def test_different_l1_ratios():
@@ -240,8 +248,8 @@ def test_different_omegas():
     X_scaled = scaler.fit_transform(X)
 
     for i in range(5):  # conduct 5 tests with different omega
-        rng = np.random.default_rng(seed=42+i)
-        omega = rng.uniform(low=0.1, high=0.2+i, size=n_features)
+        rng = np.random.default_rng(seed=42 + i)
+        omega = rng.uniform(low=0.1, high=0.2 + i, size=n_features)
         clf = plqERM_ElasticNet(
             loss={"name": "mse"},
             C=C,
@@ -270,26 +278,27 @@ def test_with_omega_vs_without_omega():
     X_scaled = scaler.fit_transform(X)
 
     clf_with_omg = plqERM_ElasticNet(
-                 loss={"name": "mse"},
-                 C=C,
-                 l1_ratio=l1_ratio,
-                 omega=np.ones(n_features),
-                 max_iter=5000,
-                 tol=1e-4,
+        loss={"name": "mse"},
+        C=C,
+        l1_ratio=l1_ratio,
+        omega=np.ones(n_features),
+        max_iter=5000,
+        tol=1e-4,
     )
     clf_with_omg.fit(X_scaled, y)
 
     clf_without_omg = plqERM_ElasticNet(
-                    loss={"name": "mse"},
-                    C=C,
-                    l1_ratio=l1_ratio,
-                    max_iter=5000,
-                    tol=1e-4,
+        loss={"name": "mse"},
+        C=C,
+        l1_ratio=l1_ratio,
+        max_iter=5000,
+        tol=1e-4,
     )
     clf_without_omg.fit(X_scaled, y)
 
-    assert np.array_equal(clf_with_omg.coef_.flatten(), clf_without_omg.coef_.flatten()), \
+    assert np.array_equal(clf_with_omg.coef_.flatten(), clf_without_omg.coef_.flatten()), (
         "ElasticNet with omega=(1, 1, ..., 1) should exactly match that without omega."
+    )
 
 
 def test_omega_validation():
@@ -343,8 +352,8 @@ def test_omega_validation():
         clf.fit(X_scaled, y)
 
 
-def test_zero_omega_vs_ridge():
-    """ElasticNet with omega=(0, 0, ..., 0) should exactly match Ridge within 1e-4.."""
+def test_zero_omega_vs_ridge(assert_objective_close):
+    """Zero L1 weights recover the analytic rescaled Ridge objective."""
     n, n_features, C, l1_ratio = 2000, 10, 0.01, 0.5
 
     X, y = make_regression(
@@ -358,22 +367,31 @@ def test_zero_omega_vs_ridge():
     X_scaled = scaler.fit_transform(X)
 
     clf_EN = plqERM_ElasticNet(
-                 loss={"name": "mse"},
-                 C=C,
-                 l1_ratio=l1_ratio,
-                 omega=np.zeros(n_features),
-                 max_iter=5000,
-                 tol=1e-4,
+        loss={"name": "mse"},
+        C=C,
+        l1_ratio=l1_ratio,
+        omega=np.zeros(n_features),
+        max_iter=5000,
+        tol=1e-8,
     )
     clf_EN.fit(X_scaled, y)
 
     clf_RG = plqERM_Ridge(
-                    loss={"name": "mse"},
-                    C=C/(1-l1_ratio),
-                    max_iter=5000,
-                    tol=1e-4,
+        loss={"name": "mse"},
+        C=C / (1 - l1_ratio),
+        max_iter=5000,
+        tol=1e-8,
     )
     clf_RG.fit(X_scaled, y)
 
-    max_diff = np.max(np.abs(clf_EN.coef_.flatten() - clf_RG.coef_.flatten()))
-    assert max_diff < 1e-4, f"ElasticNet(omega=(0, 0, ..., 0)) should match Ridge within 1e-4, max_diff={max_diff:.6e}"
+    optimum = np.linalg.solve(X_scaled.T @ X_scaled + (1 - l1_ratio) / (2 * C) * np.eye(n_features), X_scaled.T @ y)
+
+    def objective(beta):
+        return C * np.square(y - X_scaled @ beta).sum() + 0.5 * (1 - l1_ratio) * beta @ beta
+
+    for model in (clf_EN, clf_RG):
+        actual = objective(model.coef_)
+        assert model.converged_
+        assert_objective_close(actual, objective(optimum))
+        assert_objective_close(actual, (1 - l1_ratio) * model.objective_)
+        assert_objective_close(actual, (1 - l1_ratio) * model.dual_objective_)

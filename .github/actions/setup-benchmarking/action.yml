@@ -1,0 +1,21 @@
+name: Set up independent benchmark checks
+description: Fetch the standalone harness without replacing the ReHLine version under test
+inputs:
+  install:
+    description: Install the harness into the current Python environment
+    default: "true"
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v4
+      with:
+        repository: softmin/ReHLine-benchmarking
+        ref: ${{ vars.REHLINE_BENCHMARKING_REF || 'main' }}
+        path: .ci/benchmarking
+    - name: Record benchmark revision
+      shell: bash
+      run: git -C .ci/benchmarking rev-parse HEAD
+    - name: Install benchmark helpers only
+      if: inputs.install == 'true'
+      shell: bash
+      run: python -m pip install --no-deps ./.ci/benchmarking

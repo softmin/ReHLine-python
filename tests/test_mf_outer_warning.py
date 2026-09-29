@@ -13,7 +13,7 @@ from rehline import plqMF_Ridge
 
 def model(**kwargs):
     return plqMF_Ridge(
-        2, 2, loss={"name": "MSE"}, rank=1, C=0.3, random_state=42, tol=1e-10, max_iter=100000, tol_CD=1e-10, **kwargs
+        2, 2, loss={"name": "MSE"}, rank=1, C=0.3, random_state=42, tol=1e-8, max_iter=100000, tol_CD=1e-10, **kwargs
     )
 
 

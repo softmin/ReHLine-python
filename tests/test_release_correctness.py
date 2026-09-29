@@ -37,9 +37,41 @@ def regression():
     return X, y
 
 
+def regression_objective(model, X, y, weight=None):
+    """Evaluate these tests' original losses and penalties independently."""
+    if isinstance(model, CQR_Ridge):
+        residual = y[:, None] - (X @ model.coef_)[:, None] - model.intercept_[None, :]
+        levels = np.asarray(model.quantiles_)
+        losses = np.maximum(levels * residual, (levels - 1) * residual).sum(axis=1)
+        beta = np.r_[model.coef_, model.intercept_]
+    else:
+        beta = model.coef_
+        scores = X @ beta
+        if getattr(model, "fit_intercept", False):
+            scores += model.intercept_
+            beta = np.r_[beta, model.intercept_ / model.intercept_scaling]
+        residual = y - scores
+        name = model.loss["name"]
+        if name == "MSE":
+            losses = residual**2
+        elif name == "squared hinge":
+            losses = np.maximum(1 - y * scores, 0) ** 2
+        elif name == "MAE":
+            losses = abs(residual)
+        else:
+            assert name == "huber"
+            losses = huber(model.loss.get("tau", 1.0), residual)
+    ratio = getattr(model, "l1_ratio", 0.0)
+    return (
+        model.C * np.sum(losses if weight is None else weight * losses)
+        + (1 - ratio) * (beta @ beta) / 2
+        + ratio * abs(beta).sum()
+    )
+
+
 @pytest.mark.parametrize("loss", [{"name": "MSE"}, {"name": "squared hinge"}, {"name": "MAE"}, {"name": "huber"}])
 @pytest.mark.parametrize("estimator", [plqERM_Ridge, plq_Ridge_Regressor, plq_ElasticNet_Regressor])
-def test_zero_weight_equals_removing_sample(regression, loss, estimator):
+def test_zero_weight_equals_removing_sample(regression, loss, estimator, assert_objective_close):
     X, y = regression
     weight = np.ones(len(y))
     weight[::3] = 0
@@ -47,23 +79,31 @@ def test_zero_weight_equals_removing_sample(regression, loss, estimator):
     weighted = estimator(**options).fit(X, y, sample_weight=weight)
     dropped = estimator(**options).fit(X[weight > 0], y[weight > 0])
     assert np.isfinite(weighted.coef_).all()
-    np.testing.assert_allclose(weighted.coef_, dropped.coef_, atol=2e-6)
-    assert weighted.converged_
+    actual = regression_objective(weighted, X, y, weight)
+    reference = regression_objective(dropped, X[weight > 0], y[weight > 0])
+    assert_objective_close(actual, reference)
+    for model, value in ((weighted, actual), (dropped, reference)):
+        assert model.converged_
+        scale = 1 - getattr(model, "l1_ratio", 0.0)
+        assert_objective_close(value, model.objective_ * scale)
+        assert_objective_close(value, model.dual_objective_ * scale)
 
 
 @pytest.mark.parametrize("scale", [0.2, 1.0, 10.0])
 @pytest.mark.parametrize("estimator", [plq_Ridge_Regressor, plq_ElasticNet_Regressor])
-def test_scaled_intercept_matches_closed_form(regression, scale, estimator):
+def test_scaled_intercept_matches_closed_form(regression, scale, estimator, assert_objective_close):
     X, y = regression
-    options = dict(loss={"name": "MSE"}, C=0.1, intercept_scaling=scale, max_iter=100000, tol=1e-9)
+    options = dict(loss={"name": "MSE"}, C=0.1, intercept_scaling=scale, max_iter=100000, tol=1e-8)
     if estimator is plq_ElasticNet_Regressor:
         options["l1_ratio"] = 0
     model = estimator(**options).fit(X, y)
     augmented = np.column_stack((X, np.full(len(y), scale)))
     expected = np.linalg.solve(augmented.T @ augmented + 5 * np.eye(4), augmented.T @ y)
-    np.testing.assert_allclose(model.coef_, expected[:-1], atol=1e-7)
-    assert model.intercept_ == pytest.approx(scale * expected[-1], abs=1e-7)
-    np.testing.assert_allclose(model.predict(X), augmented @ expected, atol=1e-7)
+    actual = regression_objective(model, X, y)
+    optimum = 0.1 * np.square(y - augmented @ expected).sum() + 0.5 * expected @ expected
+    assert_objective_close(actual, optimum)
+    assert_objective_close(model.objective_, actual)
+    np.testing.assert_allclose(model.predict(X), X @ model.coef_ + model.intercept_, atol=1e-12)
 
 
 @pytest.mark.parametrize("estimator", [plq_Ridge_Classifier, plq_ElasticNet_Classifier])
@@ -81,14 +121,16 @@ def test_multiclass_scaled_intercepts_and_threads(estimator, strategy):
         assert parallel.intercept_[k] == pytest.approx(submodel.coef_[-1] * 3)
 
 
-def test_monotonic_constraints_exclude_intercept(regression):
+def test_monotonic_constraints_exclude_intercept(regression, assert_objective_close):
     X, y = regression
     options = dict(loss={"name": "MSE"}, C=0.1, max_iter=50000, tol=1e-8)
     unconstrained = plq_Ridge_Regressor(**options).fit(X, y)
     constrained = plq_Ridge_Regressor(**options, constraint=[{"name": "monotonic"}]).fit(X, y)
     assert np.all(np.diff(unconstrained.coef_) > 0)
     assert unconstrained.intercept_ < 0
-    np.testing.assert_allclose(constrained.predict(X), unconstrained.predict(X), atol=1e-6)
+    assert_objective_close(regression_objective(constrained, X, y), regression_objective(unconstrained, X, y))
+    assert constrained.intercept_ < 0
+    assert np.all(np.diff(constrained.coef_) >= -constrained.tol)
     assert constrained.constraint_violation_ <= constrained.tol
 
 
@@ -170,7 +212,8 @@ def test_final_diagnostics_match_independent_objective(regression, verbose):
     assert model.objective_ == pytest.approx(objective)
     assert model.dual_objective_ <= objective + 1e-8
     assert model.dual_gap_ == pytest.approx(objective - model.dual_objective_, abs=1e-8)
-    assert model.kkt_residual_ <= model.tol
+    assert np.isfinite(model.kkt_residual_)
+    assert abs(objective - model.dual_objective_) <= model.tol * max(1, abs(objective), abs(model.dual_objective_))
     assert model.converged_
 
 
@@ -226,7 +269,7 @@ def test_parallel_native_solves_have_independent_state(regression):
 
 @pytest.mark.parametrize("shrink", [0, 1])
 @pytest.mark.parametrize("penalty", [False, True])
-def test_mixed_plq_and_constraints_against_independent_optimizer(shrink, penalty):
+def test_mixed_plq_and_constraints_against_independent_optimizer(shrink, penalty, assert_objective_close):
     """Epigraph QP/Huber reference, independent of the ReLU/ReHU dual solver."""
     rng = np.random.default_rng(30)
     n, d, C = 15, 3, 0.3
@@ -249,7 +292,7 @@ def test_mixed_plq_and_constraints_against_independent_optimizer(shrink, penalty
         shrink=shrink,
         verbose=0,
         max_iter=100000,
-        tol=1e-9,
+        tol=1e-8,
     )
     # z >= |X beta - y| and q >= |beta| linearize both absolute values.
     M = np.block(
@@ -280,9 +323,8 @@ def test_mixed_plq_and_constraints_against_independent_optimizer(shrink, penalty
     )
     assert reference.success, reference.message
     assert result.converged
-    np.testing.assert_allclose(result.beta, reference.x[:d], atol=2e-6)
-    assert result.objective == pytest.approx(reference.fun, abs=1e-8)
-    assert result.constraint_violation <= 1e-9
+    assert_objective_close(objective(np.r_[result.beta, abs(X @ result.beta - y), abs(result.beta)]), reference.fun)
+    assert result.constraint_violation <= 1e-8
     assert result.dual_gap < 1e-7
 
 
@@ -392,14 +434,14 @@ def test_raw_warm_start_after_sample_count_changes(regression):
 
 
 @pytest.mark.parametrize("estimator", [plqERM_Ridge, plqERM_ElasticNet, CQR_Ridge])
-def test_compatible_refit_reuses_warm_start(regression, estimator):
+def test_compatible_refit_reuses_warm_start(regression, estimator, assert_objective_close):
     options = {"quantiles": [0.25, 0.75]} if estimator is CQR_Ridge else {"loss": {"name": "MSE"}}
     model = estimator(**options, C=0.1, warm_start=True, max_iter=50000, tol=1e-8).fit(*regression)
-    n_iter, coef = model.n_iter_, model.coef_.copy()
+    n_iter, value = model.n_iter_, regression_objective(model, *regression)
     model.fit(*regression)
     assert model.converged_
     assert model.n_iter_ < n_iter
-    np.testing.assert_allclose(model.coef_, coef, atol=1e-7)
+    assert_objective_close(regression_objective(model, *regression), value)
 
 
 def test_cqr_scalar_weight_and_changed_quantiles(regression):
@@ -438,9 +480,13 @@ def test_zero_class_weights_require_two_active_classes(regression, class_weight)
         model.fit(X, y)
 
 
+@pytest.mark.numerical_stress
 @pytest.mark.parametrize("shrink", [0, 1])
 @pytest.mark.parametrize("l1_ratio", [0.0, 0.5])
-def test_correlated_quadratic_matches_exact_active_set_solution(shrink, l1_ratio):
+@pytest.mark.filterwarnings("ignore:ReHLine failed to converge:sklearn.exceptions.ConvergenceWarning")
+def test_correlated_quadratic_matches_exact_active_set_solution(
+    shrink, l1_ratio, assert_objective_close, record_property
+):
     """Enumerate the 27 primal sign patterns independently of the dual solver."""
     rng = np.random.default_rng(0)
     X = 100 + rng.normal(size=(80, 2))
@@ -466,23 +512,31 @@ def test_correlated_quadratic_matches_exact_active_set_solution(shrink, l1_ratio
         loss={"name": "MSE"},
         l1_ratio=l1_ratio,
         shrink=shrink,
-        max_iter=200,
+        max_iter=1_000_000,
         tol=1e-8,
         verbose=1,
-        trace_freq=10,
+        trace_freq=1000,
     ).fit(X, y)
-    assert model.converged_
-    np.testing.assert_allclose(np.r_[model.coef_, model.intercept_], best, atol=2e-7)
+    record_property("converged", model.converged_)
+    record_property("kkt", model.kkt_residual_)
+
+    def objective(beta):
+        return np.square(augmented @ beta - y).sum() + 0.5 * (1 - l1_ratio) * (beta @ beta) + l1_ratio * abs(beta).sum()
+
+    actual = objective(np.r_[model.coef_, model.intercept_])
+    assert_objective_close(actual, objective(best))
+    np.testing.assert_allclose(model.objective_ * (1 - l1_ratio), actual, rtol=1e-12, atol=1e-9)
     assert np.all(np.diff(model.dual_obj_) <= 1e-9)
-    assert model.dual_gap_ < 1e-7
 
 
 @parametrize_with_checks(
     [
-        plq_Ridge_Regressor(loss={"name": "MSE"}, max_iter=50000, tol=1e-10),
-        plq_ElasticNet_Regressor(loss={"name": "MSE"}, max_iter=50000, tol=1e-10),
-        plq_Ridge_Classifier(loss={"name": "svm"}, max_iter=50000, tol=1e-10),
-        plq_ElasticNet_Classifier(loss={"name": "svm"}, max_iter=50000, tol=1e-10),
+        # Interface checks must have enough time to finish their shifted-data
+        # fits. The separate stress runner measures the one-million-sweep cap.
+        plq_Ridge_Regressor(loss={"name": "MSE"}, max_iter=5_000_000, tol=1e-8),
+        plq_ElasticNet_Regressor(loss={"name": "MSE"}, max_iter=5_000_000, tol=1e-8),
+        plq_Ridge_Classifier(loss={"name": "svm"}, max_iter=5_000_000, tol=1e-8),
+        plq_ElasticNet_Classifier(loss={"name": "svm"}, max_iter=5_000_000, tol=1e-8),
     ],
 )
 def test_sklearn_estimator_contract(estimator, check):

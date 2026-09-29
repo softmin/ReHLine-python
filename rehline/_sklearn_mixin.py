@@ -60,6 +60,8 @@ class _SklearnReHLine(BaseEstimator):
             max_iter=self.max_iter,
             tol=self.tol,
             shrink=self.shrink,
+            coordinate_order=self.coordinate_order,
+            coordinate_seed=self.coordinate_seed,
             warm_start=self.warm_start,
             verbose=self.verbose,
             trace_freq=self.trace_freq,
@@ -117,7 +119,7 @@ class _SklearnReHLine(BaseEstimator):
         # multiclass fits. Worker tasks construct their matrices without warnings.
         _combined_constraints(self.constraint, self.A, self.b)
         positive_real(self.intercept_scaling, "intercept_scaling")
-        if not isinstance(self.fit_intercept, (bool, np.bool_)):
+        if not isinstance(self.fit_intercept, bool | np.bool_):
             raise ValueError("fit_intercept must be boolean")
         X, y = validate_data(self, X, y, accept_sparse=False, dtype=np.float64, order="C")
         weight = sample_weights(_check_sample_weight(sample_weight, X, dtype=np.float64), X.shape[0])
@@ -413,10 +415,22 @@ class plq_Ridge_Classifier(_ReHLineClassifier):
         Maximum number of iterations for the ReHLine solver.
 
     tol : float, default=1e-4
-        Convergence tolerance.
+        Relative primal-dual gap and normalized feasibility tolerance.
+        The absolute KKT residual is reported separately.
 
     shrink : int, default=1
-        Shrinkage parameter for the solver.
+        Zero disables shrinking; a positive integer enables it. With
+        coordinate_seed=None, the positive value also supplies the legacy seed.
+
+    coordinate_order : {"auto", "cyclic", "random"}, default="auto"
+        Coordinate order within each group. Auto uses cyclic when shrink=0
+        and random permutations when shrink>0. Explicit orders work with either
+        shrinking setting. The group order remains xi, Lambda, Gamma, mu.
+
+    coordinate_seed : int or None, default=None
+        Non-negative int32 seed for random coordinate permutations. None uses
+        the positive shrink value, or 1 when shrink=0. Reset for each solver call,
+        including warm refits. Ignored for cyclic order.
 
     warm_start : int, default=0
         Whether to reuse the previous solution for initialization.
@@ -509,6 +523,9 @@ class plq_Ridge_Classifier(_ReHLineClassifier):
         multi_class=None,
         n_jobs=None,
         decision_function_shape="ovr",
+        *,
+        coordinate_order="auto",
+        coordinate_seed=None,
     ):
         self.loss = loss
         self.constraint = constraint
@@ -523,6 +540,8 @@ class plq_Ridge_Classifier(_ReHLineClassifier):
         self.max_iter = max_iter
         self.tol = tol
         self.shrink = shrink
+        self.coordinate_order = coordinate_order
+        self.coordinate_seed = coordinate_seed
         self.warm_start = warm_start
         self.verbose = verbose
         self.trace_freq = trace_freq
@@ -581,7 +600,19 @@ class plq_Ridge_Regressor(RegressorMixin, _SklearnReHLine):
     tol : float, default=1e-4
         Convergence tolerance for the ReHLine solver.
     shrink : int, default=1
-        Shrink parameter passed to the solver (see solver docs).
+        Zero disables shrinking; a positive integer enables it. With
+        coordinate_seed=None, the positive value also supplies the legacy seed.
+
+    coordinate_order : {"auto", "cyclic", "random"}, default="auto"
+        Coordinate order within each group. Auto uses cyclic when shrink=0
+        and random permutations when shrink>0. Explicit orders work with either
+        shrinking setting. The group order remains xi, Lambda, Gamma, mu.
+
+    coordinate_seed : int or None, default=None
+        Non-negative int32 seed for random coordinate permutations. None uses
+        the positive shrink value, or 1 when shrink=0. Reset for each solver call,
+        including warm refits. Ignored for cyclic order.
+
     warm_start : int, default=0
         Warm start flag passed to the solver (see solver docs).
     verbose : int, default=0
@@ -630,6 +661,9 @@ class plq_Ridge_Regressor(RegressorMixin, _SklearnReHLine):
         trace_freq=100,
         fit_intercept=True,
         intercept_scaling=1.0,
+        *,
+        coordinate_order="auto",
+        coordinate_seed=None,
     ):
         self.loss = loss
         self.constraint = constraint
@@ -644,6 +678,8 @@ class plq_Ridge_Regressor(RegressorMixin, _SklearnReHLine):
         self.max_iter = max_iter
         self.tol = tol
         self.shrink = shrink
+        self.coordinate_order = coordinate_order
+        self.coordinate_seed = coordinate_seed
         self.warm_start = warm_start
         self.verbose = verbose
         self.trace_freq = trace_freq
@@ -724,6 +760,19 @@ class plq_ElasticNet_Classifier(_ReHLineClassifier):
     max_iter : int, default=1000
     tol : float, default=1e-4
     shrink : int, default=1
+        Zero disables shrinking; a positive integer enables it. With
+        coordinate_seed=None, the positive value also supplies the legacy seed.
+
+    coordinate_order : {"auto", "cyclic", "random"}, default="auto"
+        Coordinate order within each group. Auto uses cyclic when shrink=0
+        and random permutations when shrink>0. Explicit orders work with either
+        shrinking setting. The group order remains xi, Lambda, Gamma, mu.
+
+    coordinate_seed : int or None, default=None
+        Non-negative int32 seed for random coordinate permutations. None uses
+        the positive shrink value, or 1 when shrink=0. Reset for each solver call,
+        including warm refits. Ignored for cyclic order.
+
     warm_start : int, default=0
     verbose : int, default=0
     trace_freq : int, default=100
@@ -765,6 +814,9 @@ class plq_ElasticNet_Classifier(_ReHLineClassifier):
         multi_class=None,
         n_jobs=None,
         decision_function_shape="ovr",
+        *,
+        coordinate_order="auto",
+        coordinate_seed=None,
     ):
         self.loss = loss
         self.constraint = constraint
@@ -781,6 +833,8 @@ class plq_ElasticNet_Classifier(_ReHLineClassifier):
         self.max_iter = max_iter
         self.tol = tol
         self.shrink = shrink
+        self.coordinate_order = coordinate_order
+        self.coordinate_seed = coordinate_seed
         self.warm_start = warm_start
         self.verbose = verbose
         self.trace_freq = trace_freq
@@ -852,6 +906,19 @@ class plq_ElasticNet_Regressor(RegressorMixin, _SklearnReHLine):
     max_iter : int, default=1000
     tol : float, default=1e-4
     shrink : int, default=1
+        Zero disables shrinking; a positive integer enables it. With
+        coordinate_seed=None, the positive value also supplies the legacy seed.
+
+    coordinate_order : {"auto", "cyclic", "random"}, default="auto"
+        Coordinate order within each group. Auto uses cyclic when shrink=0
+        and random permutations when shrink>0. Explicit orders work with either
+        shrinking setting. The group order remains xi, Lambda, Gamma, mu.
+
+    coordinate_seed : int or None, default=None
+        Non-negative int32 seed for random coordinate permutations. None uses
+        the positive shrink value, or 1 when shrink=0. Reset for each solver call,
+        including warm refits. Ignored for cyclic order.
+
     warm_start : int, default=0
     verbose : int, default=0
     trace_freq : int, default=100
@@ -889,6 +956,9 @@ class plq_ElasticNet_Regressor(RegressorMixin, _SklearnReHLine):
         trace_freq=100,
         fit_intercept=True,
         intercept_scaling=1.0,
+        *,
+        coordinate_order="auto",
+        coordinate_seed=None,
     ):
         self.loss = loss
         self.constraint = constraint
@@ -905,6 +975,8 @@ class plq_ElasticNet_Regressor(RegressorMixin, _SklearnReHLine):
         self.max_iter = max_iter
         self.tol = tol
         self.shrink = shrink
+        self.coordinate_order = coordinate_order
+        self.coordinate_seed = coordinate_seed
         self.warm_start = warm_start
         self.verbose = verbose
         self.trace_freq = trace_freq

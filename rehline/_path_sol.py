@@ -21,6 +21,8 @@ def plqERM_Ridge_path_sol(
     tol=1e-4,
     verbose=0,
     shrink=1,
+    coordinate_order="auto",
+    coordinate_seed=None,
     warm_start=False,
     return_time=True,
 ):
@@ -67,8 +69,19 @@ def plqERM_Ridge_path_sol(
         When verbose = 1, only print path results table;
         when verbose = 2, print path results table and path solution plot.
 
-    shrink : float, default=1
-        Shrinkage factor for the solver, potentially influencing convergence behavior.
+    shrink : int, default=1
+        Zero disables shrinking; a positive integer enables it. With
+        coordinate_seed=None, the positive value also supplies the legacy seed.
+
+    coordinate_order : {"auto", "cyclic", "random"}, default="auto"
+        Coordinate order within each group. Auto uses cyclic when shrink=0
+        and random permutations when shrink>0. Explicit orders work with either
+        shrinking setting. The group order remains xi, Lambda, Gamma, mu.
+
+    coordinate_seed : int or None, default=None
+        Non-negative int32 seed for random coordinate permutations. None uses
+        the positive shrink value, or 1 when shrink=0. Reset for each solver call,
+        including warm refits. Ignored for cyclic order.
 
     warm_start : bool, default=False
         If True, reuse the previous solution to warm-start the next solver step, speeding up convergence.
@@ -157,6 +170,8 @@ def plqERM_Ridge_path_sol(
         max_iter=max_iter,
         tol=tol,
         shrink=shrink,
+        coordinate_order=coordinate_order,
+        coordinate_seed=coordinate_seed,
         verbose=1 * (verbose >= 2),  # ben: if verbose is 1, then the fit function will not show the progress
         warm_start=warm_start,
     )
@@ -243,6 +258,8 @@ def CQR_Ridge_path_sol(
     tol=1e-4,
     verbose=0,
     shrink=1,
+    coordinate_order="auto",
+    coordinate_seed=None,
     warm_start=False,
     return_time=True,
     compact=False,
@@ -282,8 +299,19 @@ def CQR_Ridge_path_sol(
     verbose : int, default=0
         Verbosity level.
 
-    shrink : float, default=1
-        Shrinkage parameter passed to solver.
+    shrink : int, default=1
+        Zero disables shrinking; a positive integer enables it. With
+        coordinate_seed=None, the positive value also supplies the legacy seed.
+
+    coordinate_order : {"auto", "cyclic", "random"}, default="auto"
+        Coordinate order within each group. Auto uses cyclic when shrink=0
+        and random permutations when shrink>0. Explicit orders work with either
+        shrinking setting. The group order remains xi, Lambda, Gamma, mu.
+
+    coordinate_seed : int or None, default=None
+        Non-negative int32 seed for random coordinate permutations. None uses
+        the positive shrink value, or 1 when shrink=0. Reset for each solver call,
+        including warm refits. Ignored for cyclic order.
 
     warm_start : bool, default=False
         Use previous dual solution to initialize the next fit.
@@ -346,7 +374,7 @@ def CQR_Ridge_path_sol(
 
     """
 
-    if not isinstance(compact, (bool, np.bool_)):
+    if not isinstance(compact, bool | np.bool_):
         raise ValueError("compact must be boolean")
 
     if Cs is None:
@@ -370,6 +398,8 @@ def CQR_Ridge_path_sol(
         max_iter=max_iter,
         tol=tol,
         shrink=shrink,
+        coordinate_order=coordinate_order,
+        coordinate_seed=coordinate_seed,
         verbose=verbose,
         warm_start=warm_start,
     )

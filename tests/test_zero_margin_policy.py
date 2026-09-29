@@ -12,7 +12,7 @@ from rehline import plq_ElasticNet_Classifier, plq_Ridge_Classifier
 @pytest.mark.parametrize("count", [2, 3, 4, 13])
 def test_zero_margin_fits_match_sklearn_ovo_wrapper(estimator, count):
     X, y = np.zeros((count * 4, 2)), np.repeat(np.arange(count), 4)
-    options = dict(loss={"name": "svm"}, fit_intercept=False, max_iter=100000, tol=1e-9)
+    options = dict(loss={"name": "svm"}, fit_intercept=False, max_iter=100000, tol=1e-8)
     model = estimator(multi_class="ovo", **options).fit(X, y)
     reference = OneVsOneClassifier(estimator(**options)).fit(X, y)
     np.testing.assert_array_equal(model.coef_, 0)

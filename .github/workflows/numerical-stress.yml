@@ -1,0 +1,117 @@
+name: Numerical stress (diagnostic)
+
+on:
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+    inputs:
+      max_iter:
+        description: Coordinate sweeps per fit in the accuracy report
+        type: choice
+        default: "1000000"
+        options: ["1000000", "5000000", "20000000"]
+
+permissions:
+  contents: read
+
+# Deliberately separate from ci.yml and the release workflow's dependencies.
+# Strict stress failures stay visible without gating routine PR/wheel checks.
+jobs:
+  accuracy-report:
+    name: Fixed-budget objective and feasibility report
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      STRESS_MAX_ITER: ${{ inputs.max_iter || '1000000' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: ./.github/actions/setup-benchmarking
+      - run: python -m pip install -e ".[test]"
+      - name: Measure accuracy and validate solver diagnostics
+        run: >-
+          python -m benchmarks.diagnostics.numerical_stress --max-iter "$STRESS_MAX_ITER"
+          --output test-results/numerical-stress/report.json
+      - name: Show budget misses explicitly
+        if: always()
+        run: |
+          if [ -f test-results/numerical-stress/report.md ]; then
+            cat test-results/numerical-stress/report.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: numerical-stress-accuracy
+          path: test-results/numerical-stress/
+
+  strict-stress:
+    name: Strict fixed-budget and external output comparisons
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      SCIPY_ARRAY_API: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: ./.github/actions/setup-benchmarking
+      - run: python -m pip install -e ".[test,benchmark]"
+      - name: Preserve strict stress assertions and their failures
+        run: >-
+          python -m pytest -m numerical_stress --no-cov -v --tb=short
+          -o junit_family=legacy --junitxml=numerical-stress.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: numerical-stress-strict
+          path: numerical-stress.xml
+
+  reference-stress:
+    name: "Full ${{ matrix.suite.name }} / CVXPY ${{ matrix.reference }}"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        reference: [latest, minimum]
+        suite:
+          - {name: correctness, module: correctness.core, cases: 1200}
+          - {name: estimator_correctness, module: correctness.estimators, cases: 1200}
+          - {name: api_correctness, module: correctness.api, cases: 1200}
+          - {name: cqr_correctness, module: correctness.cqr, cases: 600}
+          - {name: constraint_scaling, module: correctness.constraint_scaling, cases: 600}
+          - {name: fairness_correctness, module: correctness.fairness, cases: 600}
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: ./.github/actions/setup-benchmarking
+      - name: Install reference dependencies
+        run: |
+          if [ "${{ matrix.reference }}" = "minimum" ]; then
+            printf '%s\n' 'cvxpy==1.6.0' 'numpy==1.26.4' 'scipy==1.13.1' > /tmp/reference-constraints.txt
+            python -m pip install -c /tmp/reference-constraints.txt -e ".[test,benchmark]"
+          else
+            python -m pip install -e ".[test,benchmark]"
+          fi
+          python -m pip check
+      - name: Run full numerical scan with its strict assertions
+        run: >-
+          python -m benchmarks.${{ matrix.suite.module }} --cases ${{ matrix.suite.cases }}
+          --output test-results/reference-stress/${{ matrix.suite.name }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reference-stress-${{ matrix.suite.name }}-${{ matrix.reference }}
+          path: test-results/reference-stress/

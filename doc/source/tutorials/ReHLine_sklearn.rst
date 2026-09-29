@@ -346,9 +346,10 @@ Every fitted estimator exposes the following final diagnostics, even when
 * ``scaled_constraint_violation_``: the largest violation after dividing each
   nonzero constraint row and its offset by that row's largest absolute coefficient.
 * ``kkt_residual_``: the maximum absolute projected dual gradient, using the
-  scaled constraint rows and the original loss/penalty coordinates.
-* ``converged_``: whether the KKT residual and scaled constraint violation meet
-  ``tol``, and ``abs(objective_ - dual_objective_) / max(1, abs(objective_),
+  scaled constraint rows and the original loss/penalty coordinates. It remains
+  a diagnostic and may exceed ``tol`` for an objective-converged fit.
+* ``converged_``: whether the scaled constraint violation meets ``tol``, and
+  ``abs(objective_ - dual_objective_) / max(1, abs(objective_),
   abs(dual_objective_)) <= tol``. The absolute difference also checks negative
   numerical gaps instead of treating them automatically as zero.
 * ``n_iter_``: the number of completed coordinate-descent sweeps.
@@ -356,9 +357,24 @@ Every fitted estimator exposes the following final diagnostics, even when
 These attributes are arrays, one per binary subproblem, for multiclass models.
 For ElasticNet the native objective is the documented objective divided by
 ``1 - l1_ratio``. Historical ``dual_obj_`` traces retain their negative-dual
-convention. A gap computed within feasibility tolerance is an approximate
-diagnostic; use the feasibility and KKT residuals as well. The stricter
-convergence check can require a larger ``max_iter`` on difficult problems.
+convention. A gap at a point feasible only within tolerance is an approximate
+diagnostic, not an exact primal upper-bound certificate. Inspect feasibility
+alongside it. The KKT residual uses coordinate-dependent units; the same numeric
+threshold as the relative objective gap can require unnecessary extra sweeps.
+This stopping rule checks the primal-dual gap, not the change in objective
+between successive sweeps.
+
+With shrinking enabled, a request to restore the full working set can trigger
+a global gap and feasibility check using coefficients reconstructed from the
+duals. The solver requires two full scans' worth of coordinate visits since the
+previous certificate check before running this optional probe. It counts the
+incoming working sets, including coordinates removed during that sweep, and
+resets the count after either an optional probe or a full-working-set stopping
+check. This count approximates work; it does not bound wall-clock overhead.
+If the probe is deferred or fails, the full working set is restored as usual.
+A failed probe preserves the incremental state. Every probe includes all loss
+terms and constraints, including coordinates removed by shrinking. The existing
+stopping checks on the full working set and without shrinking remain in place.
 
 Constraint scaling changes neither the feasible set nor the loss or penalties;
 features are not rescaled. Original-unit ``constraint_violation_`` can exceed

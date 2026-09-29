@@ -37,6 +37,8 @@ def rehline_internal(
     shrink: int = ...,
     verbose: int = ...,
     trace_freq: int = ...,
+    coordinate_order: int = ...,
+    coordinate_seed: int = ...,
 ) -> None: ...
 def rehline_cqr_internal(
     result: rehline_result,
@@ -55,4 +57,6 @@ def rehline_cqr_internal(
     shrink: int = ...,
     verbose: int = ...,
     trace_freq: int = ...,
+    coordinate_order: int = ...,
+    coordinate_seed: int = ...,
 ) -> None: ...

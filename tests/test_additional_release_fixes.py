@@ -55,13 +55,14 @@ def test_mf_history_and_objective_use_training_weights(fit_mf):
 @pytest.mark.parametrize(
     "loss", [{"name": "MSE"}, {"name": "MAE"}, {"name": "QR", "qt": 0.3}, {"name": "huber", "tau": 0.7}]
 )
-def test_mf_scalar_weights_equal_explicit_weights(loss, fit_mf):
+def test_mf_scalar_weights_equal_explicit_weights(loss, fit_mf_objective):
     X, y = np.array([[0, 0], [0, 1], [1, 0], [1, 1]]), np.arange(1.0, 5.0)
     options = mf_options()
-    options.update(loss=loss, max_iter_CD=5)
-    a = fit_mf(plqMF_Ridge(**options), X, y, sample_weight=2.0)
-    b = fit_mf(plqMF_Ridge(**options), X, y, sample_weight=np.full(4, 2.0))
-    np.testing.assert_allclose(a.P, b.P)
+    # Alternating MAE factors can produce nearly parallel design rows. Keep
+    # the 1e-8 block certificate and allow exact CD enough sweeps to reach it.
+    options.update(loss=loss, max_iter=20_000_000, max_iter_CD=5)
+    a = fit_mf_objective(plqMF_Ridge(**options), X, y, sample_weight=2.0)
+    b = fit_mf_objective(plqMF_Ridge(**options), X, y, sample_weight=np.full(4, 2.0))
     assert a.objective_ == pytest.approx(b.objective_)
     values = y - a.decision_function(X)
     if loss["name"] == "MSE":
@@ -87,7 +88,7 @@ def test_mf_one_pair_matches_analytic_weighted_optimum():
         random_state=1,
         max_iter_CD=1000,
         tol_CD=1e-13,
-        tol=1e-10,
+        tol=1e-8,
     ).fit([[0, 0]], [4.0], sample_weight=3.0)
     product = 4 - 1 / (2 * 0.5 * 3)
     expected = 0.5 * 3 * (4 - product) ** 2 + product
@@ -176,7 +177,7 @@ def raw_problem():
         Tau=np.full((1, 2), np.inf),
         A=np.ones((1, 1)),
         b=np.array([-0.25]),
-        tol=1e-10,
+        tol=1e-8,
         max_iter=10000,
     )
 
@@ -199,7 +200,7 @@ def test_raw_clone_preserves_problem_and_separates_fitted_state():
 
 
 def test_raw_legacy_assignment_and_set_params_work_with_clone():
-    model = ReHLine(tol=1e-10)
+    model = ReHLine(tol=1e-8)
     model._U = -np.ones((1, 2))
     model._V = np.ones((1, 2))
     copied = clone(model).set_params(A=np.ones((1, 1)), b=np.array([-1.5]))
@@ -225,7 +226,7 @@ def test_cqr_prediction_preserves_quantile_order_and_objective(levels):
     X = rng.normal(size=(25, 3))
     y = rng.normal(size=25)
     weight = rng.uniform(0.1, 2, 25)
-    model = CQR_Ridge(levels, C=0.1, tol=1e-9, max_iter=20000).fit(X, y, sample_weight=weight)
+    model = CQR_Ridge(levels, C=0.1, tol=1e-8, max_iter=20000).fit(X, y, sample_weight=weight)
     for data in (X, X[:1], X[::-1]):
         n, d = data.shape
         q = len(levels)

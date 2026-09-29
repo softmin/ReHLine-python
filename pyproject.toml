@@ -31,7 +31,7 @@ documentation = "https://rehline-python.readthedocs.io/en/latest/index.html"
 # untested architectures. Update this list together with the CI matrix.
 build = "cp3{10,11,12,13,14}-{manylinux_x86_64,macosx_arm64,win_amd64}"
 test-extras = ["test"]
-test-command = "python {project}/tools/test_installed.py"
+test-command = "python {project}/tools/test_installed.py --benchmark-source {project}/.ci/benchmarking"
 
 [tool.cibuildwheel.linux]
 archs = ["x86_64"]
@@ -55,6 +55,9 @@ python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "--cov=rehline --cov-report=term-missing"
 filterwarnings = ["error::sklearn.exceptions.ConvergenceWarning"]
+markers = [
+    "numerical_stress: fixed-budget accuracy on ill-conditioned problems or strict external output comparisons; run separately from routine CI",
+]
 
 [build-system]
 requires = ["pybind11 ~= 3.0.0", "setuptools >= 80.0.0", "wheel >= 0.42.0", "setuptools-scm >= 8.0"]

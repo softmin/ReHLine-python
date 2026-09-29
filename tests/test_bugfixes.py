@@ -87,7 +87,7 @@ class TestMutableDefaults:
         a = plq_Ridge_Regressor()
         a.set_params(loss={"name": "QR", "qt": 0.9})
 
-        b = plq_Ridge_Regressor()
+        b = plq_Ridge_Regressor(max_iter=100_000)
         assert b.loss is None
         X, y = _make_regression_data()
         b.fit(X, y)

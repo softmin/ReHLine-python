@@ -2,10 +2,10 @@
 
 import numpy as np
 import pytest
+from benchmarks.correctness.estimators import agree, run_suite
 
-from benchmarks.estimator_correctness import agree, run_suite
 
-
+@pytest.mark.numerical_stress
 def test_public_estimator_correctness_smoke():
     pytest.importorskip("cvxpy")
     report = run_suite(cases=64)

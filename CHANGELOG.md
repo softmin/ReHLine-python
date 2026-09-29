@@ -7,6 +7,81 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A large-n/small-d benchmark in ReHLine-benchmarking focused on quantile regression and SVM, with
+  100,000/1,000,000 samples, 2/8 features and two fixed average-loss scales.
+  It independently audits every fit, records three cold timing samples and
+  retains accuracy misses. MSE remains an optional analytic cross-check.
+- Independent `coordinate_order="auto" | "cyclic" | "random"` and
+  `coordinate_seed=None` options throughout the solver, estimators and path
+  helpers. Explicit orders work with shrinking enabled or disabled. Defaults
+  preserve the previous order and seed behavior. Each group retains exact scalar
+  coordinate updates and the existing primal-polishing algorithm.
+- A reproducible four-mode coordinate-order benchmark in ReHLine-benchmarking, with multiple seeds,
+  repeated cold timings, six difficult problems and independent routine reference
+  problems. Fixed-budget accuracy misses remain explicit and are not speedups.
+
+### Changed
+
+- Move benchmark runners, configurations, reporting and harness tests to the
+  independent [ReHLine-benchmarking](https://github.com/softmin/ReHLine-benchmarking)
+  repository, organized into quick, dense, CrowdStrike, correctness and diagnostic
+  suites. Solver regression tests remain here; source and installed-wheel CI
+  explicitly install or copy the selected external harness as a test dependency.
+  ReHLine's runtime dependencies are unchanged.
+- Skip incremental primal updates when an exact scalar coordinate update leaves
+  its dual variable unchanged. Nonzero steps, coordinate minimizers, shrinking,
+  random ordering and convergence certificates retain their existing behavior.
+
+### Fixed
+
+- Check the full objective-gap and normalized-feasibility certificate before
+  a shrinking recovery after two full scans' worth of coordinate visits since
+  the last certificate check. Stop immediately if it passes; otherwise preserve
+  the incremental primal state and perform the existing full-set restoration.
+  Deferred probes also restore as usual. The probe includes shrunken coordinates
+  and does not change the recovery trigger, coordinate trajectory or random
+  state after a failed check. Mandatory full-set stopping checks stay independent
+  of the work budget, whose constant-time bookkeeping uses incoming active sets.
+- Stop on the relative primal-dual objective gap and normalized constraint
+  feasibility at `tol`. Retain the absolute `kkt_residual_` as a diagnostic,
+  without requiring it to meet the same coordinate-dependent threshold.
+  Share this acceptance rule between the iteration loop and final diagnostics;
+  continue rejecting nonfinite values and large positive or negative gaps.
+  Coordinate updates and the primal-polishing correction algorithm are retained.
+- Restore shrunken coordinate sets using a separate internal `eps_shrink`:
+  initialize it to `max(tol, 0.1 * first_full_sweep_PG_violation)` and halve it
+  after each restoration, with a floor of `tol`. Reuse the existing PG extrema
+  to avoid extra objective/gradient scans. Exact coordinate updates, RNG state,
+  public defaults and primal polishing are retained; shrinking trajectories
+  and iteration counts can change. The recovery threshold does not replace the
+  final objective-gap and feasibility checks.
+- Separate fixed-budget numerical stress and strict external output comparisons
+  from routine PR and installed-wheel CI. A weekly/manual workflow retains the
+  strict assertions and publishes independent objective, feasibility, iteration
+  and convergence reports. Budget misses stay visible; invalid solver diagnostics
+  fail reporting. Keep API checks required, with larger iteration budgets. Routine
+  CVXPY and exact-wheel gates cover normal-scale losses and constraints at `1e-8`;
+  the six complete randomized scans retain their strict checks in the stress
+  workflow. Use small data for the default-path shape check.
+- Remove the damped Newton block updates from both solver paths, restoring
+  coordinate descent without periodic block solves or block-triggered shrinking
+  resets. The block descent check could accept an increase in the dual
+  minimization objective on ill-conditioned problems. Primal polishing and
+  convergence diagnostics are retained. Problems that relied on block
+  acceleration may require more coordinate-descent iterations.
+- Give solver correctness tests explicit coordinate-descent iteration budgets.
+  Warm-start checks compare work with cold fits instead of requiring convergence
+  within two sweeps. Use `tol=1e-8` in successful-fit tests previously requesting
+  stricter solver precision. Numerical acceptance compares independently evaluated
+  objectives within `1e-8 * max(1, abs(reference))` and retains feasibility checks;
+  coefficient agreement is no longer a general optimization acceptance condition.
+  Selected numerical tests record KKT and coefficient differences separately
+  from objective acceptance. API convergence warnings remain explicitly tested.
+- Check fairness feasibility in the normalized constraint units used by the
+  solver tolerance, while retaining an independent covariance calculation.
+
 ## [0.1.3] - 2026-09-19
 
 ### Added
@@ -167,8 +242,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Require scikit-learn 1.6 or newer. The sklearn constructors retain parameters
   unchanged; `loss=None` selects median regression at fit time, and
   `multi_class=None` selects OvR. Parameter validation now occurs in `fit`.
-- Convergence requires a full projected-gradient/KKT check. Difficult problems
-  may require more iterations than before; unconverged native solves emit a warning.
+- Convergence requires a full objective-gap and scaled-feasibility check.
+  Unconverged native solves emit a warning; absolute KKT accuracy is reported
+  separately.
 - `n_iter_` counts completed sweeps (starting at one). Final `objective_`,
   `dual_objective_`, `dual_gap_`, `constraint_violation_`, `kkt_residual_` and
   `converged_` are available independently of verbosity.

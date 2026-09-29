@@ -313,13 +313,40 @@ def ReHLine_solver(
     verbose=1,
     trace_freq=100,
     *,
+    coordinate_order="auto",
+    coordinate_seed=None,
     _quantile_count=0,
 ):
-    solver_options(max_iter, tol, shrink, verbose, trace_freq)
+    """Solve a ReLU/ReHU problem with independently selectable update order.
+
+    ``coordinate_order`` is ``'cyclic'`` or ``'random'`` (a new permutation
+    within each coordinate group per sweep). ``'auto'`` preserves the legacy
+    order: cyclic for ``shrink=0``, random for ``shrink>0``. Shrinking still
+    depends only on ``shrink``. ``coordinate_seed=None`` uses the positive
+    ``shrink`` value, or 1 when shrinking is disabled. An explicit seed is a
+    non-negative int32, is reset on every call, and is ignored in cyclic order.
+
+    With shrinking enabled, an internal ``eps_shrink`` requests full sweeps
+    before each restricted problem reaches the final ``tol``. It starts at
+    ``max(tol, 0.1 * first_full_sweep_PG_violation)`` and halves after each
+    restoration, down to ``tol``. Before restoring, the solver may check the
+    full objective gap and feasibility using beta reconstructed from the duals.
+    Such probes require two full scans' worth of coordinate visits since the
+    previous certificate check. Deferred or failed probes restore as usual;
+    failed probes preserve the incremental state. Full-working-set stopping
+    checks remain independent of this internal work budget.
+    Final convergence requires scaled constraint
+    violation at most ``tol`` and ``abs(P-D) / max(1, abs(P), abs(D)) <= tol``,
+    where P and D are the primal and dual objectives. The absolute KKT residual
+    is reported separately; it is not an additional stopping requirement.
+    For iterates feasible only within tolerance, the gap is an approximate
+    diagnostic rather than an exact primal bound.
+    """
+    solver_options(max_iter, tol, shrink, verbose, trace_freq, coordinate_order, coordinate_seed)
     X = check_array(X, dtype=np.float64, order="C")
     n, d = X.shape
     if (
-        isinstance(_quantile_count, (bool, np.bool_))
+        isinstance(_quantile_count, bool | np.bool_)
         or not isinstance(_quantile_count, Integral)
         or _quantile_count < 0
         or n * max(1, int(_quantile_count)) > np.iinfo(np.int32).max
@@ -389,6 +416,8 @@ def ReHLine_solver(
         shrink,
         verbose,
         trace_freq,
+        {"auto": 0, "cyclic": 1, "random": 2}[coordinate_order],
+        -1 if coordinate_seed is None else int(coordinate_seed),
     )
     return result
 

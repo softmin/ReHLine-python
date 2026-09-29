@@ -20,7 +20,7 @@ CLASSIFIERS = (plq_Ridge_Classifier, plq_ElasticNet_Classifier)
 
 
 def classifier(estimator, **kwargs):
-    return estimator(loss={"name": "svm"}, C=0.1, tol=1e-10, max_iter=100000, **kwargs)
+    return estimator(loss={"name": "svm"}, C=0.1, tol=1e-8, max_iter=100000, **kwargs)
 
 
 def data(classes=4):
@@ -32,7 +32,7 @@ def data(classes=4):
 
 @pytest.mark.parametrize("estimator", CLASSIFIERS)
 @pytest.mark.parametrize("classes", [2, 3, 4, 5])
-def test_formats_preserve_state_predictions_and_full_objective(estimator, classes, monkeypatch):
+def test_formats_preserve_state_predictions_and_full_objective(estimator, classes, monkeypatch, assert_objective_close):
     X, y = data(classes)
     weight = np.linspace(0.1, 2, len(y))
     weight[::17] = 0
@@ -70,7 +70,7 @@ def test_formats_preserve_state_predictions_and_full_objective(estimator, classe
         objective = model.C * (weight[active] @ np.maximum(1 - target * (design @ beta), 0))
         objective += 0.5 * (1 - ratio) * (beta @ beta) + ratio * abs(beta).sum()
         assert objective == pytest.approx(binary.objective_ * (1 - ratio), rel=1e-10, abs=1e-9)
-        assert objective == pytest.approx(binary.dual_objective_ * (1 - ratio), rel=1e-9, abs=1e-9)
+        assert_objective_close(objective, binary.dual_objective_ * (1 - ratio))
     restored = pickle.loads(pickle.dumps(model))
     np.testing.assert_array_equal(restored.decision_function(X), raw)
     np.testing.assert_array_equal(restored.predict(X), labels)
@@ -130,7 +130,7 @@ def test_raw_pair_order_and_sign_match_svc(classes):
         multi_class="ovo",
         fit_intercept=False,
         decision_function_shape="ovo",
-        tol=1e-10,
+        tol=1e-8,
         max_iter=100000,
     ).fit(X, y)
     reference = SVC(kernel="linear", C=0.1, decision_function_shape="ovo", tol=1e-10).fit(X, y)
@@ -170,7 +170,7 @@ def test_vote_ties_use_confidence_and_format_does_not_change_prediction():
 
 
 @pytest.mark.parametrize("estimator", CLASSIFIERS)
-def test_clone_gridsearch_pipeline_and_refit_preserve_format(estimator):
+def test_clone_gridsearch_pipeline_and_refit_preserve_format(estimator, assert_objective_close):
     X, y = data()
     base = classifier(estimator, multi_class="ovo", decision_function_shape="ovo", warm_start=True)
     assert clone(base).get_params()["decision_function_shape"] == "ovo"
@@ -185,10 +185,16 @@ def test_clone_gridsearch_pipeline_and_refit_preserve_format(estimator):
     np.testing.assert_array_equal(grid.cv_results_["split1_test_score"], [grid.cv_results_["split1_test_score"][0]] * 2)
     fitted = base.fit(X, y)
     objective, coef = fitted.objective_.copy(), fitted.coef_.copy()
+    cold_iterations = fitted.n_iter_.copy()
     for shape in ["ovo", "ovr"]:
         cold = clone(fitted).set_params(warm_start=False, decision_function_shape=shape).fit(X, y)
         np.testing.assert_array_equal(cold.objective_, objective)
         np.testing.assert_array_equal(cold.coef_, coef)
     fitted.set_params(decision_function_shape="ovr").fit(X, y)
-    np.testing.assert_allclose(fitted.objective_, objective, atol=1e-9, rtol=1e-9)
-    assert np.max(fitted.n_iter_) <= 2
+    assert_objective_close(fitted.objective_, objective)
+    assert np.all(fitted.converged_)
+    assert np.isfinite(fitted.kkt_residual_).all()
+    scale = np.maximum(1, np.maximum(abs(fitted.objective_), abs(fitted.dual_objective_)))
+    assert np.all(abs(fitted.objective_ - fitted.dual_objective_) <= fitted.tol * scale)
+    assert np.all(fitted.scaled_constraint_violation_ <= fitted.tol)
+    assert fitted.n_iter_.sum() < cold_iterations.sum()

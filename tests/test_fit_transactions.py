@@ -22,7 +22,7 @@ NAMED = (*WRAPPERS, plqERM_Ridge, plqERM_ElasticNet)
 
 
 def options():
-    return dict(loss={"name": "MSE"}, C=0.1, tol=1e-10, max_iter=100000, warm_start=True)
+    return dict(loss={"name": "MSE"}, C=0.1, tol=1e-8, max_iter=100000, warm_start=True)
 
 
 def state(model):
@@ -31,7 +31,7 @@ def state(model):
 
 @pytest.mark.parametrize("estimator", WRAPPERS)
 @pytest.mark.parametrize("failure", ["constraints", "loss", "weights", "manual", "solver", "warning"])
-def test_failed_refit_preserves_state_and_allows_recovery(estimator, failure, monkeypatch):
+def test_failed_refit_preserves_state_and_allows_recovery(estimator, failure, monkeypatch, assert_objective_close):
     rng = np.random.default_rng(721)
     X = rng.normal(size=(40, 3))
     classifier = "Classifier" in estimator.__name__
@@ -74,7 +74,7 @@ def test_failed_refit_preserves_state_and_allows_recovery(estimator, failure, mo
     monkeypatch.undo()
     model.set_params(**old_params).fit(X, y)
     cold = clone(model).set_params(warm_start=False).fit(X, y)
-    np.testing.assert_allclose(model.objective_, cold.objective_, rtol=1e-9, atol=1e-9)
+    assert_objective_close(model.objective_, cold.objective_)
 
 
 @pytest.mark.parametrize("estimator", WRAPPERS)
@@ -128,6 +128,6 @@ def test_legacy_empty_loss_parameters_are_harmless(estimator):
 
 
 def test_raw_manual_loss_api_remains_available():
-    model = ReHLine(U=-np.ones((1, 4)), V=np.full((1, 4), 2.0), tol=1e-10).fit(np.ones((4, 1)))
+    model = ReHLine(U=-np.ones((1, 4)), V=np.full((1, 4), 2.0), tol=1e-8).fit(np.ones((4, 1)))
     np.testing.assert_allclose(model.coef_, [2.0], atol=1e-9)
     assert model.objective_ == pytest.approx(2.0, abs=1e-9)

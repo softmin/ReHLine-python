@@ -30,7 +30,7 @@ def test_plqERM_Ridge_svm_matches_sklearn():
     clf_skl.fit(X, y)
     coef_skl = clf_skl.coef_.flatten()
 
-    clf_reh = plqERM_Ridge(loss={"name": "svm"}, C=C)
+    clf_reh = plqERM_Ridge(loss={"name": "svm"}, C=C, tol=1e-8, max_iter=100_000)
     clf_reh.fit(X=X, y=y)
     coef_reh = clf_reh.coef_.flatten()
 
@@ -64,7 +64,7 @@ def test_ReHLine_manual_svm_params_matches_sklearn():
     V = (C * np.ones(n)).reshape(1, -1)
 
     # When U/V are pre-scaled by C, ReHLine must use C=1.0 to avoid double-counting
-    clf_reh = ReHLine(C=1.0)
+    clf_reh = ReHLine(C=1.0, tol=1e-8, max_iter=100_000)
     clf_reh._U, clf_reh._V = U, V
     clf_reh.fit(X=X)
     coef_reh = clf_reh.coef_.flatten()

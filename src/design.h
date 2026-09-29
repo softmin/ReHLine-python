@@ -31,13 +31,11 @@ public:
     { beta.noalias() -= scale * m_X.row(row).transpose(); }
     Vector squared_norms() const { return m_X.rowwise().squaredNorm(); }
     Scalar coeff(Index row, Index col) const { return m_X(row, col); }
-    void scaled_column(Matrix& out, Index col, Index row, Scalar scale) const
-    { out.col(col) = scale * m_X.row(row).transpose(); }
 };
 
 // CQR's virtual row (q*n + i) is [X[i], e_q]. Only X is stored. Loss and dual
 // arrays retain their quantile-major ordering, and all solver updates, KKT
-// checks, block acceleration and warm starts use the same joint formulation.
+// checks and warm starts use the same joint formulation.
 template <typename Matrix, typename Index>
 class Design<Matrix, Index, true>
 {
@@ -78,12 +76,6 @@ public:
     }
     Scalar coeff(Index row, Index col) const
     { return col < m_d ? m_X(row % m_n, col) : Scalar(col - m_d == row / m_n); }
-    void scaled_column(Matrix& out, Index col, Index row, Scalar scale) const
-    {
-        out.col(col).setZero();
-        out.col(col).head(m_d) = scale * m_X.row(row % m_n).transpose();
-        out(m_d + row / m_n, col) = scale;
-    }
 };
 
 } // namespace internal

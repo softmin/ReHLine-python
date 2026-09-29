@@ -2,8 +2,7 @@ import json
 
 import numpy as np
 import pytest
-
-from benchmarks import correctness
+from benchmarks.correctness import core as correctness
 
 
 def test_case_generation_and_replay_are_exact(tmp_path):
@@ -58,6 +57,7 @@ def test_zero_weight_reference_matches_analytic_penalty_minimum(family, constrai
     assert reference["objective"] == pytest.approx(correctness.objective(case, expected), abs=1e-9)
 
 
+@pytest.mark.numerical_stress
 def test_all_small_problem_families_against_cvxpy(tmp_path):
     pytest.importorskip("cvxpy")
     report = correctness.run_suite(cases=72, output=tmp_path / "report.json", progress=False)
@@ -66,6 +66,38 @@ def test_all_small_problem_families_against_cvxpy(tmp_path):
     assert set(report["summary"]["families"]) == set(correctness.FAMILIES)
     assert set(report["summary"]["geometries"]) == set(correctness.GEOMETRIES)
     assert json.loads((tmp_path / "report.json").read_text())["status"] == "passed"
+
+
+def test_routine_reference_covers_all_losses_and_constraints(tmp_path):
+    pytest.importorskip("cvxpy")
+    report = correctness.run_suite(
+        cases=72,
+        profile="routine",
+        max_samples=20,
+        max_dim=5,
+        tol=1e-8,
+        max_iter=1_000_000,
+        output=tmp_path / "routine.json",
+        progress=False,
+    )
+    assert report["status"] == "passed", [row for row in report["rows"] if row["status"] != "passed"]
+    assert report["summary"]["comparisons"] == 216
+    assert set(report["summary"]["families"]) == set(correctness.FAMILIES)
+    assert set(report["summary"]["geometries"]) == set(correctness.GEOMETRIES)
+    assert set(report["summary"]["designs"]) == {"normal"}
+
+
+def test_routine_accuracy_acceptance_preserves_unconverged_status():
+    case = correctness.make_case(0, profile="routine")
+    case["weight"][:] = 0
+    beta = np.zeros(case["X"].shape[1])
+    reference = {"beta": beta, "objective": 0.0}
+    solution = dict(beta=beta, objective=0.0, dual_objective=-1.0, converged=False)
+    checked = correctness.check_solution(case, reference, solution, accuracy_only=True)
+    assert checked["status"] == "passed" and not checked["converged"]
+    assert correctness.check_solution(case, reference, solution)["status"] == "failed"
+    solution["dual_objective"] = 1.0
+    assert correctness.check_solution(case, reference, solution, accuracy_only=True)["status"] == "failed"
 
 
 def test_reference_failure_is_saved_and_fails_cli(tmp_path, monkeypatch):

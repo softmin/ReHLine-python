@@ -59,7 +59,7 @@ def test_binary_vs_sklearn():
         loss="hinge",
         fit_intercept=True,
         max_iter=1_000_000,
-        tol=1e-5,
+        tol=1e-8,
         random_state=42,
     )
     clf_skl.fit(X_tr, y_tr)
@@ -69,7 +69,7 @@ def test_binary_vs_sklearn():
         loss={"name": "svm"},
         C=C,
         max_iter=1_000_000,
-        tol=1e-5,
+        tol=1e-8,
         verbose=0,
     )
     clf_reh.fit(X_tr, y_tr)
@@ -101,7 +101,7 @@ def test_multiclass_ovr_vs_sklearn():
         multi_class="ovr",
         fit_intercept=True,
         max_iter=1_000_000,
-        tol=1e-5,
+        tol=1e-8,
         random_state=42,
     )
     clf_skl.fit(X_tr, y_tr)
@@ -112,7 +112,7 @@ def test_multiclass_ovr_vs_sklearn():
         C=C,
         multi_class="ovr",
         max_iter=1_000_000,
-        tol=1e-5,
+        tol=1e-8,
         verbose=0,
     )
     clf_reh.fit(X_tr, y_tr)
@@ -148,7 +148,7 @@ def test_multiclass_ovo_vs_sklearn():
         loss="hinge",
         fit_intercept=True,
         max_iter=1_000_000,
-        tol=1e-5,
+        tol=1e-8,
         random_state=42,
     )
     clf_skl = OneVsOneClassifier(base)
@@ -160,7 +160,7 @@ def test_multiclass_ovo_vs_sklearn():
         C=C,
         multi_class="ovo",
         max_iter=1_000_000,
-        tol=1e-5,
+        tol=1e-8,
         verbose=0,
     )
     clf_reh.fit(X_tr, y_tr)
@@ -183,7 +183,7 @@ def test_decision_function_shapes():
 
     # Binary
     y_bin = np.random.randint(0, 2, n_samples)
-    clf = plq_Ridge_Classifier(loss={"name": "svm"}, C=1.0, tol=1e-5, max_iter=1_000_000)
+    clf = plq_Ridge_Classifier(loss={"name": "svm"}, C=1.0, tol=1e-8, max_iter=1_000_000)
     clf.fit(X, y_bin)
     assert clf.decision_function(X).shape == (n_samples,), "Binary decision_function should have shape (n_samples,)"
 
@@ -193,7 +193,7 @@ def test_decision_function_shapes():
         loss={"name": "svm"},
         C=1.0,
         multi_class="ovr",
-        tol=1e-5,
+        tol=1e-8,
     )
     clf_ovr.fit(X, y_multi)
     assert clf_ovr.decision_function(X).shape == (n_samples, 4), (
@@ -205,7 +205,7 @@ def test_decision_function_shapes():
         loss={"name": "svm"},
         C=1.0,
         multi_class="ovo",
-        tol=1e-5,
+        tol=1e-8,
         max_iter=1_000_000,
     )
     clf_ovo.fit(X, y_multi)
@@ -244,7 +244,7 @@ def test_ovo_coef_sign_convention():
         loss="hinge",
         fit_intercept=True,
         max_iter=1_000_000,
-        tol=1e-5,
+        tol=1e-8,
         random_state=0,
     )
     clf_skl = OneVsOneClassifier(base_clf)
@@ -255,7 +255,7 @@ def test_ovo_coef_sign_convention():
         C=C,
         multi_class="ovo",
         max_iter=1_000_000,
-        tol=1e-5,
+        tol=1e-8,
         verbose=0,
     )
     clf_reh.fit(X, y)
@@ -289,7 +289,7 @@ def test_ovo_predict_consistency():
         C=C,
         multi_class="ovo",
         max_iter=1_000_000,
-        tol=1e-5,
+        tol=1e-8,
         verbose=0,
     )
     clf.fit(X, y)
@@ -339,7 +339,7 @@ def test_ovo_fit_intercept_false():
         loss="hinge",
         fit_intercept=False,
         max_iter=1_000_000,
-        tol=1e-5,
+        tol=1e-8,
         random_state=13,
     )
     clf_skl = OneVsOneClassifier(base_clf)
@@ -351,7 +351,7 @@ def test_ovo_fit_intercept_false():
         multi_class="ovo",
         fit_intercept=False,
         max_iter=1_000_000,
-        tol=1e-5,
+        tol=1e-8,
         verbose=0,
     )
     clf_reh.fit(X, y)
@@ -414,7 +414,7 @@ def test_ovo_more_classes():
         loss="hinge",
         fit_intercept=True,
         max_iter=1_000_000,
-        tol=1e-5,
+        tol=1e-8,
         random_state=99,
     )
     clf_skl = OneVsOneClassifier(base_clf)
@@ -425,7 +425,7 @@ def test_ovo_more_classes():
         C=C,
         multi_class="ovo",
         max_iter=1_000_000,
-        tol=1e-5,
+        tol=1e-8,
         verbose=0,
     )
     clf_reh.fit(X_tr, y_tr)

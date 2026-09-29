@@ -4,8 +4,7 @@ from types import SimpleNamespace
 
 import numpy as np
 import pytest
-
-from benchmarks import api_correctness as benchmark
+from benchmarks.correctness import api as benchmark
 
 
 def test_small_public_api_suite():
@@ -59,6 +58,7 @@ def test_audit_rejects_incorrect_pair_scores(error, monkeypatch):
     assert "AssertionError" in result["rows"][0]["error"]
 
 
+@pytest.mark.numerical_stress
 def test_classification_matrix_covers_all_combinations():
     pytest.importorskip("cvxpy")
     result = benchmark.run_suite(cases=2 * len(benchmark.CLASSIFICATION_MATRIX))

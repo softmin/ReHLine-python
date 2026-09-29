@@ -74,10 +74,22 @@ class ReHLine(_BaseReHLine, BaseEstimator):
         The maximum number of iterations to be run.
 
     tol : float, default=1e-4
-        The tolerance for the stopping criterion.
+        Relative primal-dual gap and normalized feasibility tolerance.
+        The absolute KKT residual is reported separately.
 
-    shrink : float, default=1
-        The shrinkage of dual variables for the ReHLine algorithm.
+    shrink : int, default=1
+        Zero disables shrinking; a positive integer enables it. With
+        coordinate_seed=None, the positive value also supplies the legacy seed.
+
+    coordinate_order : {"auto", "cyclic", "random"}, default="auto"
+        Coordinate order within each group. Auto uses cyclic when shrink=0
+        and random permutations when shrink>0. Explicit orders work with either
+        shrinking setting. The group order remains xi, Lambda, Gamma, mu.
+
+    coordinate_seed : int or None, default=None
+        Non-negative int32 seed for random coordinate permutations. None uses
+        the positive shrink value, or 1 when shrink=0. Reset for each solver call,
+        including warm refits. Ignored for cyclic order.
 
     warm_start : bool, default=False
         Whether to use the given dual params as an initial guess for the
@@ -168,6 +180,9 @@ class ReHLine(_BaseReHLine, BaseEstimator):
         warm_start=0,
         verbose=0,
         trace_freq=100,
+        *,
+        coordinate_order="auto",
+        coordinate_seed=None,
     ):
         self.C = C
         self.U = U
@@ -183,6 +198,8 @@ class ReHLine(_BaseReHLine, BaseEstimator):
         self.max_iter = max_iter
         self.tol = tol
         self.shrink = shrink
+        self.coordinate_order = coordinate_order
+        self.coordinate_seed = coordinate_seed
         self.warm_start = warm_start
         self.verbose = verbose
         self.trace_freq = trace_freq
@@ -237,6 +254,8 @@ class ReHLine(_BaseReHLine, BaseEstimator):
             max_iter=self.max_iter,
             tol=self.tol,
             shrink=self.shrink,
+            coordinate_order=self.coordinate_order,
+            coordinate_seed=self.coordinate_seed,
             verbose=self.verbose,
             trace_freq=self.trace_freq,
         )
@@ -344,6 +363,20 @@ class plqERM_Ridge(_BaseReHLine, BaseEstimator):
     b: array of shape (K,), default=None
         Offsets in ``A @ coef_ + b >= 0``; must be supplied together with A.
 
+    shrink : int, default=1
+        Zero disables shrinking; a positive integer enables it. With
+        coordinate_seed=None, the positive value also supplies the legacy seed.
+
+    coordinate_order : {"auto", "cyclic", "random"}, default="auto"
+        Coordinate order within each group. Auto uses cyclic when shrink=0
+        and random permutations when shrink>0. Explicit orders work with either
+        shrinking setting. The group order remains xi, Lambda, Gamma, mu.
+
+    coordinate_seed : int or None, default=None
+        Non-negative int32 seed for random coordinate permutations. None uses
+        the positive shrink value, or 1 when shrink=0. Reset for each solver call,
+        including warm refits. Ignored for cyclic order.
+
     Attributes
     ----------
     coef\_ : array-like
@@ -393,6 +426,9 @@ class plqERM_Ridge(_BaseReHLine, BaseEstimator):
         warm_start=0,
         verbose=0,
         trace_freq=100,
+        *,
+        coordinate_order="auto",
+        coordinate_seed=None,
     ):
         self.loss = loss
         self.constraint = constraint if constraint is not None else []
@@ -417,6 +453,8 @@ class plqERM_Ridge(_BaseReHLine, BaseEstimator):
         self.max_iter = max_iter
         self.tol = tol
         self.shrink = shrink
+        self.coordinate_order = coordinate_order
+        self.coordinate_seed = coordinate_seed
         self.warm_start = warm_start
         self.verbose = verbose
         self.trace_freq = trace_freq
@@ -487,6 +525,8 @@ class plqERM_Ridge(_BaseReHLine, BaseEstimator):
             max_iter=self.max_iter,
             tol=self.tol,
             shrink=self.shrink,
+            coordinate_order=self.coordinate_order,
+            coordinate_seed=self.coordinate_seed,
             verbose=self.verbose,
             trace_freq=self.trace_freq,
         )
@@ -603,6 +643,20 @@ class plqERM_ElasticNet(_BaseReHLine, BaseEstimator):
     b: array of shape (K,), default=None
         Offsets in ``A @ coef_ + b >= 0``; must be supplied together with A.
 
+    shrink : int, default=1
+        Zero disables shrinking; a positive integer enables it. With
+        coordinate_seed=None, the positive value also supplies the legacy seed.
+
+    coordinate_order : {"auto", "cyclic", "random"}, default="auto"
+        Coordinate order within each group. Auto uses cyclic when shrink=0
+        and random permutations when shrink>0. Explicit orders work with either
+        shrinking setting. The group order remains xi, Lambda, Gamma, mu.
+
+    coordinate_seed : int or None, default=None
+        Non-negative int32 seed for random coordinate permutations. None uses
+        the positive shrink value, or 1 when shrink=0. Reset for each solver call,
+        including warm refits. Ignored for cyclic order.
+
     Attributes
     ----------
     coef\_ : array-like
@@ -654,6 +708,9 @@ class plqERM_ElasticNet(_BaseReHLine, BaseEstimator):
         warm_start=0,
         verbose=0,
         trace_freq=100,
+        *,
+        coordinate_order="auto",
+        coordinate_seed=None,
     ):
         self.loss = loss
         self.constraint = constraint if constraint is not None else []
@@ -680,6 +737,8 @@ class plqERM_ElasticNet(_BaseReHLine, BaseEstimator):
         self.max_iter = max_iter
         self.tol = tol
         self.shrink = shrink
+        self.coordinate_order = coordinate_order
+        self.coordinate_seed = coordinate_seed
         self.warm_start = warm_start
         self.verbose = verbose
         self.trace_freq = trace_freq
@@ -773,6 +832,8 @@ class plqERM_ElasticNet(_BaseReHLine, BaseEstimator):
             max_iter=self.max_iter,
             tol=self.tol,
             shrink=self.shrink,
+            coordinate_order=self.coordinate_order,
+            coordinate_seed=self.coordinate_seed,
             verbose=self.verbose,
             trace_freq=self.trace_freq,
         )
@@ -862,10 +923,22 @@ class CQR_Ridge(_BaseReHLine, BaseEstimator):
         The maximum number of iterations to be run.
 
     tol : float, default=1e-4
-        The tolerance for the stopping criterion.
+        Relative primal-dual gap and normalized feasibility tolerance.
+        The absolute KKT residual is reported separately.
 
-    shrink : float, default=1
-        The shrinkage of dual variables for the ReHLine algorithm.
+    shrink : int, default=1
+        Zero disables shrinking; a positive integer enables it. With
+        coordinate_seed=None, the positive value also supplies the legacy seed.
+
+    coordinate_order : {"auto", "cyclic", "random"}, default="auto"
+        Coordinate order within each group. Auto uses cyclic when shrink=0
+        and random permutations when shrink>0. Explicit orders work with either
+        shrinking setting. The group order remains xi, Lambda, Gamma, mu.
+
+    coordinate_seed : int or None, default=None
+        Non-negative int32 seed for random coordinate permutations. None uses
+        the positive shrink value, or 1 when shrink=0. Reset for each solver call,
+        including warm refits. Ignored for cyclic order.
 
     warm_start : bool, default=False
         Whether to use the given dual params as an initial guess for the
@@ -916,6 +989,9 @@ class CQR_Ridge(_BaseReHLine, BaseEstimator):
         warm_start=0,
         verbose=0,
         trace_freq=100,
+        *,
+        coordinate_order="auto",
+        coordinate_seed=None,
     ):
         self.quantiles = quantiles
         self.C = C
@@ -932,6 +1008,8 @@ class CQR_Ridge(_BaseReHLine, BaseEstimator):
         self.max_iter = max_iter
         self.tol = tol
         self.shrink = shrink
+        self.coordinate_order = coordinate_order
+        self.coordinate_seed = coordinate_seed
         self.warm_start = warm_start
         self.verbose = verbose
         self.trace_freq = trace_freq
@@ -1016,6 +1094,8 @@ class CQR_Ridge(_BaseReHLine, BaseEstimator):
             max_iter=self.max_iter,
             tol=self.tol,
             shrink=self.shrink,
+            coordinate_order=self.coordinate_order,
+            coordinate_seed=self.coordinate_seed,
             verbose=self.verbose,
             trace_freq=self.trace_freq,
         )

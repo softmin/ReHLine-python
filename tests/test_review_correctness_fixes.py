@@ -9,24 +9,26 @@ from rehline import make_mf_dataset, plq_Ridge_Regressor
 
 
 def test_unsigned_mae_matches_analytic_objective():
-    model = plq_Ridge_Regressor(loss={"name": "MAE"}, fit_intercept=False, tol=1e-10, max_iter=100000)
+    model = plq_Ridge_Regressor(loss={"name": "MAE"}, fit_intercept=False, tol=1e-8, max_iter=100000)
     model.fit(np.ones((3, 1)), np.array([1, 2, 3], dtype=np.uint8))
     assert model.converged_
     assert model.objective_ == pytest.approx(3.5, abs=1e-9)
     np.testing.assert_allclose(model.coef_, [1.0], atol=1e-9)
 
 
-def test_constant_decimal_sensitive_feature_imposes_no_constraint():
+def test_constant_decimal_sensitive_feature_imposes_no_constraint(assert_objective_close):
     X, y = np.full((100, 1), 0.1), np.ones(100)
     model = plq_Ridge_Regressor(
         loss={"name": "MSE"},
         fit_intercept=False,
-        tol=1e-10,
+        tol=1e-8,
         max_iter=100000,
         constraint=[{"name": "fair", "sen_idx": [0], "tol_sen": 0.0}],
     ).fit(X, y)
     assert model.converged_
-    assert model.objective_ == pytest.approx(100 / 3, abs=1e-8)
+    actual = np.square(y - model.predict(X)).sum() + 0.5 * model.coef_ @ model.coef_
+    assert_objective_close(actual, 100 / 3)
+    assert_objective_close(model.objective_, actual)
     np.testing.assert_array_equal(model._A, 0)
 
 

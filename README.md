@@ -197,6 +197,10 @@ ReHLine delivers **exceptional speed** compared to state-of-the-art solvers. Her
 
 All benchmarks are reproducible via [benchopt](https://github.com/benchopt/benchopt) at our [ReHLine-benchmark](https://github.com/softmin/ReHLine-benchmark) repository.
 
+The current quick/dense suites and shared objective checks are maintained in
+[ReHLine-benchmarking](https://github.com/softmin/ReHLine-benchmarking).
+See [test setup](tests/README.md) for the Python repository's external test dependency.
+
 | **Problem** | **Benchmark Code** | **Interactive Results** |
 |------------|-------------------|------------------------|
 | SVM | [Code](https://github.com/softmin/ReHLine-benchmark/tree/main/benchmark_SVM) | [📊 View](https://rehline-python.readthedocs.io/en/latest/_static/benchmark/benchmark_SVM.html) |

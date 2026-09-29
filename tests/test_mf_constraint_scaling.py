@@ -5,9 +5,9 @@ import warnings
 
 import numpy as np
 import pytest
+from benchmarks.correctness.estimators import LOSSES, direct_loss
 from sklearn.exceptions import ConvergenceWarning
 
-from benchmarks.estimator_correctness import LOSSES, direct_loss
 from rehline import plqMF_Ridge
 
 
@@ -64,7 +64,7 @@ def test_scaled_mf_full_objective_cold_entities_and_zero_weight_blocks(biased, f
                 biased=biased,
                 C=0.01,
                 random_state=42,
-                tol=1e-9,
+                tol=1e-8,
                 tol_CD=1e-10,
                 max_iter=100000,
                 max_iter_CD=100,

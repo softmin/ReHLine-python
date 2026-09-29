@@ -67,9 +67,6 @@ htmlcov/
 # local
 local/
 
-# Generated benchmark outputs are local/CI artifacts; publish only reviewed reports.
-/benchmarks/results/*
-!/benchmarks/results/README.md
 
 # auto API
 doc/source/autoapi/
@@ -77,3 +74,8 @@ doc/source/autoapi/
 # Built documentation
 doc/build/
 doc/_build/
+
+
+# External CI test dependency and generated validation reports
+/.ci/
+/test-results/

@@ -50,7 +50,9 @@ def verify_snapshot(model, snapshot, X):
 @pytest.mark.parametrize("estimator", [plq_Ridge_Classifier, plq_ElasticNet_Classifier])
 @pytest.mark.parametrize("classes,strategy", [(2, "ovr"), (2, "ovo"), (3, "ovr"), (4, "ovo"), (13, "ovo")])
 @pytest.mark.parametrize("zero", [False, True])
-def test_classifier_snapshot_formats_objectives_and_independence(estimator, classes, strategy, zero, tmp_path):
+def test_classifier_snapshot_formats_objectives_and_independence(
+    estimator, classes, strategy, zero, tmp_path, assert_objective_close
+):
     rng = np.random.default_rng(314)
     y = np.tile(np.array([f"label-{i}" for i in range(classes)]), 5)
     X = np.zeros((len(y), 3)) if zero else rng.normal(size=(len(y), 3))
@@ -61,7 +63,7 @@ def test_classifier_snapshot_formats_objectives_and_independence(estimator, clas
         C=0.1,
         fit_intercept=not zero,
         intercept_scaling=3.0,
-        tol=1e-10,
+        tol=1e-8,
         max_iter=100000,
     ).fit(X, y, sample_weight=weight)
     before = pickle.dumps(vars(model))
@@ -94,7 +96,7 @@ def test_classifier_snapshot_formats_objectives_and_independence(estimator, clas
         recorded = np.atleast_1d(snapshot.objective_)[i] * (1 - ratio)
         lower = np.atleast_1d(snapshot.dual_objective_)[i] * (1 - ratio)
         assert value == pytest.approx(recorded, rel=1e-8, abs=1e-9)
-        assert value == pytest.approx(lower, rel=1e-8, abs=1e-9)
+        assert_objective_close(value, lower)
     saved = pickle.dumps(vars(snapshot))
     model.fit(X, y, sample_weight=weight * 2)
     model.coef_[:] = 99
@@ -110,7 +112,7 @@ def test_regression_snapshot_pipeline_feature_names_and_objective(estimator):
     X, y = pd.DataFrame(rng.normal(size=(30, 4)), columns=list("abcd")), rng.normal(size=30)
     weight = np.linspace(0.1, 2, len(y))
     model = estimator(
-        loss={"name": "MSE"}, C=0.1, fit_intercept=True, intercept_scaling=2.0, tol=1e-10, max_iter=100000
+        loss={"name": "MSE"}, C=0.1, fit_intercept=True, intercept_scaling=2.0, tol=1e-8, max_iter=100000
     ).fit(X, y, sample_weight=weight)
     snapshot = model.to_inference()
     np.testing.assert_array_equal(snapshot.feature_names_in_, model.feature_names_in_)
@@ -124,7 +126,7 @@ def test_regression_snapshot_pipeline_feature_names_and_objective(estimator):
     value += 0.5 * (1 - ratio) * (beta @ beta) + ratio * abs(beta).sum()
     assert value == pytest.approx(snapshot.objective_ * (1 - ratio), rel=1e-8, abs=1e-9)
     pipe = Pipeline(
-        [("scale", StandardScaler()), ("model", estimator(loss={"name": "MSE"}, C=0.1, tol=1e-10, max_iter=100000))]
+        [("scale", StandardScaler()), ("model", estimator(loss={"name": "MSE"}, C=0.1, tol=1e-8, max_iter=100000))]
     ).fit(X, y)
     prediction = pipe.predict(X)
     pipe.steps[-1] = ("model", pipe[-1].to_inference())
@@ -142,7 +144,7 @@ def test_compact_cqr_path_preserves_outputs_diagnostics_and_joint_objectives(war
     options = dict(
         quantiles=levels,
         Cs=[0.03, 0.01, 0.1],
-        tol=1e-10,
+        tol=1e-8,
         max_iter=100000,
         warm_start=warm_start,
         return_time=return_time,
@@ -225,7 +227,8 @@ def test_classifier_export_storage_is_independent_of_training_sample_count(class
 @pytest.mark.parametrize("family", ["cqr", "regression", "classification"])
 def test_benchmark_gate_detects_corrupted_export(family, monkeypatch):
     pytest.importorskip("cvxpy")
-    from benchmarks import api_correctness, cqr_correctness
+    from benchmarks.correctness import api as api_correctness
+    from benchmarks.correctness import cqr as cqr_correctness
 
     estimator = {"cqr": CQR_Ridge, "regression": plq_Ridge_Regressor, "classification": plq_Ridge_Classifier}[family]
     original = estimator.to_inference

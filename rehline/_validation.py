@@ -8,7 +8,7 @@ import numpy as np
 def positive_real(value, name, *, allow_zero=False):
     if (
         not isinstance(value, Real)
-        or isinstance(value, (bool, np.bool_))
+        or isinstance(value, bool | np.bool_)
         or not np.isfinite(value)
         or (value < 0 if allow_zero else value <= 0)
     ):
@@ -16,8 +16,16 @@ def positive_real(value, name, *, allow_zero=False):
         raise ValueError(f"{name} must be a finite {bound} number")
 
 
-def solver_options(max_iter, tol, shrink, verbose, trace_freq):
+def solver_options(max_iter, tol, shrink, verbose, trace_freq, coordinate_order="auto", coordinate_seed=None):
     positive_real(tol, "tol")
+    if not isinstance(coordinate_order, str) or coordinate_order not in ("auto", "cyclic", "random"):
+        raise ValueError("coordinate_order must be 'auto', 'cyclic', or 'random'")
+    if coordinate_seed is not None and (
+        isinstance(coordinate_seed, bool | np.bool_)
+        or not isinstance(coordinate_seed, Integral)
+        or not 0 <= coordinate_seed <= np.iinfo(np.int32).max
+    ):
+        raise ValueError("coordinate_seed must be None or a non-negative integer fitting in int32")
     for name, value, minimum in (
         ("max_iter", max_iter, 1),
         ("trace_freq", trace_freq, 1),
@@ -30,7 +38,15 @@ def solver_options(max_iter, tol, shrink, verbose, trace_freq):
 
 def model_options(model):
     positive_real(model.C, "C")
-    solver_options(model.max_iter, model.tol, model.shrink, model.verbose, model.trace_freq)
+    solver_options(
+        model.max_iter,
+        model.tol,
+        model.shrink,
+        model.verbose,
+        model.trace_freq,
+        model.coordinate_order,
+        model.coordinate_seed,
+    )
     if hasattr(model, "l1_ratio"):
         positive_real(model.l1_ratio, "l1_ratio", allow_zero=True)
         if model.l1_ratio >= 1:

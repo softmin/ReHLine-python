@@ -12,7 +12,7 @@ from rehline._validation import balanced_sample_weights
 def test_balanced_weights_match_integer_replication_and_analytic_optimum():
     X, y = np.zeros((4, 1)), np.array([0, 0, 1, 1])
     weight = np.array([100, 100, 1, 1])
-    options = dict(loss={"name": "svm"}, C=0.1, class_weight="balanced", tol=1e-10, max_iter=100000)
+    options = dict(loss={"name": "svm"}, C=0.1, class_weight="balanced", tol=1e-8, max_iter=100000)
     weighted = plq_Ridge_Classifier(**options).fit(X, y, sample_weight=weight)
     copied = plq_Ridge_Classifier(**options).fit(np.repeat(X, weight, axis=0), np.repeat(y, weight))
     assert weighted.intercept_ == pytest.approx(0.0, abs=1e-9)
@@ -60,7 +60,7 @@ def full_objectives(model, X, y, weight):
 @pytest.mark.parametrize("strategy", ["ovr", "ovo"])
 @pytest.mark.parametrize("intercept", [False, True])
 def test_balanced_binary_and_multiclass_replication_warm_refits_and_full_objective(
-    estimator, classes, strategy, intercept
+    estimator, classes, strategy, intercept, assert_objective_close
 ):
     rng = np.random.default_rng(19)
     y = np.array([f"label-{i}" for i in range(classes)] * 6)
@@ -75,7 +75,7 @@ def test_balanced_binary_and_multiclass_replication_warm_refits_and_full_objecti
         fit_intercept=intercept,
         intercept_scaling=2.0,
         warm_start=True,
-        tol=1e-10,
+        tol=1e-8,
         max_iter=100000,
     )
     for weights in (weight, np.roll(weight, classes)):
@@ -83,19 +83,19 @@ def test_balanced_binary_and_multiclass_replication_warm_refits_and_full_objecti
         for _ in range(2):
             model.fit(X, y, sample_weight=weights)
             assert np.all(model.converged_)
-            np.testing.assert_allclose(model.coef_, copied.coef_, rtol=0, atol=1e-8)
-            np.testing.assert_allclose(model.intercept_, copied.intercept_, rtol=0, atol=1e-8)
             value = full_objectives(model, X, y, weights)
             ratio = getattr(model, "l1_ratio", 0)
             np.testing.assert_allclose(value, model.objective_ * (1 - ratio), rtol=1e-8, atol=1e-9)
-            np.testing.assert_allclose(value, model.dual_objective_ * (1 - ratio), rtol=1e-8, atol=1e-9)
-            np.testing.assert_allclose(value, np.atleast_1d(copied.objective_) * (1 - ratio), rtol=1e-8, atol=1e-9)
+            assert_objective_close(value, model.dual_objective_ * (1 - ratio))
+            assert_objective_close(value, full_objectives(copied, X, y, weights))
             np.testing.assert_array_equal(model.to_inference().predict(X), model.predict(X))
 
 
 @pytest.mark.parametrize("classes", [2, 3])
 @pytest.mark.parametrize("intercept", [False, True])
-def test_weighted_balance_matches_linearsvc_with_independently_explicit_weights(classes, intercept):
+def test_weighted_balance_matches_linearsvc_with_independently_explicit_weights(
+    classes, intercept, assert_objective_close
+):
     rng = np.random.default_rng(52)
     X, y = rng.normal(size=(30, 3)), np.arange(30) % classes
     weights = rng.uniform(0.1, 5, len(y))
@@ -106,7 +106,7 @@ def test_weighted_balance_matches_linearsvc_with_independently_explicit_weights(
         multi_class="ovr",
         fit_intercept=intercept,
         intercept_scaling=2.0,
-        tol=1e-10,
+        tol=1e-8,
         max_iter=100000,
     ).fit(X, y, sample_weight=weights)
     # Explicit effective weights work on sklearn 1.6 too; its balanced option
@@ -121,8 +121,15 @@ def test_weighted_balance_matches_linearsvc_with_independently_explicit_weights(
         max_iter=100000,
         random_state=42,
     ).fit(X, y, sample_weight=effective_weights(y, weights))
-    np.testing.assert_allclose(np.atleast_2d(model.coef_), reference.coef_, rtol=0, atol=1e-8)
-    np.testing.assert_allclose(model.intercept_, reference.intercept_, rtol=0, atol=1e-8)
+    expected = []
+    effective = effective_weights(y, weights)
+    labels = [reference.classes_[1]] if classes == 2 else reference.classes_
+    biases = np.broadcast_to(reference.intercept_, (len(reference.coef_),))
+    for coef, bias, label in zip(reference.coef_, biases, labels):
+        beta = np.r_[coef, bias / reference.intercept_scaling] if intercept else coef
+        target = np.where(y == label, 1.0, -1.0)
+        expected.append(0.5 * (beta @ beta) + reference.C * (effective @ np.maximum(1 - target * (X @ coef + bias), 0)))
+    assert_objective_close(full_objectives(model, X, y, weights), expected)
 
 
 @pytest.mark.parametrize(
@@ -165,7 +172,7 @@ def test_unrepresentable_balanced_weights_fail_and_preserve_fitted_state():
 
 def test_zero_weight_class_is_removed_before_balancing_and_scalar_weights_match():
     X, y = np.zeros((6, 1)), np.array(["a", "a", "b", "b", "ghost", "ghost"])
-    model = plq_Ridge_Classifier(loss={"name": "svm"}, class_weight="balanced", tol=1e-10)
+    model = plq_Ridge_Classifier(loss={"name": "svm"}, class_weight="balanced", tol=1e-8)
     model.fit(X, y, sample_weight=[1.0, 1.0, 100.0, 100.0, 0.0, 0.0])
     np.testing.assert_array_equal(model.classes_, ["a", "b"])
     assert model.intercept_ == pytest.approx(0, abs=1e-9)

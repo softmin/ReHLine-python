@@ -23,11 +23,13 @@ void rehline_internal(
     const MapMat& U, const MapMat& V,
     const MapMat& S, const MapMat& T, const MapMat& Tau,
     int max_iter, double tol, int shrink = 1,
-    int verbose = 0, int trace_freq = 100
+    int verbose = 0, int trace_freq = 100,
+    int coordinate_order = 0, int coordinate_seed = -1
 )
 {
     rehline::rehline_solver(result, X, A, b, rho, U, V, S, T, Tau,
-                            max_iter, tol, shrink, verbose, trace_freq);
+                            max_iter, tol, shrink, verbose, trace_freq, std::cout, 0,
+                            coordinate_order, coordinate_seed);
 }
 
 void rehline_cqr_internal(
@@ -36,12 +38,14 @@ void rehline_cqr_internal(
     const MapMat& U, const MapMat& V,
     const MapMat& S, const MapMat& T, const MapMat& Tau,
     int quantile_count, int max_iter, double tol, int shrink = 1,
-    int verbose = 0, int trace_freq = 100
+    int verbose = 0, int trace_freq = 100,
+    int coordinate_order = 0, int coordinate_seed = -1
 )
 {
     rehline::rehline_solver<MapMat, MapVec, int, true>(
         result, X, A, b, rho, U, V, S, T, Tau,
-        max_iter, tol, shrink, verbose, trace_freq, std::cout, quantile_count);
+        max_iter, tol, shrink, verbose, trace_freq, std::cout, quantile_count,
+        coordinate_order, coordinate_seed);
 }
 
 PYBIND11_MODULE(_internal, m) {
@@ -66,6 +70,16 @@ PYBIND11_MODULE(_internal, m) {
     // https://hopstorawpointers.blogspot.com/2018/06/pybind11-and-python-sub-modules.html
     m.attr("__name__") = "rehline._internal";
     m.doc() = "rehline";
-    m.def("rehline_internal", &rehline_internal, py::call_guard<py::gil_scoped_release>());
-    m.def("rehline_cqr_internal", &rehline_cqr_internal, py::call_guard<py::gil_scoped_release>());
+    m.def("rehline_internal", &rehline_internal, py::call_guard<py::gil_scoped_release>(),
+          py::arg("result"), py::arg("X"), py::arg("A"), py::arg("b"), py::arg("rho"),
+          py::arg("U"), py::arg("V"), py::arg("S"), py::arg("T"), py::arg("Tau"),
+          py::arg("max_iter"), py::arg("tol"), py::arg("shrink") = 1,
+          py::arg("verbose") = 0, py::arg("trace_freq") = 100,
+          py::arg("coordinate_order") = 0, py::arg("coordinate_seed") = -1);
+    m.def("rehline_cqr_internal", &rehline_cqr_internal, py::call_guard<py::gil_scoped_release>(),
+          py::arg("result"), py::arg("X"), py::arg("A"), py::arg("b"), py::arg("rho"),
+          py::arg("U"), py::arg("V"), py::arg("S"), py::arg("T"), py::arg("Tau"),
+          py::arg("quantile_count"), py::arg("max_iter"), py::arg("tol"), py::arg("shrink") = 1,
+          py::arg("verbose") = 0, py::arg("trace_freq") = 100,
+          py::arg("coordinate_order") = 0, py::arg("coordinate_seed") = -1);
 }

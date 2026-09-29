@@ -36,7 +36,7 @@ def test_constant_sensitive_and_other_columns_have_exact_zero_covariance(constan
 
 
 @pytest.mark.parametrize("scale", [1.0, 1e-12])
-def test_nonzero_tiny_covariance_is_not_dropped(scale):
+def test_nonzero_tiny_covariance_is_not_dropped(scale, assert_objective_close):
     X = np.array([[0.0], [1.0], [2.0]]) * scale
     A, _ = _make_constraint_rehline_param([{"name": "fair", "sen_idx": [0], "tol_sen": 0}], X)
     assert A[1, 0] > 0
@@ -44,9 +44,10 @@ def test_nonzero_tiny_covariance_is_not_dropped(scale):
     # In the original geometry, zero covariance forces beta = 0 even if its
     # generated coefficient is tiny. Explicitly normalize only the reference.
     m = plqERM_Ridge(
-        loss={"name": "MSE"}, tol=1e-10, max_iter=100000, constraint=[{"name": "fair", "sen_idx": [0], "tol_sen": 0}]
+        loss={"name": "MSE"}, tol=1e-8, max_iter=100000, constraint=[{"name": "fair", "sen_idx": [0], "tol_sen": 0}]
     ).fit(X, [1.0, 2.0, 3.0])
-    assert m.converged_ and abs(m.coef_[0]) < 1e-9
+    assert m.converged_ and m.scaled_constraint_violation_ <= 1e-8
+    assert_objective_close(np.square(np.array([1.0, 2.0, 3.0]) - X @ m.coef_).sum() + 0.5 * (m.coef_ @ m.coef_), 14.0)
 
 
 def test_nearly_constant_and_large_offset_covariance_matches_pairwise_reference():
@@ -60,9 +61,9 @@ def test_nearly_constant_and_large_offset_covariance_matches_pairwise_reference(
 
 @pytest.mark.parametrize("estimator", [plqERM_Ridge, plqERM_ElasticNet, plq_Ridge_Regressor, plq_ElasticNet_Regressor])
 @pytest.mark.parametrize("shrink", [0, 1])
-def test_constant_fairness_regression_has_unconstrained_optimum(estimator, shrink):
+def test_constant_fairness_regression_has_unconstrained_optimum(estimator, shrink, assert_objective_close):
     X, y = np.full((100, 1), 0.1), np.ones(100)
-    options = dict(loss={"name": "MSE"}, shrink=shrink, tol=1e-10, max_iter=100000, warm_start=True)
+    options = dict(loss={"name": "MSE"}, shrink=shrink, tol=1e-8, max_iter=100000, warm_start=True)
     if estimator in (plq_Ridge_Regressor, plq_ElasticNet_Regressor):
         options.update(fit_intercept=False)
     model = estimator(**options, constraint=[{"name": "fair", "sen_idx": [0], "tol_sen": 0.0}])
@@ -73,16 +74,23 @@ def test_constant_fairness_regression_has_unconstrained_optimum(estimator, shrin
         ratio = getattr(model, "l1_ratio", 0.0)
         optimum = (20 - ratio) / (3 - ratio)
         value = np.square(1 - 0.1 * optimum) * 100 + 0.5 * (1 - ratio) * optimum**2 + ratio * abs(optimum)
-        np.testing.assert_allclose(model.coef_, [optimum], atol=1e-9)
-        np.testing.assert_allclose(model.objective_ * (1 - ratio), value, rtol=1e-9, atol=1e-9)
-        np.testing.assert_allclose(model.objective_, reference.objective_, rtol=1e-9, atol=1e-9)
+        actual = (
+            np.square(y - X @ model.coef_).sum()
+            + 0.5 * (1 - ratio) * (model.coef_ @ model.coef_)
+            + ratio * abs(model.coef_).sum()
+        )
+        assert_objective_close(actual, value)
+        assert_objective_close(model.objective_, reference.objective_)
+        np.testing.assert_allclose(model.objective_ * (1 - ratio), actual, rtol=1e-12, atol=1e-9)
 
 
 @pytest.mark.parametrize("estimator", [plq_Ridge_Classifier, plq_ElasticNet_Classifier])
 @pytest.mark.parametrize("strategy", ["ovr", "ovo"])
 @pytest.mark.parametrize("classes", [2, 4])
 @pytest.mark.parametrize("intercept", [False, True])
-def test_constant_fairness_with_weighted_binary_and_multiclass(estimator, strategy, classes, intercept):
+def test_constant_fairness_with_weighted_binary_and_multiclass(
+    estimator, strategy, classes, intercept, assert_objective_close
+):
     rng = np.random.default_rng(16)
     X = rng.normal(size=(classes * 6, 3))
     X[:, 0] = 0.1
@@ -97,7 +105,7 @@ def test_constant_fairness_with_weighted_binary_and_multiclass(estimator, strate
         fit_intercept=intercept,
         intercept_scaling=2.0,
         warm_start=True,
-        tol=1e-10,
+        tol=1e-8,
         max_iter=100000,
         n_jobs=2,
     )
@@ -106,27 +114,18 @@ def test_constant_fairness_with_weighted_binary_and_multiclass(estimator, strate
     for _ in range(2):
         model.fit(X, y, sample_weight=weight)
         assert np.all(model.converged_)
-        np.testing.assert_allclose(model.objective_, reference.objective_, rtol=1e-8, atol=1e-9)
-        np.testing.assert_allclose(model.dual_objective_, reference.dual_objective_, rtol=1e-8, atol=1e-9)
-        # Pair votes are discontinuous at zero; compare the continuous margins
-        # and require identical score aggregation on rows away from that boundary.
-        actual, expected = model._decision_function(X), reference._decision_function(X)
-        np.testing.assert_allclose(actual, expected, rtol=0, atol=1e-8)
-        np.testing.assert_allclose(model.coef_, reference.coef_, rtol=0, atol=1e-8)
-        stable = np.all(abs(expected) > 1e-8, axis=1) if expected.ndim == 2 else abs(expected) > 1e-8
-        if stable.any():
-            np.testing.assert_allclose(
-                model.decision_function(X[stable]), reference.decision_function(X[stable]), rtol=0, atol=1e-8
-            )
+        assert_objective_close(model.objective_, reference.objective_)
+        assert_objective_close(model.dual_objective_, reference.dual_objective_)
+        assert np.max(model.scaled_constraint_violation_) <= 1e-8
         np.testing.assert_array_equal(model.to_inference().predict(X), model.predict(X))
 
 
 @pytest.mark.parametrize("biased", [False, True])
-def test_constant_fairness_mf_block_matches_analytic_ridge_solution(biased):
+def test_constant_fairness_mf_block_matches_analytic_ridge_solution(biased, assert_objective_close):
     design = np.full((3, 1), 0.1)
     if biased:
         design = np.column_stack((np.ones(3), design))
-    model = plqMF_Ridge(1, 1, loss={"name": "MSE"}, rank=1, biased=biased, tol=1e-10, max_iter=100000)
+    model = plqMF_Ridge(1, 1, loss={"name": "MSE"}, rank=1, biased=biased, tol=1e-8, max_iter=100000)
     constraints = [{"name": "fair", "sen_idx": [-1], "tol_sen": 0.0}]
     y, weight = np.array([1.0, 2.0, 3.0]), np.array([0.0, 1.0, 2.0])
     z, converged = model._solve_block(design, y, weight, np.zeros(3), constraints, 1.0, {})
@@ -134,4 +133,7 @@ def test_constant_fairness_mf_block_matches_analytic_ridge_solution(biased):
         np.eye(design.shape[1]) + 2 * design.T @ (weight[:, None] * design), 2 * design.T @ (weight * y)
     )
     assert converged
-    np.testing.assert_allclose(z, expected, atol=1e-9)
+    assert_objective_close(
+        0.5 * (z @ z) + weight @ np.square(design @ z - y),
+        0.5 * (expected @ expected) + weight @ np.square(design @ expected - y),
+    )

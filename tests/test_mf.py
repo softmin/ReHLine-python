@@ -283,7 +283,7 @@ def test_mf_nonneg_constraint(mf_data, fit_mf):
         n_items=d["n_items"],
         rank=3,
         C=0.001,
-        max_iter=10000,
+        max_iter=1_000_000,
         tol=1e-7,
         random_state=0,
         constraint_user=[{"name": ">=0"}],

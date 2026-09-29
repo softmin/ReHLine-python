@@ -74,7 +74,8 @@ def test_path_sol_loss_range_with_larger_C():
 
 def test_path_sol_generates_default_Cs_when_not_provided():
     """plqERM_Ridge_path_sol should generate a sorted path when Cs is omitted."""
-    X, y = make_hastie_10_2(random_state=1)
+    # This checks path construction and output shapes, not large-data accuracy.
+    X, y = make_hastie_10_2(n_samples=120, random_state=1)
     loss = {"name": "svm"}
 
     Cs_out, n_iters, loss_vals, l2_norms, coefs = plqERM_Ridge_path_sol(
@@ -83,7 +84,7 @@ def test_path_sol_generates_default_Cs_when_not_provided():
         loss=loss,
         eps=1e-2,
         n_Cs=4,
-        max_iter=100000,
+        max_iter=1_000_000,
         tol=1e-3,
         verbose=0,
         warm_start=False,
