@@ -1,6 +1,9 @@
 name: Set up independent benchmark checks
 description: Fetch the standalone harness without replacing the ReHLine version under test
 inputs:
+  ref:
+    description: Benchmark commit, tag or branch selected by the calling workflow
+    default: main
   install:
     description: Install the harness into the current Python environment
     default: "true"
@@ -10,7 +13,7 @@ runs:
     - uses: actions/checkout@v4
       with:
         repository: softmin/ReHLine-benchmarking
-        ref: ${{ vars.REHLINE_BENCHMARKING_REF || 'main' }}
+        ref: ${{ inputs.ref }}
         path: .ci/benchmarking
     - name: Record benchmark revision
       shell: bash

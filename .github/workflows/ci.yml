@@ -26,6 +26,8 @@ jobs:
         with:
           python-version: "3.12"
       - uses: ./.github/actions/setup-benchmarking
+        with:
+          ref: ${{ vars.REHLINE_BENCHMARKING_REF || 'main' }}
       - name: Install benchmark dependencies
         run: |
           if [ "${{ matrix.reference }}" = "minimum" ]; then
@@ -87,6 +89,8 @@ jobs:
         with:
           python-version: "3.12"
       - uses: ./.github/actions/setup-benchmarking
+        with:
+          ref: ${{ vars.REHLINE_BENCHMARKING_REF || 'main' }}
       - name: Build wheel
         run: python -m pip wheel . --no-deps --wheel-dir wheelhouse
       - name: Install wheel and reference dependencies
@@ -127,6 +131,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - uses: ./.github/actions/setup-benchmarking
+        with:
+          ref: ${{ vars.REHLINE_BENCHMARKING_REF || 'main' }}
 
       - name: Install minimum dependencies
         if: matrix.dependencies == 'minimum'
