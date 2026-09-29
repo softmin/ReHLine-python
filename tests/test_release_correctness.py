@@ -1,7 +1,7 @@
 """Numerical and API regressions found during the release review."""
 
+import sys
 import threading
-import time
 from concurrent.futures import ThreadPoolExecutor
 from itertools import product
 
@@ -336,42 +336,56 @@ def test_native_call_releases_gil():
     U = rng.choice([-1.0, 1.0], size=(1, len(X)))
     V = np.ones_like(U)
     empty = np.empty((0, len(X)))
+    # Prepare every argument before opening the observation window. Array
+    # allocation or conversion must not let the observer run before the call.
+    args = (
+        rehline_result(),
+        X,
+        np.empty((0, 10)),
+        np.empty(0),
+        np.empty(0),
+        U,
+        V,
+        empty,
+        empty,
+        empty,
+        5000,
+        1e-15,
+        0,
+        0,
+        100,
+    )
+    ready = threading.Event()
     started = threading.Event()
-    ran_at = []
+    in_native_call = False
+    observed = []
 
     def worker():
+        ready.set()
         started.wait()
-        time.sleep(0.02)
-        ran_at.append(time.perf_counter())
+        observed.append(in_native_call)
 
     thread = threading.Thread(target=worker)
+    switch_interval = sys.getswitchinterval()
     thread.start()
-    start = time.perf_counter()
-    started.set()
     try:
-        rehline_internal(
-            rehline_result(),
-            X,
-            np.empty((0, 10)),
-            np.empty(0),
-            np.empty(0),
-            U,
-            V,
-            empty,
-            empty,
-            empty,
-            5000,
-            1e-15,
-            0,
-            0,
-            100,
-        )
-        end = time.perf_counter()
+        assert ready.wait(timeout=10), "Background Python thread did not start"
+        # Prevent an ordinary Python timeslice between signalling the observer
+        # and entering C++. The observer must run while the native call releases
+        # the GIL, without depending on a fixed sleep or solve duration.
+        sys.setswitchinterval(10)
+        in_native_call = True
+        started.set()
+        try:
+            rehline_internal(*args)
+        finally:
+            in_native_call = False
     finally:
-        thread.join()
-    if end - start < 0.04:
-        pytest.skip("Native solve completed before the background scheduling window")
-    assert ran_at[0] < end - 0.005, "Background Python thread was blocked throughout the native solve"
+        started.set()
+        thread.join(timeout=10)
+        sys.setswitchinterval(switch_interval)
+    assert not thread.is_alive(), "Background Python thread did not finish"
+    assert observed == [True], "Background Python thread was blocked throughout the native solve"
 
 
 def test_constructor_and_fit_do_not_mutate_parameters(regression):
