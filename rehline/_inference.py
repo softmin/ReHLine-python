@@ -9,6 +9,7 @@ from copy import deepcopy
 from sklearn.base import BaseEstimator, ClassifierMixin, RegressorMixin
 from sklearn.utils.validation import check_is_fitted
 
+from ._base import _SparseInputMixin
 from ._class import CQR_Ridge
 from ._sklearn_mixin import _ReHLineClassifier, _SklearnReHLine
 
@@ -28,7 +29,7 @@ _FITTED_FIELDS = (
 )
 
 
-class _InferenceBase(BaseEstimator):
+class _InferenceBase(_SparseInputMixin, BaseEstimator):
     def fit(self, *args, **kwargs):
         raise TypeError("This inference snapshot cannot fit or warm-start; use the original estimator to refit")
 

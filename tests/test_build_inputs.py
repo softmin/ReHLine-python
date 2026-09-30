@@ -98,7 +98,9 @@ def test_local_archive_preparation_is_verified_and_reusable(preparer, eigen_proj
     target = preparer.prepare_eigen(root, archive)
     assert preparer.verify_eigen(root) == 3
     assert {p.relative_to(target).as_posix() for p in target.rglob("*") if p.is_file()} == {
-        "Eigen/Core", "Eigen/src/fixture.h", "LICENSE"
+        "Eigen/Core",
+        "Eigen/src/fixture.h",
+        "LICENSE",
     }
     assert not (root / "escaped").exists()
     assert preparer.prepare_eigen(root) == target
@@ -124,6 +126,7 @@ def test_failed_preparation_never_leaves_partial_headers(preparer, eigen_project
     path = root / "tools" / preparer.MANIFEST
     manifest = json.loads(path.read_text())
     if failure == "download":
+
         def download(*args, **kwargs):
             raise OSError("interrupted download")
 

@@ -3,6 +3,45 @@
 from numbers import Integral, Real
 
 import numpy as np
+from scipy import sparse
+from sklearn.utils.validation import check_array
+
+
+def canonical_design(X):
+    """Normalize validated sparse X for the native CSR/int32 interface.
+
+    Work on a new sparse wrapper; duplicate summation and writable-buffer
+    copies must never modify the caller's arrays or sparse-format metadata.
+    Dense inputs retain the existing path.
+    """
+    if not sparse.issparse(X):
+        return X
+    if np.iscomplexobj(X):
+        raise ValueError("Complex data not supported")
+    X = sparse.csr_matrix(X, dtype=np.float64, copy=False)
+    limit = np.iinfo(np.int32).max
+    if max(X.shape) > limit or X.nnz > limit:
+        raise ValueError("Sparse X dimensions and nnz must fit in int32")
+    if X.indices.dtype.kind not in "iu" or X.indptr.dtype.kind not in "iu":
+        raise ValueError("Sparse X indices and indptr must be integers")
+    if X.indptr[-1] < 0 or np.any(X.indptr[1:] < X.indptr[:-1]):
+        raise ValueError("Sparse X indptr must be non-negative and non-decreasing")
+    X.check_format(full_check=True)
+    if not X.has_canonical_format:
+        X = X.copy()
+        X.sum_duplicates()
+    if not np.isfinite(X.data).all():
+        raise ValueError("Sparse X contains NaN or infinity after summing duplicates")
+    X.indices = X.indices.astype(np.int32, copy=False)
+    X.indptr = X.indptr.astype(np.int32, copy=False)
+    # pybind11's sparse caster requests writable buffers even for const inputs.
+    if not all(a.flags.writeable for a in (X.data, X.indices, X.indptr)):
+        X = X.copy()
+    return X
+
+
+def check_design(X):
+    return canonical_design(check_array(X, accept_sparse="csr", dtype=np.float64, order="C"))
 
 
 def positive_real(value, name, *, allow_zero=False):
@@ -71,6 +110,8 @@ def named_loss_parameters(model):
 
 
 def numeric_array(value, name, *, ndim, allow_inf=False):
+    if sparse.issparse(value):
+        raise ValueError(f"{name} must be dense; sparse input is supported only for X")
     if np.iscomplexobj(value):
         raise ValueError(f"{name} must be real-valued")
     try:

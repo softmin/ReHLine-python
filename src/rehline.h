@@ -123,8 +123,9 @@ struct ReHLineResult
 };
 
 // The main ReHLine solver
-// "Matrix" is the type of input data matrix, can be row-majored or column-majored
-template <typename Matrix = Eigen::MatrixXd, typename Index = int, bool Composite = false>
+// Loss/dual/constraint matrices remain dense; X may independently be sparse.
+template <typename Matrix = Eigen::MatrixXd, typename Index = int, bool Composite = false,
+          typename XMatrix = Matrix>
 class ReHLineSolver
 {
 private:
@@ -156,7 +157,7 @@ private:
     const Index m_W;
 
     // Input matrices and vectors
-    internal::Design<Matrix, Index, Composite> m_X;
+    internal::Design<XMatrix, Index, Composite> m_X;
     ConstRefMat m_U;
     ConstRefMat m_V;
     ConstRefMat m_S;
@@ -659,7 +660,7 @@ private:
         if (Shrinking) fv_set.swap(new_set);
     }
 public:
-    ReHLineSolver(ConstRefMat X, ConstRefMat U, ConstRefMat V,
+    ReHLineSolver(Eigen::Ref<const XMatrix> X, ConstRefMat U, ConstRefMat V,
                   ConstRefMat S, ConstRefMat T, ConstRefMat Tau,
                   ConstRefMat A, ConstRefVec b,
                   ConstRefVec rho, Index quantile_count = 0) :
@@ -858,7 +859,7 @@ public:
     }
 
     // Compensated products/sums retain small residuals under cancellation.
-    inline Vector recover_dual_accurately() const
+    inline Vector recover_dual_accurately_impl(std::false_type) const
     {
         Vector beta(m_d);
         for (Index j = 0; j < m_d; ++j) {
@@ -888,6 +889,45 @@ public:
             beta[j] = total + compensation;
         }
         return beta;
+    }
+
+    inline Vector recover_dual_accurately_impl(std::true_type) const
+    {
+        // Compensate each feature independently while visiting sparse rows.
+        // This keeps the original product corrections without an n*d scan.
+        Vector beta = Vector::Zero(m_d), compensation = Vector::Zero(m_d);
+        const auto add = [&](Index j, Scalar value) {
+            const Scalar next = beta[j] + value;
+            compensation[j] += std::abs(beta[j]) >= std::abs(value) ?
+                (beta[j] - next) + value : (value - next) + beta[j];
+            beta[j] = next;
+        };
+        const auto product = [&](Index j, Scalar a, Scalar b) {
+            const Scalar value = a * b;
+            add(j, value);
+            add(j, std::fma(a, b, -value));
+        };
+        const auto triple = [&](Index j, Scalar a, Scalar b, Scalar c) {
+            const Scalar bc = b * c;
+            product(j, a, bc);
+            product(j, a, std::fma(b, c, -bc));
+        };
+        for (Index k = 0; k < m_K; ++k)
+            for (Index j = 0; j < m_d; ++j) product(j, m_A(k, j), m_xi[k]);
+        for (Index i = 0; i < m_n; ++i)
+            m_X.for_each_in_row(i, [&](Index j, Scalar x) {
+                for (Index l = 0; l < m_L; ++l) triple(j, -x, m_U(l, i), m_Lambda(l, i));
+                for (Index h = 0; h < m_H; ++h) triple(j, -x, m_S(h, i), m_Gamma(h, i));
+            });
+        if (m_W > 0)
+            for (Index j = 0; j < m_d; ++j) { product(j, Scalar(2), m_mu[j]); add(j, -m_rho[j]); }
+        return beta + compensation;
+    }
+
+    inline Vector recover_dual_accurately() const
+    {
+        return recover_dual_accurately_impl(
+            std::is_same<typename XMatrix::StorageKind, Eigen::Sparse>());
     }
 
     // Primal refinement near the precision floor; the caller has recovered the
@@ -1183,10 +1223,11 @@ public:
 
 // Main solver interface
 // template <typename Matrix = Eigen::MatrixXd, typename Index = int>
-template <typename DerivedMat, typename DerivedVec, typename Index = int, bool Composite = false>
+template <typename DerivedMat, typename DerivedVec, typename Index = int, bool Composite = false,
+          typename DerivedX = DerivedMat>
 void rehline_solver(
     ReHLineResult<typename DerivedMat::PlainObject, Index>& result,
-    const Eigen::MatrixBase<DerivedMat>& X, const Eigen::MatrixBase<DerivedMat>& A,
+    const Eigen::EigenBase<DerivedX>& X, const Eigen::MatrixBase<DerivedMat>& A,
     const Eigen::MatrixBase<DerivedVec>& b, const Eigen::MatrixBase<DerivedVec>& rho,
     const Eigen::MatrixBase<DerivedMat>& U, const Eigen::MatrixBase<DerivedMat>& V,
     const Eigen::MatrixBase<DerivedMat>& S, const Eigen::MatrixBase<DerivedMat>& T, const Eigen::MatrixBase<DerivedMat>& Tau,
@@ -1201,11 +1242,12 @@ void rehline_solver(
         throw std::invalid_argument("Invalid composite quantile dimensions");
     const auto n = X.rows() * (Composite ? quantile_count : 1);
     const auto d = X.cols() + (Composite ? quantile_count : 0);
-    if (n <= 0 || d <= 0 || max_iter <= 0 || !std::isfinite(tol) || tol <= 0 ||
+    if (n <= 0 || d <= 0 || n > std::numeric_limits<Index>::max() ||
+        d > std::numeric_limits<Index>::max() || max_iter <= 0 || !std::isfinite(tol) || tol <= 0 ||
         shrink < 0 || verbose < 0 || trace_freq <= 0 ||
         coordinate_order < 0 || coordinate_order > 2 || coordinate_seed < -1)
         throw std::invalid_argument("Invalid dimensions or solver options");
-    if (!X.allFinite() || !A.allFinite() || !b.allFinite() || !rho.allFinite() ||
+    if (!internal::all_finite(X.derived()) || !A.allFinite() || !b.allFinite() || !rho.allFinite() ||
         !U.allFinite() || !V.allFinite() || !S.allFinite() || !T.allFinite())
         throw std::invalid_argument("Solver inputs must be finite");
     if ((U.rows() > 0 && U.cols() != n) || U.rows() != V.rows() || U.cols() != V.cols() ||
@@ -1235,8 +1277,8 @@ void rehline_solver(
         ReHLineSolver<typename DerivedMat::PlainObject, Index, Composite>::numerical_failure();
 
     // Create solver
-    ReHLineSolver<typename DerivedMat::PlainObject, Index, Composite> solver(
-        X, U, V, S, T, Tau, scaled_A, scaled_b, rho, quantile_count);
+    ReHLineSolver<typename DerivedMat::PlainObject, Index, Composite, typename DerivedX::PlainObject> solver(
+        X.derived(), U, V, S, T, Tau, scaled_A, scaled_b, rho, quantile_count);
 
     // Initialize parameters
     try {

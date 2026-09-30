@@ -12,12 +12,19 @@ from functools import wraps
 from numbers import Integral
 
 import numpy as np
+from scipy import sparse
 from scipy.special import huber
 from sklearn.base import BaseEstimator
 from sklearn.utils.validation import check_array, check_is_fitted
 
-from ._internal import rehline_cqr_internal, rehline_internal, rehline_result
-from ._validation import numeric_array, positive_real, sample_weights, solver_options
+from ._internal import (
+    rehline_cqr_internal,
+    rehline_cqr_sparse_internal,
+    rehline_internal,
+    rehline_result,
+    rehline_sparse_internal,
+)
+from ._validation import canonical_design, check_design, numeric_array, positive_real, sample_weights, solver_options
 
 
 def _fit_transaction(fit):
@@ -35,6 +42,13 @@ def _fit_transaction(fit):
         return self
 
     return staged_fit
+
+
+class _SparseInputMixin:
+    def __sklearn_tags__(self):
+        tags = super().__sklearn_tags__()
+        tags.input_tags.sparse = True
+        return tags
 
 
 class _BaseReHLine(BaseEstimator):
@@ -319,6 +333,11 @@ def ReHLine_solver(
 ):
     """Solve a ReLU/ReHU problem with independently selectable update order.
 
+    ``X`` may be a dense array or a SciPy sparse matrix/2-D sparse array.
+    Sparse inputs use float64 CSR internally without constructing dense X;
+    dimensions and stored-entry counts must fit in int32. Loss parameters,
+    constraint matrix ``A`` and dual variables remain dense.
+
     ``coordinate_order`` is ``'cyclic'`` or ``'random'`` (a new permutation
     within each coordinate group per sweep). ``'auto'`` preserves the legacy
     order: cyclic for ``shrink=0``, random for ``shrink>0``. Shrinking still
@@ -343,7 +362,7 @@ def ReHLine_solver(
     diagnostic rather than an exact primal bound.
     """
     solver_options(max_iter, tol, shrink, verbose, trace_freq, coordinate_order, coordinate_seed)
-    X = check_array(X, dtype=np.float64, order="C")
+    X = check_design(X)
     n, d = X.shape
     if (
         isinstance(_quantile_count, bool | np.bool_)
@@ -397,7 +416,10 @@ def ReHLine_solver(
         if value.shape != shape:
             raise ValueError(f"{name} warm start must have shape {shape}")
         setattr(result, name, np.clip(value, 0, upper))
-    native = rehline_cqr_internal if _quantile_count else rehline_internal
+    if sparse.issparse(X):
+        native = rehline_cqr_sparse_internal if _quantile_count else rehline_sparse_internal
+    else:
+        native = rehline_cqr_internal if _quantile_count else rehline_internal
     options = (_quantile_count,) if _quantile_count else ()
     native(
         result,
@@ -611,6 +633,36 @@ def _combined_constraints(constraint, A=None, b=None, *, warn=True):
     return constraints
 
 
+def _sparse_covariance_rows(X, indices):
+    """Centered covariance without materializing or centering the full design.
+
+    Shift each column before averaging, as on the dense path. Account for
+    implicit zeros separately so constant columns remain exactly zero even
+    with large offsets. Temporary dense storage is one sensitive column.
+    """
+    X = canonical_design(X).tocsc()
+    n, d = X.shape
+    rows = np.empty((len(indices), d))
+    for k, sensitive in enumerate(indices):
+        sensitive = int(sensitive) % d
+        start, stop = X.indptr[sensitive : sensitive + 2]
+        centered = np.zeros(n)
+        centered[X.indices[start:stop]] = X.data[start:stop]
+        centered -= centered[0]
+        centered -= centered.mean()
+        total = centered.sum()
+        for j in range(d):
+            start, stop = X.indptr[j : j + 2]
+            positions, values = X.indices[start:stop], X.data[start:stop]
+            origin = values[0] if positions.size and positions[0] == 0 else 0.0
+            shifted = values - origin
+            missing = n - positions.size
+            mean = (shifted.sum() - missing * origin) / n
+            missing_sum = total - centered[positions].sum() if missing else 0.0
+            rows[k, j] = (centered[positions] @ (shifted - mean) + missing_sum * (-origin - mean)) / n
+    return rows
+
+
 def _make_constraint_rehline_param(constraint, X, y=None):
     """The `_make_constraint_rehline_param` function generates constraint parameters for the ReHLine solver.
 
@@ -671,15 +723,18 @@ def _make_constraint_rehline_param(constraint, X, y=None):
             # A genuinely constant column becomes exactly zero, including
             # decimal constants whose arithmetic mean may round differently.
             # Only this temporary covariance copy is centered, never solver X.
-            features = numeric_array(X, "X", ndim=2)
-            centered_X = features - features[0]
-            centered_X -= centered_X.mean(axis=0)
-            X_sen = centered_X[:, sen_idx]
-
-            if X_sen.shape[1] != len(tol_sen):
+            if len(sen_idx) != len(tol_sen):
                 raise ValueError("dim of X_sen and len of tol_sen must be equal")
+            if sparse.issparse(X):
+                covariance = _sparse_covariance_rows(X, sen_idx)
+            else:
+                features = numeric_array(X, "X", ndim=2)
+                centered_X = features - features[0]
+                centered_X -= centered_X.mean(axis=0)
+                X_sen = centered_X[:, sen_idx]
+                covariance = X_sen.T @ centered_X / n
 
-            A_tmp = np.repeat(X_sen.T @ centered_X, repeats=[2], axis=0) / n
+            A_tmp = np.repeat(covariance, repeats=[2], axis=0)
             A_tmp[::2] = -A_tmp[::2]
             b_tmp = np.repeat(tol_sen, repeats=[2], axis=0)
 

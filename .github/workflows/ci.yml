@@ -51,7 +51,7 @@ jobs:
           tests/test_weighted_balance.py tests/test_mf_constraint_scaling.py
           tests/test_review_correctness_fixes.py tests/test_target_dtypes.py
           tests/test_constant_fairness.py tests/test_mf_sampling.py
-          tests/test_coordinate_order.py tests/test_coordinate_descent.py
+          tests/test_coordinate_order.py tests/test_coordinate_descent.py tests/test_sparse_input.py
           -m "not numerical_stress" --no-cov -q
       - name: Compare routine losses and constraints against CVXPY
         env:

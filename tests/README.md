@@ -67,6 +67,14 @@ python -m tests._helpers.core --profile routine --cases 256 \
 Small API, CQR, fairness and constraint-scaling reference regressions also remain
 in routine pytest. The full randomized matrices use the stress marker.
 
+Sparse-input regressions cover CSR/CSC/COO matrices and sparse arrays, all loss
+families, dense constraints, both coordinate orders and shrinking settings,
+independent CVXPY objectives, weighted SVM/QR, implicit CQR, multiclass prediction,
+warm paths, inference snapshots and sklearn grid search. They also check empty
+rows, duplicate and unsorted entries, read-only buffers, index conversion, input
+rejection and stable fairness covariance. A 10,000-by-100,000 design with 10,000
+stored entries exercises training and prediction while forbidding densification.
+
 Coordinate-order regressions cover both cyclic/random orders with shrinking
 enabled/disabled, legacy defaults and native positional calls, reproducible
 seeds, warm refits, full dual descent, mixed-loss references, compact/dense CQR

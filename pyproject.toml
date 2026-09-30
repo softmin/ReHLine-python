@@ -107,4 +107,4 @@ known-first-party = ["rehline"]
 # --- Codespell (typo checker) ---
 [tool.codespell]
 skip = "*.so,*.cpp,*.h,*.zip,*.html,*.ipynb,eigen-*,build,dist,.git,.ipynb_checkpoints"
-ignore-words-list = "nd,hist,bu,bi,ans"
+ignore-words-list = "nd,hist,bu,bi,ans,coo"

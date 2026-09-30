@@ -165,7 +165,7 @@ def make_mf_dataset(
     # overflow before choosing an int64 flat index.
     counts = {}
     for name, value, minimum in (("n_users", n_users, 0), ("n_items", n_items, 0), ("n_factors", n_factors, 1)):
-        if isinstance(value, (bool, np.bool_)) or not isinstance(value, Integral) or value < minimum:
+        if isinstance(value, bool | np.bool_) or not isinstance(value, Integral) or value < minimum:
             raise ValueError(f"{name} must be an integer >= {minimum}")
         counts[name] = int(value)
     n_users, n_items, n_factors = (counts[name] for name in ("n_users", "n_items", "n_factors"))
@@ -177,7 +177,7 @@ def make_mf_dataset(
         if density > 1:
             raise ValueError("density must be in [0, 1]")
         n_interactions = int(total_pairs * density)
-    elif isinstance(n_interactions, (bool, np.bool_)) or not isinstance(n_interactions, Integral) or n_interactions < 0:
+    elif isinstance(n_interactions, bool | np.bool_) or not isinstance(n_interactions, Integral) or n_interactions < 0:
         raise ValueError("n_interactions must be a non-negative integer")
     n_interactions = int(n_interactions)
     n_interactions = min(n_interactions, total_pairs)

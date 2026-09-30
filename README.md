@@ -63,6 +63,34 @@ pytest tests/
 
 ## 🚀 Quick Start
 
+### Sparse input
+
+The solver and estimators accept SciPy sparse matrices and two-dimensional sparse
+arrays for `X`, including CSR, CSC and COO. Training normalizes them to float64 CSR;
+it does not convert X to a dense matrix. Existing dense input remains supported.
+
+```python
+from scipy.sparse import csr_matrix
+from rehline import plq_Ridge_Classifier
+
+X = csr_matrix([[1., 0., 0.], [0., 1., 0.], [1., 0., 1.], [0., 1., 1.]])
+model = plq_Ridge_Classifier(loss={"name": "svm"}, C=0.1, tol=1e-8, max_iter=100000)
+model.fit(X, [1, -1, 1, -1])
+prediction = model.predict(X)
+```
+
+Sparse X also works with quantile regression, ElasticNet, multiclass models,
+CQR, warm starts, C paths and `to_inference()` snapshots. Intercept augmentation
+preserves sparsity. In sklearn pipelines, use `StandardScaler(with_mean=False)`.
+
+Only X is sparse: constraint matrices `A`, loss parameters, coefficients and dual
+variables remain dense. Fairness computes covariance without centering the full
+design, but its resulting constraint rows are dense. Constraints such as
+nonnegativity and monotonicity also construct dense A, which can be expensive at
+large feature counts. Dimensions and stored-entry counts must fit in int32;
+representable int64 indices are converted safely. Format/dtype conversion and
+the native binding may copy sparse buffers using storage proportional to `nnz`.
+
 ### Scikit-Learn Style API (Recommended)
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/12D2HLkCTFUAR8ZrfNcpqVf8hwf2Vzg3V?usp=sharing)

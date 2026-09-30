@@ -3,16 +3,18 @@ from itertools import combinations
 
 import numpy as np
 from joblib import Parallel, delayed
+from scipy import sparse
 from sklearn.base import BaseEstimator, ClassifierMixin, RegressorMixin
 from sklearn.preprocessing import LabelEncoder
 from sklearn.utils.class_weight import compute_class_weight
 from sklearn.utils.multiclass import check_classification_targets
 from sklearn.utils.validation import _check_sample_weight, check_is_fitted, validate_data
 
-from ._base import _combined_constraints, _make_constraint_rehline_param
+from ._base import _combined_constraints, _make_constraint_rehline_param, _SparseInputMixin
 from ._class import plqERM_ElasticNet, plqERM_Ridge
 from ._validation import (
     balanced_sample_weights,
+    canonical_design,
     model_options,
     named_loss_parameters,
     numeric_array,
@@ -21,7 +23,7 @@ from ._validation import (
 )
 
 
-class _SklearnReHLine(BaseEstimator):
+class _SklearnReHLine(_SparseInputMixin, BaseEstimator):
     """Common data preparation, constraints and state handling for sklearn models."""
 
     def get_params(self, deep=True):
@@ -29,7 +31,10 @@ class _SklearnReHLine(BaseEstimator):
 
     def _fit_model(self, X, y, weight, previous=None):
         n, d = X.shape
-        X_aug = np.column_stack((X, np.full(n, self.intercept_scaling))) if self.fit_intercept else X
+        X_aug = X
+        if self.fit_intercept:
+            intercept = np.full((n, 1), self.intercept_scaling)
+            X_aug = sparse.hstack((X, intercept), format="csr") if sparse.issparse(X) else np.hstack((X, intercept))
         matrices, offsets = [], []
         for constraint in _combined_constraints(self.constraint, self.A, self.b, warn=False):
             if (
@@ -121,7 +126,8 @@ class _SklearnReHLine(BaseEstimator):
         positive_real(self.intercept_scaling, "intercept_scaling")
         if not isinstance(self.fit_intercept, bool | np.bool_):
             raise ValueError("fit_intercept must be boolean")
-        X, y = validate_data(self, X, y, accept_sparse=False, dtype=np.float64, order="C")
+        X, y = validate_data(self, X, y, accept_sparse="csr", dtype=np.float64, order="C")
+        X = canonical_design(X)
         weight = sample_weights(_check_sample_weight(sample_weight, X, dtype=np.float64), X.shape[0])
         # Removing zero-weight rows also keeps class labels and constraints consistent.
         active = weight > 0
@@ -265,7 +271,7 @@ class _SklearnReHLine(BaseEstimator):
 
     def _decision_function(self, X):
         check_is_fitted(self, ["coef_", "intercept_"])
-        X = validate_data(self, X, reset=False, accept_sparse=False, dtype=np.float64, order="C")
+        X = validate_data(self, X, reset=False, accept_sparse="csr", dtype=np.float64, order="C")
         return X @ self.coef_.T + self.intercept_
 
     def to_inference(self):
@@ -309,8 +315,8 @@ class _SklearnReHLine(BaseEstimator):
 
     def _ovo_class_scores(self, X):
         """Aggregate pair margins in bounded blocks, preserving pair/tie order."""
-        X = validate_data(self, X, reset=False, accept_sparse=False, dtype=np.float64, order="C")
-        votes = np.zeros((len(X), len(self.classes_)))
+        X = validate_data(self, X, reset=False, accept_sparse="csr", dtype=np.float64, order="C")
+        votes = np.zeros((X.shape[0], len(self.classes_)))
         confidence = np.zeros_like(votes)
         for start in range(0, len(self.coef_), 64):
             stop = start + 64

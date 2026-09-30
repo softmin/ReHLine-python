@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- SciPy sparse `X` support for the raw solver, Ridge/ElasticNet estimators,
+  sklearn classifiers/regressors, CQR, prediction snapshots and regularization
+  paths. Inputs are normalized to float64 CSR with checked int32 indices;
+  coordinate updates visit stored entries without densifying X. Dense constraint
+  matrices, sample weights, intercepts, fairness, warm starts and the existing
+  objective-gap/feasibility stopping rule are supported. Loss and dual arrays
+  remain dense; sparse `A` is not supported.
 - A large-n/small-d benchmark in ReHLine-benchmarking focused on quantile regression and SVM, with
   100,000/1,000,000 samples, 2/8 features and two fixed average-loss scales.
   It independently audits every fit, records three cold timing samples and

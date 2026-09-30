@@ -91,7 +91,9 @@ def ensure_build_eigen(root=PROJECT):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--archive", type=Path, help="Use a local release ZIP instead of downloading (same SHA-256 required)")
+    parser.add_argument(
+        "--archive", type=Path, help="Use a local release ZIP instead of downloading (same SHA-256 required)"
+    )
     args = parser.parse_args()
     target = prepare_eigen(archive=args.archive)
     print(f"Eigen ready: {target} ({verify_eigen(PROJECT)} header/license files verified)")

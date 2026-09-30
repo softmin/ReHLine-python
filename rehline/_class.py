@@ -20,8 +20,17 @@ from ._base import (
     _fit_transaction,
     _make_constraint_rehline_param,
     _make_loss_rehline_param,
+    _SparseInputMixin,
 )
-from ._validation import model_options, named_loss_parameters, numeric_array, quantiles, sample_weights
+from ._validation import (
+    canonical_design,
+    check_design,
+    model_options,
+    named_loss_parameters,
+    numeric_array,
+    quantiles,
+    sample_weights,
+)
 
 
 def _problem_array(name, ndim):
@@ -37,7 +46,7 @@ def _problem_array(name, ndim):
     return property(get, set)
 
 
-class ReHLine(_BaseReHLine, BaseEstimator):
+class ReHLine(_SparseInputMixin, _BaseReHLine, BaseEstimator):
     r"""ReHLine Minimization [1]_.
 
     .. math::
@@ -230,7 +239,7 @@ class ReHLine(_BaseReHLine, BaseEstimator):
         """
 
         model_options(self)
-        X = check_array(X, dtype=np.float64, order="C")
+        X = check_design(X)
         self.n_features_in_ = X.shape[1]
         # X = check_array(X)
         sample_weight = sample_weights(sample_weight, X.shape[0])
@@ -304,11 +313,11 @@ class ReHLine(_BaseReHLine, BaseEstimator):
         # Check if fit has been called
         check_is_fitted(self)
 
-        X = check_array(X)
-        return np.dot(X, self.coef_)
+        X = check_array(X, accept_sparse="csr")
+        return X @ self.coef_
 
 
-class plqERM_Ridge(_BaseReHLine, BaseEstimator):
+class plqERM_Ridge(_SparseInputMixin, _BaseReHLine, BaseEstimator):
     r"""Empirical Risk Minimization (ERM) with a piecewise linear-quadratic (PLQ) objective with a ridge penalty.
 
     .. math::
@@ -491,7 +500,8 @@ class plqERM_Ridge(_BaseReHLine, BaseEstimator):
 
         model_options(self)
         named_loss_parameters(self)
-        X, y = check_X_y(X, y, dtype=np.float64, order="C")
+        X, y = check_X_y(X, y, accept_sparse="csr", dtype=np.float64, order="C")
+        X = canonical_design(X)
         self.n_features_in_ = X.shape[1]
         n, d = X.shape
 
@@ -576,11 +586,11 @@ class plqERM_Ridge(_BaseReHLine, BaseEstimator):
         # Check if fit has been called
         check_is_fitted(self)
 
-        X = check_array(X)
-        return np.dot(X, self.coef_)
+        X = check_array(X, accept_sparse="csr")
+        return X @ self.coef_
 
 
-class plqERM_ElasticNet(_BaseReHLine, BaseEstimator):
+class plqERM_ElasticNet(_SparseInputMixin, _BaseReHLine, BaseEstimator):
     r"""Empirical Risk Minimization (ERM) with a piecewise linear-quadratic (PLQ) objective with a elastic net penalty.
 
     .. math::
@@ -776,7 +786,8 @@ class plqERM_ElasticNet(_BaseReHLine, BaseEstimator):
 
         model_options(self)
         named_loss_parameters(self)
-        X, y = check_X_y(X, y, dtype=np.float64, order="C")
+        X, y = check_X_y(X, y, accept_sparse="csr", dtype=np.float64, order="C")
+        X = canonical_design(X)
         self.n_features_in_ = X.shape[1]
         omega = np.empty(0) if self.omega is None else numeric_array(self.omega, "omega", ndim=1)
         n, d = X.shape
@@ -884,11 +895,11 @@ class plqERM_ElasticNet(_BaseReHLine, BaseEstimator):
         # Check if fit has been called
         check_is_fitted(self)
 
-        X = check_array(X)
-        return np.dot(X, self.coef_)
+        X = check_array(X, accept_sparse="csr")
+        return X @ self.coef_
 
 
-class CQR_Ridge(_BaseReHLine, BaseEstimator):
+class CQR_Ridge(_SparseInputMixin, _BaseReHLine, BaseEstimator):
     r"""Composite Quantile Regressor (CQR) with a ridge penalty.
 
     It allows for the fitting of a linear regression model that minimizes a composite quantile loss function.
@@ -1045,7 +1056,8 @@ class CQR_Ridge(_BaseReHLine, BaseEstimator):
         """
 
         model_options(self)
-        X, y = check_X_y(X, y, dtype=np.float64, order="C")
+        X, y = check_X_y(X, y, accept_sparse="csr", dtype=np.float64, order="C")
+        X = canonical_design(X)
         self.n_features_in_ = X.shape[1]
         self.quantiles_ = quantiles(self.quantiles).copy()
         n, d = X.shape
@@ -1156,7 +1168,7 @@ class CQR_Ridge(_BaseReHLine, BaseEstimator):
         """
         # Check if fit has been called
         check_is_fitted(self)
-        X = check_array(X)
+        X = check_array(X, accept_sparse="csr")
 
         if X.shape[1] != self.n_features_in_:
             raise ValueError(f"X must have {self.n_features_in_} features")

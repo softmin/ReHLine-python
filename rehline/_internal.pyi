@@ -2,6 +2,7 @@
 
 import numpy as np
 import numpy.typing as npt
+from scipy.sparse import csr_matrix
 
 class rehline_result:
     beta: npt.NDArray[np.float64]
@@ -43,6 +44,45 @@ def rehline_internal(
 def rehline_cqr_internal(
     result: rehline_result,
     X: npt.NDArray[np.float64],
+    A: npt.NDArray[np.float64],
+    b: npt.NDArray[np.float64],
+    rho: npt.NDArray[np.float64],
+    U: npt.NDArray[np.float64],
+    V: npt.NDArray[np.float64],
+    S: npt.NDArray[np.float64],
+    T: npt.NDArray[np.float64],
+    Tau: npt.NDArray[np.float64],
+    quantile_count: int,
+    max_iter: int,
+    tol: float,
+    shrink: int = ...,
+    verbose: int = ...,
+    trace_freq: int = ...,
+    coordinate_order: int = ...,
+    coordinate_seed: int = ...,
+) -> None: ...
+def rehline_sparse_internal(
+    result: rehline_result,
+    X: csr_matrix,
+    A: npt.NDArray[np.float64],
+    b: npt.NDArray[np.float64],
+    rho: npt.NDArray[np.float64],
+    U: npt.NDArray[np.float64],
+    V: npt.NDArray[np.float64],
+    S: npt.NDArray[np.float64],
+    T: npt.NDArray[np.float64],
+    Tau: npt.NDArray[np.float64],
+    max_iter: int,
+    tol: float,
+    shrink: int = ...,
+    verbose: int = ...,
+    trace_freq: int = ...,
+    coordinate_order: int = ...,
+    coordinate_seed: int = ...,
+) -> None: ...
+def rehline_cqr_sparse_internal(
+    result: rehline_result,
+    X: csr_matrix,
     A: npt.NDArray[np.float64],
     b: npt.NDArray[np.float64],
     rho: npt.NDArray[np.float64],
