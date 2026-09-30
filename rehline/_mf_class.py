@@ -5,6 +5,7 @@ from copy import deepcopy
 from numbers import Integral
 
 import numpy as np
+from scipy import sparse
 from sklearn.base import BaseEstimator
 from sklearn.exceptions import ConvergenceWarning
 from sklearn.utils.validation import check_is_fitted
@@ -19,7 +20,7 @@ from ._base import (
     _make_loss_rehline_param,
 )
 from ._loss import ReHLoss
-from ._validation import model_options, numeric_array, positive_real, sample_weights
+from ._validation import constraint_row_scales, model_options, numeric_array, positive_real, sample_weights
 
 
 class plqMF_Ridge(_BaseReHLine, BaseEstimator):
@@ -306,7 +307,10 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
         if no_loss:
             if np.all(b >= 0):
                 return np.zeros(d), True
-            key = (A.shape, A.tobytes(), b.tobytes())
+            matrix_key = (
+                (A.indptr.tobytes(), A.indices.tobytes(), A.data.tobytes()) if sparse.issparse(A) else A.tobytes()
+            )
+            key = (A.shape, matrix_key, b.tobytes())
             if key in cache:
                 return cache[key].copy(), True
             # No terms depend on this placeholder design row.
@@ -360,14 +364,19 @@ class plqMF_Ridge(_BaseReHLine, BaseEstimator):
                     z = np.r_[biases[index], z]
                 A, b = self._block_constraints(constraints, design)
                 if len(b):
-                    row_scale = np.max(abs(A), axis=1)
+                    row_scale = constraint_row_scales(A)
                     row_scale[row_scale == 0] = 1
                     # Normalize before the product: a huge original row can
                     # otherwise hide a small but representable normalized slack.
                     try:
                         with np.errstate(over="raise", invalid="raise", under="ignore"):
                             raw_slack = A @ z + b
-                            scaled_slack = (A / row_scale[:, None]) @ z + b / row_scale
+                            if sparse.issparse(A):
+                                normalized = A.copy()
+                                normalized.data /= np.repeat(row_scale, np.diff(A.indptr))
+                            else:
+                                normalized = A / row_scale[:, None]
+                            scaled_slack = normalized @ z + b / row_scale
                     except FloatingPointError as exc:
                         raise OverflowError("MF constraint diagnostics exceed the floating-point range") from exc
                     if not np.isfinite(raw_slack).all() or not np.isfinite(scaled_slack).all():

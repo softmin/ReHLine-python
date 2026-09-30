@@ -11,11 +11,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - SciPy sparse `X` support for the raw solver, Ridge/ElasticNet estimators,
   sklearn classifiers/regressors, CQR, prediction snapshots and regularization
-  paths. Inputs are normalized to float64 CSR with checked int32 indices;
-  coordinate updates visit stored entries without densifying X. Dense constraint
-  matrices, sample weights, intercepts, fairness, warm starts and the existing
-  objective-gap/feasibility stopping rule are supported. Loss and dual arrays
-  remain dense; sparse `A` is not supported.
+  paths. CSR, CSC and COO matrices and two-dimensional sparse arrays are
+  normalized to float64 CSR with checked int32 indices without mutating caller
+  buffers. Coordinate updates visit stored entries without densifying `X`.
+  Sample weights, intercepts, fairness and warm starts remain supported.
+- SciPy sparse constraint matrix `A` support, independently of whether `X` is
+  dense or sparse, for the raw solver, ReHLine, Ridge/ElasticNet estimators,
+  sklearn classifiers/regressors and constrained regularization paths. Raw
+  implicit-CQR solves also support sparse `A`; the public CQR estimator API is
+  unchanged. Constraint row normalization, coordinate updates, dual recovery,
+  feasibility checks and warm starts preserve sparse storage and the existing
+  `A @ beta + b >= 0` convention. Sparse `A` accepts the same formats as sparse
+  `X`; loss parameters, `b`, `rho`, coefficients and dual variables remain dense.
+- Independent sparse-constraint regression tests covering CVXPY objectives and
+  feasibility, nonnegative/isotonic projection references, dense/sparse `X` and
+  `A` combinations, row scaling, warm starts, intercepts, multiclass models and
+  MF constraint handling. Large structured-constraint tests guard against
+  accidental densification. Objective and feasibility acceptance remain at
+  `1e-8` for the reference tests.
 - A large-n/small-d benchmark in ReHLine-benchmarking focused on quantile regression and SVM, with
   100,000/1,000,000 samples, 2/8 features and two fixed average-loss scales.
   It independently audits every fit, records three cold timing samples and
@@ -31,12 +44,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Built-in `nonnegative` / `>=0` and `monotonic` / `monotonicity` constraints
+  always construct CSR matrices, including for dense `X`. Nonnegative constraints
+  store `d` entries; increasing/decreasing monotonic constraints store
+  `2 * (d - 1)` entries. Mixed constraint blocks and intercept augmentation
+  preserve sparse storage. MF constraint caching and feasibility checks also
+  accept these sparse matrices; its optimization algorithm is unchanged.
+- For sparse `A`, the optional precision-floor `polish_primal` correction may
+  densify an active constraint submatrix only when it has at most 1,000,000
+  entries. Larger corrections are skipped while ordinary coordinate descent
+  continues with the same objective-gap and feasibility stopping requirements.
+  This bounds the active matrix size, not all factorization scratch memory.
 - Move benchmark runners, configurations, reporting and harness tests to the
   independent [ReHLine-benchmarking](https://github.com/softmin/ReHLine-benchmarking)
   repository, organized into quick, dense, CrowdStrike, correctness and diagnostic
-  suites. Solver regression tests remain here; source and installed-wheel CI
-  explicitly install or copy the selected external harness as a test dependency.
-  ReHLine's runtime dependencies are unchanged.
+  suites. Solver regression tests and independent numerical-reference helpers
+  remain in this repository. Source, installed-wheel and release-artifact checks
+  are self-contained and no longer check out or require access to the private
+  benchmarking repository. ReHLine's runtime dependencies are unchanged.
 - Skip incremental primal updates when an exact scalar coordinate update leaves
   its dual variable unchanged. Nonzero steps, coordinate minimizers, shrinking,
   random ordering and convergence certificates retain their existing behavior.

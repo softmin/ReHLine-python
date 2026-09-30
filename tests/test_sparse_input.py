@@ -374,9 +374,9 @@ def test_malformed_or_unrepresentable_csr_is_rejected(fault):
         ReHLine_solver(X, np.ones((1, X.shape[0])), np.ones((1, X.shape[0])), **OPTIONS)
 
 
-def test_sparse_A_is_explicitly_rejected():
-    with pytest.raises(ValueError, match="A must be dense"):
-        ReHLine_solver(sparse.eye(3), np.ones((1, 3)), np.ones((1, 3)), A=sparse.eye(3), b=np.zeros(3), **OPTIONS)
+def test_sparse_loss_parameters_remain_explicitly_rejected():
+    with pytest.raises(ValueError, match="U must be dense"):
+        ReHLine_solver(sparse.eye(3), sparse.csr_matrix(np.ones((1, 3))), np.ones((1, 3)), **OPTIONS)
 
 
 @pytest.mark.parametrize("dtype", [np.float32, np.int32, np.bool_])

@@ -123,9 +123,9 @@ struct ReHLineResult
 };
 
 // The main ReHLine solver
-// Loss/dual/constraint matrices remain dense; X may independently be sparse.
+// Loss and dual arrays remain dense; X and A may independently be sparse.
 template <typename Matrix = Eigen::MatrixXd, typename Index = int, bool Composite = false,
-          typename XMatrix = Matrix>
+          typename XMatrix = Matrix, typename AMatrix = Matrix>
 class ReHLineSolver
 {
 private:
@@ -133,17 +133,6 @@ private:
     using Vector = Eigen::Matrix<Scalar, Eigen::Dynamic, 1>;
     using ConstRefMat = Eigen::Ref<const Matrix>;
     using ConstRefVec = Eigen::Ref<const Vector>;
-
-    // We really want some matrices to be row-majored, since they can be more
-    // efficient in certain matrix operations, for example X.row(i).dot(v)
-    //
-    // If the data Matrix is already row-majored, we save a const reference;
-    // otherwise we make a copy
-    using RMatrix = typename std::conditional<
-        Matrix::IsRowMajor,
-        Eigen::Ref<const Matrix>,
-        Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
-    >::type;
 
     // RNG
     internal::SimpleRNG<Index> m_rng;
@@ -163,7 +152,7 @@ private:
     ConstRefMat m_S;
     ConstRefMat m_T;
     ConstRefMat m_Tau;
-    RMatrix     m_A;
+    internal::Design<AMatrix, Index, false> m_A;
     ConstRefVec m_b;
     ConstRefVec m_rho;
 
@@ -202,7 +191,7 @@ private:
 
         // First term
         if (m_K > 0)
-            m_beta.noalias() = m_A.transpose() * m_xi;
+            m_beta.noalias() = m_A.transpose_multiply(m_xi);
 
         // [n x 1]
         Vector LHterm = Vector::Zero(m_n);
@@ -275,14 +264,14 @@ private:
 
             if (m_gk_denom[k] == Scalar(0)) { m_xi[k] = Scalar(0); continue; }
             // Compute g_k
-            const Scalar g_k = m_A.row(k).dot(m_beta) + m_b[k];
+            const Scalar g_k = m_A.dot(k, m_beta) + m_b[k];
             // Compute new xi_k
             const Scalar candid = xi_k - g_k / m_gk_denom[k];
             const Scalar newxi = std::max(Scalar(0), candid);
             // Update xi and beta
             m_xi[k] = newxi;
             if (newxi != xi_k)
-                m_beta.noalias() += (newxi - xi_k) * m_A.row(k).transpose();
+                m_A.add_row(m_beta, k, newxi - xi_k);
         }
     }
 
@@ -406,7 +395,7 @@ private:
             const Scalar xi_k = m_xi[k];
 
             // Compute g_k
-            const Scalar g_k = m_A.row(k).dot(m_beta) + m_b[k];
+            const Scalar g_k = m_A.dot(k, m_beta) + m_b[k];
             if (m_gk_denom[k] == Scalar(0)) {
                 m_xi[k] = Scalar(0);
                 if (Shrinking) new_set.push_back(k);
@@ -429,7 +418,7 @@ private:
             // Update xi and beta
             m_xi[k] = newxi;
             if (newxi != xi_k)
-                m_beta.noalias() += (newxi - xi_k) * m_A.row(k).transpose();
+                m_A.add_row(m_beta, k, newxi - xi_k);
 
             // Add to new free variable set
             if (Shrinking) new_set.push_back(k);
@@ -662,11 +651,11 @@ private:
 public:
     ReHLineSolver(Eigen::Ref<const XMatrix> X, ConstRefMat U, ConstRefMat V,
                   ConstRefMat S, ConstRefMat T, ConstRefMat Tau,
-                  ConstRefMat A, ConstRefVec b,
+                  Eigen::Ref<const AMatrix> A, ConstRefVec b,
                   ConstRefVec rho, Index quantile_count = 0) :
         m_n(X.rows() * (Composite ? quantile_count : 1)), m_d(X.cols() + (Composite ? quantile_count : 0)), m_L(U.rows()), m_H(S.rows()), m_K(A.rows()),
         m_W(rho.rows()), // check if l1 penalty is implemented
-        m_X(X, quantile_count), m_U(U), m_V(V), m_S(S), m_T(T), m_Tau(Tau), m_A(A), m_b(b),
+        m_X(X, quantile_count), m_U(U), m_V(V), m_S(S), m_T(T), m_Tau(Tau), m_A(A, 0), m_b(b),
         m_rho(rho),
         m_gk_denom(m_K), m_gli_denom(m_L, m_n), m_ghi_denom(m_H, m_n),
         m_beta(m_d),
@@ -674,7 +663,7 @@ public:
     {
         // A [K x d], K can be zero
         if (m_K > 0)
-            m_gk_denom.noalias() = m_A.rowwise().squaredNorm();
+            m_gk_denom.noalias() = m_A.squared_norms();
 
         Vector xi2 = m_X.squared_norms();
         if (m_L > 0)
@@ -782,7 +771,7 @@ public:
     inline Scalar constraint_violation() const
     {
         if (m_K == 0) return Scalar(0);
-        const Vector slack = m_A * m_beta + m_b;
+        const Vector slack = m_A.multiply(m_beta) + m_b;
         if (!slack.allFinite()) numerical_failure();
         return std::max(Scalar(0), -slack.minCoeff());
     }
@@ -805,7 +794,7 @@ public:
             (m_beta - m_dual_beta).cwiseAbs().maxCoeff() : Scalar(0);
         if (!std::isfinite(residual)) numerical_failure();
         for (Index k = 0; k < m_K; ++k) {
-            Scalar g = m_A.row(k).dot(m_beta) + m_b[k];
+            Scalar g = m_A.dot(k, m_beta) + m_b[k];
             if (!std::isfinite(g)) numerical_failure();
             if (m_xi[k] == Scalar(0)) g = std::min(Scalar(0), g);
             residual = std::max(residual, std::abs(g));
@@ -880,7 +869,7 @@ public:
                 product(a, bc);
                 product(a, std::fma(b, c, -bc));
             };
-            for (Index k = 0; k < m_K; ++k) product(m_A(k, j), m_xi[k]);
+            for (Index k = 0; k < m_K; ++k) product(m_A.coeff(k, j), m_xi[k]);
             for (Index i = 0; i < m_n; ++i) {
                 for (Index l = 0; l < m_L; ++l) triple(-m_X.coeff(i, j), m_U(l, i), m_Lambda(l, i));
                 for (Index h = 0; h < m_H; ++h) triple(-m_X.coeff(i, j), m_S(h, i), m_Gamma(h, i));
@@ -913,7 +902,7 @@ public:
             product(j, a, std::fma(b, c, -bc));
         };
         for (Index k = 0; k < m_K; ++k)
-            for (Index j = 0; j < m_d; ++j) product(j, m_A(k, j), m_xi[k]);
+            m_A.for_each_in_row(k, [&](Index j, Scalar a) { product(j, a, m_xi[k]); });
         for (Index i = 0; i < m_n; ++i)
             m_X.for_each_in_row(i, [&](Index j, Scalar x) {
                 for (Index l = 0; l < m_L; ++l) triple(j, -x, m_U(l, i), m_Lambda(l, i));
@@ -927,7 +916,9 @@ public:
     inline Vector recover_dual_accurately() const
     {
         return recover_dual_accurately_impl(
-            std::is_same<typename XMatrix::StorageKind, Eigen::Sparse>());
+            std::integral_constant<bool,
+                std::is_same<typename XMatrix::StorageKind, Eigen::Sparse>::value ||
+                std::is_same<typename AMatrix::StorageKind, Eigen::Sparse>::value>());
     }
 
     // Primal refinement near the precision floor; the caller has recovered the
@@ -939,14 +930,19 @@ public:
         std::vector<Index> active;
         for (Index k = 0; k < m_K; ++k)
             if (m_xi[k] > Scalar(0) &&
-                std::abs(m_A.row(k).dot(m_beta) + m_b[k]) <= tol)
+                std::abs(m_A.dot(k, m_beta) + m_b[k]) <= tol)
                 active.push_back(k);
         if (active.empty()) return false;
-        Matrix equalities(active.size(), m_d);
+        // Sparse constraints must not trigger an unbounded dense factorization.
+        // This optional precision-floor correction is skipped above 1M entries;
+        // ordinary CD and its objective/feasibility certificate remain unchanged.
+        if (std::is_same<typename AMatrix::StorageKind, Eigen::Sparse>::value &&
+            active.size() > std::size_t(1000000) / std::size_t(m_d)) return false;
+        Matrix equalities = Matrix::Zero(active.size(), m_d);
         Vector rhs(active.size());
         for (Index i = 0; i < static_cast<Index>(active.size()); ++i) {
-            equalities.row(i) = m_A.row(active[i]);
-            rhs[i] = -(m_A.row(active[i]).dot(m_beta) + m_b[active[i]]);
+            m_A.for_each_in_row(active[i], [&](Index j, Scalar a) { equalities(i, j) = a; });
+            rhs[i] = -(m_A.dot(active[i], m_beta) + m_b[active[i]]);
         }
         const Vector correction = equalities.completeOrthogonalDecomposition().solve(rhs);
         if (!correction.allFinite()) return false;
@@ -1224,10 +1220,10 @@ public:
 // Main solver interface
 // template <typename Matrix = Eigen::MatrixXd, typename Index = int>
 template <typename DerivedMat, typename DerivedVec, typename Index = int, bool Composite = false,
-          typename DerivedX = DerivedMat>
+          typename DerivedX = DerivedMat, typename DerivedA = DerivedMat>
 void rehline_solver(
     ReHLineResult<typename DerivedMat::PlainObject, Index>& result,
-    const Eigen::EigenBase<DerivedX>& X, const Eigen::MatrixBase<DerivedMat>& A,
+    const Eigen::EigenBase<DerivedX>& X, const Eigen::EigenBase<DerivedA>& A,
     const Eigen::MatrixBase<DerivedVec>& b, const Eigen::MatrixBase<DerivedVec>& rho,
     const Eigen::MatrixBase<DerivedMat>& U, const Eigen::MatrixBase<DerivedMat>& V,
     const Eigen::MatrixBase<DerivedMat>& S, const Eigen::MatrixBase<DerivedMat>& T, const Eigen::MatrixBase<DerivedMat>& Tau,
@@ -1243,11 +1239,11 @@ void rehline_solver(
     const auto n = X.rows() * (Composite ? quantile_count : 1);
     const auto d = X.cols() + (Composite ? quantile_count : 0);
     if (n <= 0 || d <= 0 || n > std::numeric_limits<Index>::max() ||
-        d > std::numeric_limits<Index>::max() || max_iter <= 0 || !std::isfinite(tol) || tol <= 0 ||
+        d > std::numeric_limits<Index>::max() || A.rows() > std::numeric_limits<Index>::max() || max_iter <= 0 || !std::isfinite(tol) || tol <= 0 ||
         shrink < 0 || verbose < 0 || trace_freq <= 0 ||
         coordinate_order < 0 || coordinate_order > 2 || coordinate_seed < -1)
         throw std::invalid_argument("Invalid dimensions or solver options");
-    if (!internal::all_finite(X.derived()) || !A.allFinite() || !b.allFinite() || !rho.allFinite() ||
+    if (!internal::all_finite(X.derived()) || !internal::all_finite(A.derived()) || !b.allFinite() || !rho.allFinite() ||
         !U.allFinite() || !V.allFinite() || !S.allFinite() || !T.allFinite())
         throw std::invalid_argument("Solver inputs must be finite");
     if ((U.rows() > 0 && U.cols() != n) || U.rows() != V.rows() || U.cols() != V.cols() ||
@@ -1263,21 +1259,15 @@ void rehline_solver(
     // Public xi and constraint_violation retain the caller's original units.
     using Scalar = typename DerivedMat::Scalar;
     using Vector = Eigen::Matrix<Scalar, Eigen::Dynamic, 1>;
-    typename DerivedMat::PlainObject scaled_A = A;
-    Vector scaled_b = b, row_scale(A.rows());
-    for (Index k = 0; k < A.rows(); ++k) {
-        const Scalar scale = A.row(k).cwiseAbs().maxCoeff();
-        if (scale == Scalar(0) && b[k] < 0)
-            throw std::invalid_argument("Infeasible zero constraint row");
-        row_scale[k] = scale == Scalar(0) ? Scalar(1) : scale;
-        scaled_A.row(k) /= row_scale[k];
-        scaled_b[k] /= row_scale[k];
-    }
+    using ConstraintMatrix = typename internal::ConstraintStorage<DerivedA>::Type;
+    ConstraintMatrix scaled_A = A.derived();
+    Vector scaled_b = b;
+    const Vector row_scale = internal::normalize_constraint_rows(scaled_A, scaled_b);
     if (!scaled_b.allFinite())
         ReHLineSolver<typename DerivedMat::PlainObject, Index, Composite>::numerical_failure();
 
     // Create solver
-    ReHLineSolver<typename DerivedMat::PlainObject, Index, Composite, typename DerivedX::PlainObject> solver(
+    ReHLineSolver<typename DerivedMat::PlainObject, Index, Composite, typename DerivedX::PlainObject, ConstraintMatrix> solver(
         X.derived(), U, V, S, T, Tau, scaled_A, scaled_b, rho, quantile_count);
 
     // Initialize parameters
@@ -1317,7 +1307,7 @@ void rehline_solver(
     solver.diagnostics(result, tol);
 
     Vector raw_slack = b;
-    if (A.rows() > 0) raw_slack.noalias() = A * solver.get_beta_ref() + b;
+    if (A.rows() > 0) raw_slack.noalias() = A.derived() * solver.get_beta_ref() + b;
     const Vector raw_xi = solver.get_xi_ref().cwiseQuotient(row_scale);
     if (!raw_slack.allFinite() || !raw_xi.allFinite()) solver.numerical_failure();
     result.constraint_violation = A.rows() == 0 ? Scalar(0) : std::max(Scalar(0), -raw_slack.minCoeff());

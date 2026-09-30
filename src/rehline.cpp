@@ -18,10 +18,10 @@ using MapVec = Eigen::Ref<const Vector>;
 
 using ReHLineResult = rehline::ReHLineResult<Matrix>;
 
-template <typename XMatrix>
+template <typename XMatrix, typename AMatrix = MapMat>
 void rehline_internal(
     ReHLineResult& result,
-    const XMatrix& X, const MapMat& A, const MapVec& b, const MapVec& rho,
+    const XMatrix& X, const AMatrix& A, const MapVec& b, const MapVec& rho,
     const MapMat& U, const MapMat& V,
     const MapMat& S, const MapMat& T, const MapMat& Tau,
     int max_iter, double tol, int shrink = 1,
@@ -34,10 +34,10 @@ void rehline_internal(
                             coordinate_order, coordinate_seed);
 }
 
-template <typename XMatrix>
+template <typename XMatrix, typename AMatrix = MapMat>
 void rehline_cqr_internal(
     ReHLineResult& result,
-    const XMatrix& X, const MapMat& A, const MapVec& b, const MapVec& rho,
+    const XMatrix& X, const AMatrix& A, const MapVec& b, const MapVec& rho,
     const MapMat& U, const MapMat& V,
     const MapMat& S, const MapMat& T, const MapMat& Tau,
     int quantile_count, int max_iter, double tol, int shrink = 1,
@@ -92,6 +92,30 @@ PYBIND11_MODULE(_internal, m) {
           py::arg("verbose") = 0, py::arg("trace_freq") = 100,
           py::arg("coordinate_order") = 0, py::arg("coordinate_seed") = -1);
     m.def("rehline_cqr_sparse_internal", &rehline_cqr_internal<SparseMatrix>, py::call_guard<py::gil_scoped_release>(),
+          py::arg("result"), py::arg("X"), py::arg("A"), py::arg("b"), py::arg("rho"),
+          py::arg("U"), py::arg("V"), py::arg("S"), py::arg("T"), py::arg("Tau"),
+          py::arg("quantile_count"), py::arg("max_iter"), py::arg("tol"), py::arg("shrink") = 1,
+          py::arg("verbose") = 0, py::arg("trace_freq") = 100,
+          py::arg("coordinate_order") = 0, py::arg("coordinate_seed") = -1);
+    m.def("rehline_sparse_constraints_internal", &rehline_internal<MapMat, SparseMatrix>, py::call_guard<py::gil_scoped_release>(),
+          py::arg("result"), py::arg("X"), py::arg("A"), py::arg("b"), py::arg("rho"),
+          py::arg("U"), py::arg("V"), py::arg("S"), py::arg("T"), py::arg("Tau"),
+          py::arg("max_iter"), py::arg("tol"), py::arg("shrink") = 1,
+          py::arg("verbose") = 0, py::arg("trace_freq") = 100,
+          py::arg("coordinate_order") = 0, py::arg("coordinate_seed") = -1);
+    m.def("rehline_sparse_both_internal", &rehline_internal<SparseMatrix, SparseMatrix>, py::call_guard<py::gil_scoped_release>(),
+          py::arg("result"), py::arg("X"), py::arg("A"), py::arg("b"), py::arg("rho"),
+          py::arg("U"), py::arg("V"), py::arg("S"), py::arg("T"), py::arg("Tau"),
+          py::arg("max_iter"), py::arg("tol"), py::arg("shrink") = 1,
+          py::arg("verbose") = 0, py::arg("trace_freq") = 100,
+          py::arg("coordinate_order") = 0, py::arg("coordinate_seed") = -1);
+    m.def("rehline_cqr_sparse_constraints_internal", &rehline_cqr_internal<MapMat, SparseMatrix>, py::call_guard<py::gil_scoped_release>(),
+          py::arg("result"), py::arg("X"), py::arg("A"), py::arg("b"), py::arg("rho"),
+          py::arg("U"), py::arg("V"), py::arg("S"), py::arg("T"), py::arg("Tau"),
+          py::arg("quantile_count"), py::arg("max_iter"), py::arg("tol"), py::arg("shrink") = 1,
+          py::arg("verbose") = 0, py::arg("trace_freq") = 100,
+          py::arg("coordinate_order") = 0, py::arg("coordinate_seed") = -1);
+    m.def("rehline_cqr_sparse_both_internal", &rehline_cqr_internal<SparseMatrix, SparseMatrix>, py::call_guard<py::gil_scoped_release>(),
           py::arg("result"), py::arg("X"), py::arg("A"), py::arg("b"), py::arg("rho"),
           py::arg("U"), py::arg("V"), py::arg("S"), py::arg("T"), py::arg("Tau"),
           py::arg("quantile_count"), py::arg("max_iter"), py::arg("tol"), py::arg("shrink") = 1,

@@ -4,6 +4,7 @@ from itertools import product
 
 import numpy as np
 import pytest
+from scipy import sparse
 
 from tests._helpers.core import constraint_violation, make_case, objective, solve_rehline
 
@@ -38,8 +39,9 @@ def test_primal_recovery_meets_requested_tolerance(index, assert_objective_close
 
 
 @pytest.mark.parametrize("index", [1332, 2844])
+@pytest.mark.parametrize("sparse_A", [False, True])
 @pytest.mark.filterwarnings("ignore:ReHLine failed to converge:sklearn.exceptions.ConvergenceWarning")
-def test_polished_primal_has_independently_verified_stationarity(index, record_property):
+def test_polished_primal_has_independently_verified_stationarity(index, sparse_A, record_property):
     from decimal import Decimal, localcontext
 
     from rehline import plqERM_ElasticNet
@@ -50,7 +52,7 @@ def test_polished_primal_has_independently_verified_stationarity(index, record_p
         C=case["C"],
         l1_ratio=case["l1_ratio"],
         omega=case["omega"],
-        constraint=[{"name": "custom", "A": case["A"], "b": case["b"]}],
+        constraint=[{"name": "custom", "A": sparse.csr_matrix(case["A"]) if sparse_A else case["A"], "b": case["b"]}],
         tol=1e-8,
         max_iter=1_000_000,
     ).fit(case["X"], case["y"], sample_weight=case["weight"])

@@ -66,8 +66,8 @@ pytest tests/
 ### Sparse input
 
 The solver and estimators accept SciPy sparse matrices and two-dimensional sparse
-arrays for `X`, including CSR, CSC and COO. Training normalizes them to float64 CSR;
-it does not convert X to a dense matrix. Existing dense input remains supported.
+arrays for `X` and constraint matrix `A`, including CSR, CSC and COO. Each may
+independently be dense or sparse. Training normalizes sparse inputs to float64 CSR.
 
 ```python
 from scipy.sparse import csr_matrix
@@ -83,13 +83,34 @@ Sparse X also works with quantile regression, ElasticNet, multiclass models,
 CQR, warm starts, C paths and `to_inference()` snapshots. Intercept augmentation
 preserves sparsity. In sklearn pipelines, use `StandardScaler(with_mean=False)`.
 
-Only X is sparse: constraint matrices `A`, loss parameters, coefficients and dual
-variables remain dense. Fairness computes covariance without centering the full
-design, but its resulting constraint rows are dense. Constraints such as
-nonnegativity and monotonicity also construct dense A, which can be expensive at
-large feature counts. Dimensions and stored-entry counts must fit in int32;
-representable int64 indices are converted safely. Format/dtype conversion and
-the native binding may copy sparse buffers using storage proportional to `nnz`.
+Sparse `A` works through `ReHLine_solver`, `ReHLine`, the PLQ Ridge/ElasticNet
+estimators, custom constraints, and constrained C paths. Constraints retain the
+convention `A @ beta + b >= 0`. For example:
+
+```python
+from scipy.sparse import eye
+
+# Nonnegative feature coefficients, without constructing a dense identity.
+model = plq_Ridge_Classifier(loss={"name": "svm"}, A=eye(X.shape[1]),
+                             b=[0.] * X.shape[1], tol=1e-8, max_iter=100000)
+model.fit(X, [1, -1, 1, -1])
+```
+
+Constraint normalization, dual recovery and CD updates preserve sparse storage.
+Nonnegativity (`nonnegative` / `>=0`) and monotonicity (`monotonic` / `monotonicity`,
+including `decreasing=True`) always construct CSR constraints, even for dense `X`.
+Their storage grows linearly with the number of features. Mixed constraint blocks stay sparse. Fairness computes dense covariance
+rows without centering the full design. With `fit_intercept=True`, a custom `A`
+with `d` columns constrains feature coefficients; `d+1` columns constrain the
+features and actual intercept, including `intercept_scaling`.
+
+Loss parameters, `b`, `rho`, coefficients and dual variables remain dense.
+Dimensions and stored-entry counts must fit in int32; representable int64 indices
+are converted safely. Conversion and native binding may copy sparse buffers using
+storage proportional to `nnz`. The optional precision-floor `polish_primal`
+step may densify a small active constraint submatrix, capped at 1,000,000 entries
+for sparse `A`; above this size it continues CD without that correction. The
+objective-gap and feasibility stopping requirements are unchanged.
 
 ### Scikit-Learn Style API (Recommended)
 

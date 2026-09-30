@@ -7,8 +7,8 @@ from scipy import sparse
 from sklearn.utils.validation import check_array
 
 
-def canonical_design(X):
-    """Normalize validated sparse X for the native CSR/int32 interface.
+def canonical_design(X, *, name="X"):
+    """Normalize a sparse matrix for the native CSR/int32 interface.
 
     Work on a new sparse wrapper; duplicate summation and writable-buffer
     copies must never modify the caller's arrays or sparse-format metadata.
@@ -16,22 +16,24 @@ def canonical_design(X):
     """
     if not sparse.issparse(X):
         return X
+    if X.ndim != 2:
+        raise ValueError(f"{name} must be 2-dimensional")
     if np.iscomplexobj(X):
         raise ValueError("Complex data not supported")
     X = sparse.csr_matrix(X, dtype=np.float64, copy=False)
     limit = np.iinfo(np.int32).max
     if max(X.shape) > limit or X.nnz > limit:
-        raise ValueError("Sparse X dimensions and nnz must fit in int32")
+        raise ValueError(f"Sparse {name} dimensions and nnz must fit in int32")
     if X.indices.dtype.kind not in "iu" or X.indptr.dtype.kind not in "iu":
-        raise ValueError("Sparse X indices and indptr must be integers")
+        raise ValueError(f"Sparse {name} indices and indptr must be integers")
     if X.indptr[-1] < 0 or np.any(X.indptr[1:] < X.indptr[:-1]):
-        raise ValueError("Sparse X indptr must be non-negative and non-decreasing")
+        raise ValueError(f"Sparse {name} indptr must be non-negative and non-decreasing")
     X.check_format(full_check=True)
     if not X.has_canonical_format:
         X = X.copy()
         X.sum_duplicates()
     if not np.isfinite(X.data).all():
-        raise ValueError("Sparse X contains NaN or infinity after summing duplicates")
+        raise ValueError(f"Sparse {name} contains NaN or infinity after summing duplicates")
     X.indices = X.indices.astype(np.int32, copy=False)
     X.indptr = X.indptr.astype(np.int32, copy=False)
     # pybind11's sparse caster requests writable buffers even for const inputs.
@@ -42,6 +44,31 @@ def canonical_design(X):
 
 def check_design(X):
     return canonical_design(check_array(X, accept_sparse="csr", dtype=np.float64, order="C"))
+
+
+def constraint_matrix(A):
+    """Validate dense or sparse constraints, including zero-row matrices."""
+    if not sparse.issparse(A):
+        return numeric_array(A, "A", ndim=2)
+    return canonical_design(A, name="A")
+
+
+def constraint_row_scales(A):
+    """Maximum absolute coefficient per row; zero rows have scale zero."""
+    if A.shape[0] == 0:
+        return np.empty(0)
+    if not sparse.issparse(A):
+        return np.max(abs(A), axis=1)
+    # max(axis=1) returns only one value per row, never a dense K-by-d matrix.
+    maxima = abs(A).max(axis=1).tocoo()
+    scales = np.zeros(A.shape[0])
+    scales[maxima.row] = maxima.data
+    return scales
+
+
+def stack_constraints(matrices):
+    """Keep mixed dense/sparse constraint blocks sparse."""
+    return sparse.vstack(matrices, format="csr") if any(sparse.issparse(A) for A in matrices) else np.vstack(matrices)
 
 
 def positive_real(value, name, *, allow_zero=False):
@@ -111,7 +138,7 @@ def named_loss_parameters(model):
 
 def numeric_array(value, name, *, ndim, allow_inf=False):
     if sparse.issparse(value):
-        raise ValueError(f"{name} must be dense; sparse input is supported only for X")
+        raise ValueError(f"{name} must be dense; sparse input is supported only for X and A")
     if np.iscomplexobj(value):
         raise ValueError(f"{name} must be real-valued")
     try:

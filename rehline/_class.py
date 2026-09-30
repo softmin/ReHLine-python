@@ -8,6 +8,7 @@
 import warnings
 
 import numpy as np
+from scipy import sparse
 from sklearn.base import BaseEstimator
 from sklearn.exceptions import ConvergenceWarning
 from sklearn.utils.validation import _check_sample_weight, check_array, check_is_fitted, check_X_y
@@ -38,6 +39,8 @@ def _problem_array(name, ndim):
 
     def get(self):
         value = getattr(self, name)
+        if name == "A" and sparse.issparse(value):
+            return value
         return np.empty((0,) * ndim) if value is None else np.asarray(value)
 
     def set(self, value):

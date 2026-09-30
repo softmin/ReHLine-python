@@ -98,9 +98,12 @@ def test_mf_one_pair_matches_analytic_weighted_optimum():
 
 @pytest.mark.parametrize("biased", [False, True])
 @pytest.mark.parametrize("zero_weight", [False, True])
-def test_mf_empty_effective_blocks_satisfy_nonzero_constraints(biased, zero_weight):
+@pytest.mark.parametrize("structured", [False, True])
+def test_mf_empty_effective_blocks_satisfy_nonzero_constraints(biased, zero_weight, structured):
     d = 1 + biased
     constraints = [{"name": "custom", "A": np.eye(d), "b": -np.ones(d)}]
+    if structured:
+        constraints = [{"name": "nonnegative"}, {"name": "monotonic"}] + constraints
     options = mf_options(biased=biased, constraint_user=constraints, constraint_item=constraints)
     X = np.array([[0, 0], [1, 1]]) if zero_weight else np.array([[0, 0]])
     y = np.full(len(X), 4.0)

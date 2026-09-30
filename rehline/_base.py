@@ -19,12 +19,26 @@ from sklearn.utils.validation import check_array, check_is_fitted
 
 from ._internal import (
     rehline_cqr_internal,
+    rehline_cqr_sparse_both_internal,
+    rehline_cqr_sparse_constraints_internal,
     rehline_cqr_sparse_internal,
     rehline_internal,
     rehline_result,
+    rehline_sparse_both_internal,
+    rehline_sparse_constraints_internal,
     rehline_sparse_internal,
 )
-from ._validation import canonical_design, check_design, numeric_array, positive_real, sample_weights, solver_options
+from ._validation import (
+    canonical_design,
+    check_design,
+    constraint_matrix,
+    constraint_row_scales,
+    numeric_array,
+    positive_real,
+    sample_weights,
+    solver_options,
+    stack_constraints,
+)
 
 
 def _fit_transaction(fit):
@@ -128,7 +142,7 @@ class _BaseReHLine(BaseEstimator):
 
     def _prepare_warm_start(self, n_samples, rho=None):
         """Match cached dual dimensions and retain normalized constraint duals."""
-        row_scale = np.max(abs(self._A), axis=1) if self._A.shape[0] else np.empty(0)
+        row_scale = constraint_row_scales(constraint_matrix(self._A))
         row_scale[row_scale == 0] = 1
         previous_scale = getattr(self, "_xi_row_scale", None)
         shapes = {
@@ -333,10 +347,13 @@ def ReHLine_solver(
 ):
     """Solve a ReLU/ReHU problem with independently selectable update order.
 
-    ``X`` may be a dense array or a SciPy sparse matrix/2-D sparse array.
-    Sparse inputs use float64 CSR internally without constructing dense X;
+    ``X`` and ``A`` independently accept dense arrays or SciPy sparse
+    matrices/2-D sparse arrays. Sparse inputs use float64 CSR internally;
     dimensions and stored-entry counts must fit in int32. Loss parameters,
-    constraint matrix ``A`` and dual variables remain dense.
+    ``b``, ``rho`` and dual variables remain dense. Sparse constraint updates
+    visit only stored entries. Optional primal refinement uses a dense active
+    constraint matrix only when it contains at most 1,000,000 entries;
+    larger refinements are skipped without changing the stopping certificate.
 
     ``coordinate_order`` is ``'cyclic'`` or ``'random'`` (a new permutation
     within each coordinate group per sweep). ``'auto'`` preserves the legacy
@@ -379,9 +396,9 @@ def ReHLine_solver(
     def matrix(value, name, columns, *, allow_inf=False):
         if value is None:
             return np.empty((0, columns))
-        value = numeric_array(value, name, ndim=2, allow_inf=allow_inf)
+        value = constraint_matrix(value) if name == "A" else numeric_array(value, name, ndim=2, allow_inf=allow_inf)
         if value.shape[0] == 0 and value.shape[1] in (0, columns):
-            return np.empty((0, columns))
+            return sparse.csr_matrix((0, columns)) if sparse.issparse(value) else np.empty((0, columns))
         if value.shape[1] != columns:
             raise ValueError(f"{name} must have {columns} columns")
         return value
@@ -400,7 +417,7 @@ def ReHLine_solver(
         raise ValueError("b must have one entry per row of A")
     if rho.shape not in ((0,), (d,)) or np.any(rho < 0):
         raise ValueError("rho must be empty or a non-negative vector of length n_features")
-    if np.any(np.all(A == 0, axis=1) & (b < 0)):
+    if np.any((constraint_row_scales(A) == 0) & (b < 0)):
         raise ValueError("A zero constraint row with negative b is infeasible")
 
     result = rehline_result()
@@ -416,10 +433,16 @@ def ReHLine_solver(
         if value.shape != shape:
             raise ValueError(f"{name} warm start must have shape {shape}")
         setattr(result, name, np.clip(value, 0, upper))
-    if sparse.issparse(X):
-        native = rehline_cqr_sparse_internal if _quantile_count else rehline_sparse_internal
-    else:
-        native = rehline_cqr_internal if _quantile_count else rehline_internal
+    native_functions = (
+        (rehline_internal, rehline_sparse_constraints_internal, rehline_sparse_internal, rehline_sparse_both_internal),
+        (
+            rehline_cqr_internal,
+            rehline_cqr_sparse_constraints_internal,
+            rehline_cqr_sparse_internal,
+            rehline_cqr_sparse_both_internal,
+        ),
+    )
+    native = native_functions[bool(_quantile_count)][2 * sparse.issparse(X) + sparse.issparse(A)]
     options = (_quantile_count,) if _quantile_count else ()
     native(
         result,
@@ -617,7 +640,7 @@ def _combined_constraints(constraint, A=None, b=None, *, warn=True):
     if A is not None or b is not None:
         if A is None or b is None:
             raise ValueError("A and b must be supplied together")
-        A = numeric_array(A, "A", ndim=2)
+        A = constraint_matrix(A)
         b = numeric_array(b, "b", ndim=1)
         if b.shape != (A.shape[0],):
             raise ValueError("b must have one entry per row of A")
@@ -673,6 +696,7 @@ def _make_constraint_rehline_param(constraint, X, y=None):
         Each dictionary must contain a 'name' key, which specifies the type of constraint.
         The following constraint types are supported:
             * 'nonnegative' or '>=0': A non-negativity constraint.
+            * 'monotonic' or 'monotonicity': Adjacent monotonic constraints; set 'decreasing' for non-increasing coefficients.
             * 'fair' or 'fairness': A fairness constraint using 'sen_idx' and 'tol_sen'.
             * 'custom': A custom constraint, where the user must provide the constraint matrix 'A' and vector 'b'.
 
@@ -684,8 +708,9 @@ def _make_constraint_rehline_param(constraint, X, y=None):
 
     Returns
     -------
-    A : array-like of shape (n_constraints, n_features)
-        The constraint matrix.
+    A : ndarray or scipy.sparse.csr_matrix of shape (n_constraints, n_features)
+        Nonnegativity and monotonicity always use sparse CSR storage, including
+        for dense X. Combining these with other constraints preserves sparsity.
 
     b : array-like of shape (n_constraints,)
         The constraint vector.
@@ -697,11 +722,12 @@ def _make_constraint_rehline_param(constraint, X, y=None):
     A = np.empty(shape=(0, 0))
     b = np.empty(shape=(0))
 
-    for constr_tmp in [] if constraint is None else constraint:
+    constraints = [] if constraint is None else list(constraint)
+    for constr_tmp in constraints:
         if not isinstance(constr_tmp, dict) or "name" not in constr_tmp:
             raise ValueError("Each constraint must be a dictionary with a name")
         if (constr_tmp["name"] == "nonnegative") or (constr_tmp["name"] == ">=0"):
-            A_tmp = np.identity(d)
+            A_tmp = sparse.eye(d, format="csr")
             b_tmp = np.zeros(d)
 
         elif (constr_tmp["name"] == "fair") or (constr_tmp["name"] == "fairness"):
@@ -740,14 +766,15 @@ def _make_constraint_rehline_param(constraint, X, y=None):
 
         elif (constr_tmp["name"] == "monotonic") or (constr_tmp["name"] == "monotonicity"):
             decreasing = constr_tmp.get("decreasing", False)
+            sign = 1.0 if decreasing else -1.0
             idx = np.arange(d - 1)
-            A_tmp = np.zeros((d - 1, d))
-            if decreasing:
-                A_tmp[idx, idx] = 1.0
-                A_tmp[idx, idx + 1] = -1.0
-            else:
-                A_tmp[idx, idx] = -1.0
-                A_tmp[idx, idx + 1] = 1.0
+            A_tmp = sparse.csr_matrix(
+                (
+                    np.concatenate((np.full(d - 1, sign), np.full(d - 1, -sign))),
+                    (np.tile(idx, 2), np.concatenate((idx, idx + 1))),
+                ),
+                shape=(d - 1, d),
+            )
             b_tmp = np.zeros(d - 1)
 
         elif constr_tmp["name"] == "custom":
@@ -760,11 +787,11 @@ def _make_constraint_rehline_param(constraint, X, y=None):
                 "but you can add it by manually setting A and b via {'name': 'custom', 'A': A, 'b': b}"
             )
 
-        A_tmp = numeric_array(A_tmp, "A", ndim=2)
+        A_tmp = constraint_matrix(A_tmp)
         b_tmp = numeric_array(b_tmp, "b", ndim=1)
         if A_tmp.shape[1] != d or b_tmp.shape != (A_tmp.shape[0],):
             raise ValueError(f"Constraint A must have {d} columns and b one entry per row")
-        A = np.vstack([A, A_tmp]) if A.size else A_tmp
+        A = stack_constraints([A, A_tmp]) if A.shape[0] else A_tmp
         b = np.hstack([b, b_tmp]) if b.size else b_tmp
 
     return A, b

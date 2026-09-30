@@ -15,11 +15,13 @@ from ._class import plqERM_ElasticNet, plqERM_Ridge
 from ._validation import (
     balanced_sample_weights,
     canonical_design,
+    constraint_matrix,
     model_options,
     named_loss_parameters,
     numeric_array,
     positive_real,
     sample_weights,
+    stack_constraints,
 )
 
 
@@ -36,7 +38,8 @@ class _SklearnReHLine(_SparseInputMixin, BaseEstimator):
             intercept = np.full((n, 1), self.intercept_scaling)
             X_aug = sparse.hstack((X, intercept), format="csr") if sparse.issparse(X) else np.hstack((X, intercept))
         matrices, offsets = [], []
-        for constraint in _combined_constraints(self.constraint, self.A, self.b, warn=False):
+        constraints = _combined_constraints(self.constraint, self.A, self.b, warn=False)
+        for constraint in constraints:
             if (
                 self.fit_intercept
                 and isinstance(constraint, dict)
@@ -44,20 +47,27 @@ class _SklearnReHLine(_SparseInputMixin, BaseEstimator):
                 and np.shape(constraint.get("A"))[1:] == (d + 1,)
             ):
                 # An explicit final column constrains the actual intercept.
-                A = numeric_array(constraint["A"], "A", ndim=2).copy()
+                A = constraint_matrix(constraint["A"]).copy()
                 b = numeric_array(constraint["b"], "b", ndim=1)
-                A[:, -1] *= self.intercept_scaling
+                if sparse.issparse(A):
+                    A.data[A.indices == d] *= self.intercept_scaling
+                else:
+                    A[:, -1] *= self.intercept_scaling
                 if b.shape != (A.shape[0],):
                     raise ValueError("b must have one entry per row of A")
             else:
                 A, b = _make_constraint_rehline_param([constraint], X, y)
                 if self.fit_intercept:
-                    A = np.column_stack((A, np.zeros(A.shape[0])))
+                    A = (
+                        sparse.hstack((A, sparse.csr_matrix((A.shape[0], 1))), format="csr")
+                        if sparse.issparse(A)
+                        else np.column_stack((A, np.zeros(A.shape[0])))
+                    )
             matrices.append(A)
             offsets.append(b)
         constraint_params = []
         if matrices:
-            constraint_params = [{"name": "custom", "A": np.vstack(matrices), "b": np.concatenate(offsets)}]
+            constraint_params = [{"name": "custom", "A": stack_constraints(matrices), "b": np.concatenate(offsets)}]
         kwargs = dict(
             loss=deepcopy(self.loss) if self.loss is not None else {"name": "QR", "qt": 0.5},
             constraint=constraint_params,
